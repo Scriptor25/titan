@@ -23,10 +23,10 @@ namespace core
         }
 
         template<typename T, typename E = T, typename F, typename... A>
-            requires std::is_same_v<XrResult(*)(A..., std::uint32_t, std::uint32_t *, E *), F>
+            requires std::is_same_v<XrResult(*)(A..., uint32_t, uint32_t *, E *), F>
         result<std::vector<T>> Enumerate(F fn, const T &value, A... args)
         {
-            std::uint32_t count;
+            uint32_t count;
             if (auto res = fn(args..., 0, &count, nullptr))
                 return error<std::vector<T>>("xr::Enumerate<{}> => {}", typename_string<T>(), res);
 
@@ -128,10 +128,10 @@ namespace core
         }
 
         template<typename T, typename E = T, typename F, typename... A>
-            requires std::is_same_v<VkResult (*)(A..., std::uint32_t *, E *), F>
+            requires std::is_same_v<VkResult (*)(A..., uint32_t *, E *), F>
         result<std::vector<T>> Enumerate(F fn, const T &value, A... args)
         {
-            std::uint32_t count;
+            uint32_t count;
             if (auto res = fn(args..., &count, nullptr))
                 return error<std::vector<T>>("vk::Enumerate<{}> => {}", typename_string<T>(), res);
 
@@ -143,10 +143,10 @@ namespace core
         }
 
         template<typename T, typename E = T, typename F, typename... A>
-            requires std::is_same_v<void (*)(A..., std::uint32_t *, E *), F>
+            requires std::is_same_v<void (*)(A..., uint32_t *, E *), F>
         std::vector<T> Get(F fn, const T &value, A... args)
         {
-            std::uint32_t count;
+            uint32_t count;
             fn(args..., &count, nullptr);
 
             std::vector<T> elements(count, value);
@@ -171,15 +171,15 @@ namespace core
 XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanInstanceExtensionsKHR(
     XrInstance instance,
     XrSystemId systemId,
-    std::uint32_t bufferCapacityInput,
-    std::uint32_t *bufferCountOutput,
+    uint32_t bufferCapacityInput,
+    uint32_t *bufferCountOutput,
     char *buffer);
 
 XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanDeviceExtensionsKHR(
     XrInstance instance,
     XrSystemId systemId,
-    std::uint32_t bufferCapacityInput,
-    std::uint32_t *bufferCountOutput,
+    uint32_t bufferCapacityInput,
+    uint32_t *bufferCountOutput,
     char *buffer);
 
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(

@@ -3,8 +3,8 @@
 XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanInstanceExtensionsKHR(
     XrInstance instance,
     XrSystemId systemId,
-    std::uint32_t bufferCapacityInput,
-    std::uint32_t *bufferCountOutput,
+    uint32_t bufferCapacityInput,
+    uint32_t *bufferCountOutput,
     char *buffer)
 {
     static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanInstanceExtensionsKHR>(
@@ -19,8 +19,8 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanInstanceExtensionsKHR(
 XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanDeviceExtensionsKHR(
     XrInstance instance,
     XrSystemId systemId,
-    std::uint32_t bufferCapacityInput,
-    std::uint32_t *bufferCountOutput,
+    uint32_t bufferCapacityInput,
+    uint32_t *bufferCountOutput,
     char *buffer)
 {
     static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanDeviceExtensionsKHR>(

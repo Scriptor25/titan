@@ -1,30 +1,54 @@
 #pragma once
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_RIGHT_HANDED
+
+#include <filesystem>
 #include <string_view>
 #include <vector>
 
+#include <obj.hxx>
 #include <result.hxx>
 #include <wrapper/al.hxx>
 #include <wrapper/glfw.hxx>
 #include <wrapper/vk.hxx>
 #include <wrapper/xr.hxx>
 
+#include <glm/glm.hpp>
+
 namespace core
 {
     struct SwapchainReference
     {
-        VkFormat format;
-        xr::Swapchain swapchain;
-        std::vector<vk::Image> images;
-        std::vector<vk::ImageView> views;
+        VkFormat Format;
+        xr::Swapchain Swapchain;
+        std::vector<vk::Image> Images;
+        std::vector<vk::ImageView> Views;
+    };
+
+    struct SwapchainFrame
+    {
+        SwapchainReference Color;
+        SwapchainReference Depth;
+        std::vector<vk::Framebuffer> Framebuffers;
     };
 
     struct LayerReference
     {
-        XrTime predicted_display_time;
-        std::vector<XrCompositionLayerBaseHeader *> layers;
-        XrCompositionLayerProjection projection;
-        std::vector<XrCompositionLayerProjectionView> projection_views;
+        XrTime PredictedDisplayTime;
+        std::vector<XrCompositionLayerBaseHeader *> Layers;
+        XrCompositionLayerProjection Projection;
+        std::vector<XrCompositionLayerProjectionView> Views;
+    };
+
+    struct CameraData
+    {
+        glm::mat4 model;
+        glm::mat4 inv_model;
+        glm::mat4 view;
+        glm::mat4 inv_view;
+        glm::mat4 proj;
+        glm::mat4 inv_proj;
     };
 
     class Instance
@@ -86,17 +110,47 @@ namespace core
         result<> CreateSurface();
 
         result<SwapchainReference> CreateSwapchain(
-            const XrViewConfigurationView &view_configuration_view,
-            XrSwapchainUsageFlags usage_flags,
+            const XrViewConfigurationView &view,
+            XrSwapchainUsageFlags usage,
             VkFormat format,
-            VkImageAspectFlags aspect_mask);
+            VkImageAspectFlags aspect);
+
+        result<> CreateDescriptorSetLayout();
+        result<> CreateDescriptorPool();
+        result<> CreateDescriptorSet();
+
+        result<> CreateRenderPass();
+        result<> CreatePipelineCache();
+        result<> CreatePipelineLayout();
+        result<> CreatePipeline();
+
+        result<> CreateFramebuffers();
+
+        result<> CreateCommandPool();
+        result<> CreateCommandBuffer();
+
+        result<> CreateSynchronization();
+
+        result<> CreateVertexBuffer();
+        result<> CreateVertexMemory();
+        result<> FillVertexBuffer();
+
+        result<> CreateCameraBuffer();
+        result<> CreateCameraMemory();
+
+        result<> RecordCommandBuffer(uint32_t view_index, uint32_t image_index);
 
         result<> PollEvents();
 
         result<> RenderFrame();
         result<> RenderLayer(LayerReference &reference);
 
+        static std::vector<char> LoadShaderModuleBinary(const std::filesystem::path &path);
+
     private:
+        obj::Mesh m_Mesh;
+        CameraData m_CameraData{};
+
         glfw::Library m_GlfwLibrary;
         glfw::Window m_GlfwWindow;
 
@@ -116,7 +170,7 @@ namespace core
 
         VkPhysicalDevice m_PhysicalDevice{};
         vk::Device m_Device;
-        std::uint32_t m_QueueFamilyIndex = UINT32_MAX, m_QueueIndex = UINT32_MAX;
+        uint32_t m_QueueFamilyIndex = UINT32_MAX, m_QueueIndex = UINT32_MAX;
 
         vk::GLFWSurface m_Surface;
 
@@ -124,9 +178,30 @@ namespace core
         xr::Session m_Session;
 
         VkFormat m_ColorFormat{}, m_DepthFormat{};
-        std::vector<SwapchainReference> m_ColorSwapchainReferences, m_DepthSwapchainReferences;
+        std::vector<SwapchainFrame> m_SwapchainFrames;
 
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
         xr::ReferenceSpace m_ReferenceSpace;
+
+        vk::DescriptorSetLayout m_DescriptorSetLayout;
+        vk::DescriptorPool m_DescriptorPool;
+        vk::DescriptorSet m_DescriptorSet;
+
+        vk::RenderPass m_RenderPass;
+        vk::PipelineCache m_PipelineCache;
+        vk::PipelineLayout m_PipelineLayout;
+        vk::Pipeline m_Pipeline;
+
+        vk::CommandPool m_CommandPool;
+        vk::CommandBuffer m_CommandBuffer;
+
+        vk::Semaphore m_ImageAvailableSemaphore, m_RenderFinishedSemaphore;
+        vk::Fence m_InFlightFence;
+
+        vk::Buffer m_VertexBuffer;
+        vk::DeviceMemory m_VertexMemory;
+
+        vk::Buffer m_CameraBuffer;
+        vk::DeviceMemory m_CameraMemory;
     };
 }
