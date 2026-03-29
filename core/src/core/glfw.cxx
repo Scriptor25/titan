@@ -1,8 +1,8 @@
 #include <titan/core.hxx>
 
-core::result<> core::Instance::InitializeWindow()
+core::result<> core::Application::InitializeWindow()
 {
-    TRY(glfw::Library::Create() >> m_GlfwLibrary);
+    TRY(glfw::Instance::Create() >> m_GlfwInstance);
 
     glfwSetErrorCallback(GlfwDebugCallback);
 
@@ -16,10 +16,10 @@ core::result<> core::Instance::InitializeWindow()
 
     const auto mode = monitor.GetVideoMode();
 
-    TRY(glfw::Window::Create(mode->width, mode->height, "Titan Game", monitor) >> m_GlfwWindow);
+    TRY(glfw::Window::Create(mode->width, mode->height, m_Info.Name.c_str(), monitor) >> m_Window);
 
-    m_GlfwWindow.SetUserPointer(this);
-    m_GlfwWindow.Show();
+    m_Window.SetUserPointer(this);
+    m_Window.Show();
 
     return ok();
 }

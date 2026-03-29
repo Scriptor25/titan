@@ -71,6 +71,8 @@ namespace core::glfw
         [[nodiscard]] bool ShouldClose() const;
         void Close() const;
 
+        void GetFramebufferSize(int &width, int &height) const;
+
     protected:
         explicit Window(GLFWwindow *handle);
 
@@ -78,23 +80,23 @@ namespace core::glfw
         GLFWwindow *m_Handle{};
     };
 
-    class Library
+    class Instance
     {
-        static unsigned instance_count;
+        static unsigned count;
 
-        explicit Library(bool initialized);
+        explicit Instance(bool initialized);
 
     public:
-        static result<Library> Create();
+        static result<Instance> Create();
 
-        Library() = default;
-        ~Library();
+        Instance() = default;
+        ~Instance();
 
-        Library(const Library &) = delete;
-        Library &operator=(const Library &) = delete;
+        Instance(const Instance &) = delete;
+        Instance &operator=(const Instance &) = delete;
 
-        Library(Library &&other) noexcept;
-        Library &operator=(Library &&other) noexcept;
+        Instance(Instance &&other) noexcept;
+        Instance &operator=(Instance &&other) noexcept;
 
     private:
         bool m_Initialized{};

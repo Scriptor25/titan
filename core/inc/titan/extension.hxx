@@ -4,7 +4,6 @@
 #include <titan/result.hxx>
 #include <titan/typename.hxx>
 
-#include <format>
 #include <vector>
 
 namespace core
@@ -43,7 +42,7 @@ namespace core
             XrSystemId system_id,
             const T &value = {})
         {
-            return xr::Enumerate<T, XrViewConfigurationType>(
+            return Enumerate<T, XrViewConfigurationType>(
                 xrEnumerateViewConfigurations,
                 value,
                 instance,
@@ -55,9 +54,9 @@ namespace core
             XrInstance instance,
             XrSystemId system_id,
             XrViewConfigurationType view_configuration_type,
-            const T &value = {})
+            const T &value = { .type = XR_TYPE_VIEW_CONFIGURATION_VIEW })
         {
-            return xr::Enumerate<T, XrViewConfigurationView>(
+            return Enumerate<T, XrViewConfigurationView>(
                 xrEnumerateViewConfigurationViews,
                 value,
                 instance,
@@ -70,7 +69,7 @@ namespace core
             XrSession session,
             const T &value = {})
         {
-            return xr::Enumerate<T, int64_t>(
+            return Enumerate<T, int64_t>(
                 xrEnumerateSwapchainFormats,
                 value,
                 session);
@@ -81,7 +80,7 @@ namespace core
             XrSwapchain swapchain,
             const T &value = {})
         {
-            return xr::Enumerate<T, XrSwapchainImageBaseHeader>(
+            return Enumerate<T, XrSwapchainImageBaseHeader>(
                 xrEnumerateSwapchainImages,
                 value,
                 swapchain);
@@ -94,7 +93,7 @@ namespace core
             XrViewConfigurationType view_configuration_type,
             const T &value = {})
         {
-            return xr::Enumerate<T, XrEnvironmentBlendMode>(
+            return Enumerate<T, XrEnvironmentBlendMode>(
                 xrEnumerateEnvironmentBlendModes,
                 value,
                 instance,
@@ -142,9 +141,48 @@ namespace core
             return elements;
         }
 
+        template<typename T = VkSurfaceFormat2KHR>
+        auto GetPhysicalDeviceSurfaceFormats2KHR(
+            VkPhysicalDevice physical_device,
+            const VkPhysicalDeviceSurfaceInfo2KHR &surface_info,
+            const T &value = { .sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR })
+        {
+            return Enumerate<T, VkSurfaceFormat2KHR>(
+                vkGetPhysicalDeviceSurfaceFormats2KHR,
+                value,
+                physical_device,
+                &surface_info);
+        }
+
+        template<typename T = VkPresentModeKHR>
+        auto GetPhysicalDeviceSurfacePresentModesKHR(
+            VkPhysicalDevice physical_device,
+            VkSurfaceKHR surface,
+            const T &value = {})
+        {
+            return Enumerate<T, VkPresentModeKHR>(
+                vkGetPhysicalDeviceSurfacePresentModesKHR,
+                value,
+                physical_device,
+                surface);
+        }
+
+        template<typename T = VkImage>
+        auto GetSwapchainImagesKHR(
+            VkDevice device,
+            VkSwapchainKHR swapchain,
+            const T &value = {})
+        {
+            return Enumerate<T, VkImage>(
+                vkGetSwapchainImagesKHR,
+                value,
+                device,
+                swapchain);
+        }
+
         template<typename T, typename E = T, typename F, typename... A>
             requires std::is_same_v<void (*)(A..., uint32_t *, E *), F>
-        std::vector<T> Get(F fn, const T &value, A... args)
+        auto Get(F fn, const T &value, A... args)
         {
             uint32_t count;
             fn(args..., &count, nullptr);
@@ -155,32 +193,18 @@ namespace core
             return elements;
         }
 
-        template<typename T = VkQueueFamilyProperties>
-        std::vector<T> GetPhysicalDeviceQueueFamilyProperties(
+        template<typename T = VkQueueFamilyProperties2>
+        auto GetPhysicalDeviceQueueFamilyProperties(
             VkPhysicalDevice physical_device,
-            const T &value = {})
+            const T &value = { .sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 })
         {
-            return vk::Get<T, VkQueueFamilyProperties>(
-                vkGetPhysicalDeviceQueueFamilyProperties,
+            return Get<T, VkQueueFamilyProperties2>(
+                vkGetPhysicalDeviceQueueFamilyProperties2,
                 value,
                 physical_device);
         }
     }
 }
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanInstanceExtensionsKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    uint32_t bufferCapacityInput,
-    uint32_t *bufferCountOutput,
-    char *buffer);
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanDeviceExtensionsKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    uint32_t bufferCapacityInput,
-    uint32_t *bufferCountOutput,
-    char *buffer);
 
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
     XrInstance instance,
@@ -190,18 +214,6 @@ XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
 XRAPI_ATTR XrResult XRAPI_CALL xrDestroyDebugUtilsMessengerEXT(
     XrInstance instance,
     XrDebugUtilsMessengerEXT messenger);
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanGraphicsDeviceKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    VkInstance vkInstance,
-    VkPhysicalDevice *vkPhysicalDevice);
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanGraphicsRequirementsKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    XrGraphicsRequirementsVulkanKHR *graphicsRequirements);
-
 
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateVulkanInstanceKHR(
     XrInstance instance,

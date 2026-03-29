@@ -1,38 +1,38 @@
 #include <titan/wrapper/glfw.hxx>
 
-unsigned core::glfw::Library::instance_count = 0;
+unsigned core::glfw::Instance::count = 0;
 
-core::glfw::Library::Library(const bool initialized)
+core::glfw::Instance::Instance(const bool initialized)
     : m_Initialized(initialized)
 {
-    ++instance_count;
+    ++count;
 }
 
-core::result<core::glfw::Library> core::glfw::Library::Create()
+core::result<core::glfw::Instance> core::glfw::Instance::Create()
 {
-    if (!instance_count)
+    if (!count)
         if (!glfwInit())
-            return error<Library>("glfwInit => false");
+            return error<Instance>("glfwInit => false");
 
-    return Library(true);
+    return Instance(true);
 }
 
-core::glfw::Library::~Library()
+core::glfw::Instance::~Instance()
 {
     if (m_Initialized)
     {
-        --instance_count;
-        if (!instance_count)
+        --count;
+        if (!count)
             glfwTerminate();
     }
 }
 
-core::glfw::Library::Library(Library &&other) noexcept
+core::glfw::Instance::Instance(Instance &&other) noexcept
 {
     std::swap(m_Initialized, other.m_Initialized);
 }
 
-core::glfw::Library &core::glfw::Library::operator=(Library &&other) noexcept
+core::glfw::Instance &core::glfw::Instance::operator=(Instance &&other) noexcept
 {
     std::swap(m_Initialized, other.m_Initialized);
     return *this;
@@ -91,6 +91,11 @@ bool core::glfw::Window::ShouldClose() const
 void core::glfw::Window::Close() const
 {
     glfwSetWindowShouldClose(m_Handle, GLFW_TRUE);
+}
+
+void core::glfw::Window::GetFramebufferSize(int &width, int &height) const
+{
+    glfwGetFramebufferSize(m_Handle, &width, &height);
 }
 
 core::glfw::Monitor::Monitor(GLFWmonitor *handle)

@@ -2,25 +2,28 @@
 #include <titan/log.hxx>
 #include <titan/format/xr.hxx>
 
-core::result<> core::Instance::CreateXrInstance()
+#include <cstring>
+
+core::result<> core::Application::CreateXrInstance()
 {
-    const XrApplicationInfo application_info
+    XrApplicationInfo application_info
     {
-        .applicationName = "Titan Game",
-        .applicationVersion = XR_MAKE_VERSION(0, 0, 1),
+        .applicationName = {},
+        .applicationVersion = static_cast<uint32_t>(XR_MAKE_VERSION(
+            m_Info.Version.Major,
+            m_Info.Version.Minor,
+            m_Info.Version.Patch)),
         .engineName = "Titan Core",
-        .engineVersion = XR_MAKE_VERSION(0, 0, 1),
-        .apiVersion = XR_API_VERSION_1_1,
+        .engineVersion = XR_MAKE_VERSION(VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH),
+        .apiVersion = XR_CURRENT_API_VERSION,
     };
+
+    memcpy(application_info.applicationName, m_Info.Name.data(), std::min(128LU, m_Info.Name.size()));
 
     const XrInstanceCreateInfo instance_create_info
     {
         .type = XR_TYPE_INSTANCE_CREATE_INFO,
-        .next = nullptr,
-        .createFlags = 0,
         .applicationInfo = application_info,
-        .enabledApiLayerCount = 0,
-        .enabledApiLayerNames = nullptr,
         .enabledExtensionCount = XR_INSTANCE_EXTENSIONS.size(),
         .enabledExtensionNames = XR_INSTANCE_EXTENSIONS.data(),
     };
@@ -28,12 +31,11 @@ core::result<> core::Instance::CreateXrInstance()
     return xr::Instance::create(instance_create_info) >> m_XrInstance;
 }
 
-core::result<> core::Instance::CreateXrMessenger()
+core::result<> core::Application::CreateXrMessenger()
 {
     const XrDebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info
     {
         .type = XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        .next = nullptr,
         .messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
                              | XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
                              | XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
@@ -49,43 +51,43 @@ core::result<> core::Instance::CreateXrMessenger()
     return xr::DebugUtilsMessengerEXT::create(m_XrInstance, debug_utils_messenger_create_info) >> m_XrMessenger;
 }
 
-core::result<> core::Instance::GetSystemId()
+core::result<> core::Application::GetSystemId()
 {
     const XrSystemGetInfo system_get_info
     {
         .type = XR_TYPE_SYSTEM_GET_INFO,
-        .next = nullptr,
         .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY,
     };
 
-    return xr::SystemId::create(m_XrInstance, system_get_info) >> m_SystemId;
+    if (auto res = xrGetSystem(m_XrInstance, &system_get_info, &m_SystemId))
+        return error("xrGetSystem => {}", res);
+
+    return ok();
 }
 
-core::result<> core::Instance::CreateSession()
+core::result<> core::Application::CreateSession()
 {
     const XrGraphicsBindingVulkanKHR graphics_binding_vulkan
     {
         .type = XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR,
-        .next = nullptr,
         .instance = m_VkInstance,
         .physicalDevice = m_PhysicalDevice,
         .device = m_Device,
-        .queueFamilyIndex = m_QueueFamilyIndex,
-        .queueIndex = m_QueueIndex,
+        .queueFamilyIndex = m_QueueFamilyIndices.Default,
+        .queueIndex = 0,
     };
 
     const XrSessionCreateInfo session_create_info
     {
         .type = XR_TYPE_SESSION_CREATE_INFO,
         .next = &graphics_binding_vulkan,
-        .createFlags = 0,
         .systemId = m_SystemId,
     };
 
     return xr::Session::create(m_XrInstance, session_create_info) >> m_Session;
 }
 
-core::result<> core::Instance::GetViewConfigurationType()
+core::result<> core::Application::GetViewConfigurationType()
 {
     return xr::EnumerateViewConfigurationTypes(m_XrInstance, m_SystemId)
            | [&](const auto &view_configuration_types)
@@ -107,16 +109,15 @@ core::result<> core::Instance::GetViewConfigurationType()
            };
 }
 
-core::result<> core::Instance::GetViewConfigurationViews()
+core::result<> core::Application::GetViewConfigurationViews()
 {
     return xr::EnumerateViewConfigurationViews(
                m_XrInstance,
                m_SystemId,
-               m_ViewConfigurationType,
-               { .type = XR_TYPE_VIEW_CONFIGURATION_VIEW }) >> m_ViewConfigurationViews;
+               m_ViewConfigurationType) >> m_ViewConfigurationViews;
 }
 
-core::result<> core::Instance::GetFormats()
+core::result<> core::Application::GetFormats()
 {
     return xr::EnumerateSwapchainFormats(m_Session)
            | [&](const auto &value)
@@ -131,18 +132,18 @@ core::result<> core::Instance::GetFormats()
            };
 }
 
-core::result<> core::Instance::CreateSwapchains()
+core::result<> core::Application::CreateSwapchains()
 {
-    m_SwapchainFrames.resize(m_ViewConfigurationViews.size());
+    m_SwapchainViews.resize(m_ViewConfigurationViews.size());
 
     for (uint32_t i = 0; i < m_ViewConfigurationViews.size(); ++i)
     {
         TRY(
             CreateSwapchain(
                 m_ViewConfigurationViews[i],
-                XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+                XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT,
                 m_ColorFormat,
-                VK_IMAGE_ASPECT_COLOR_BIT) >> m_SwapchainFrames[i].Color
+                VK_IMAGE_ASPECT_COLOR_BIT) >> m_SwapchainViews[i].Color
         );
 
         TRY(
@@ -150,14 +151,14 @@ core::result<> core::Instance::CreateSwapchains()
                 m_ViewConfigurationViews[i],
                 XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                 m_DepthFormat,
-                VK_IMAGE_ASPECT_DEPTH_BIT) >> m_SwapchainFrames[i].Depth
+                VK_IMAGE_ASPECT_DEPTH_BIT) >> m_SwapchainViews[i].Depth
         );
     }
 
     return ok();
 }
 
-core::result<> core::Instance::GetEnvironmentBlendMode()
+core::result<> core::Application::GetEnvironmentBlendMode()
 {
     return xr::EnumerateEnvironmentBlendModes(m_XrInstance, m_SystemId, m_ViewConfigurationType)
            | [&](const auto &value)
@@ -182,12 +183,11 @@ core::result<> core::Instance::GetEnvironmentBlendMode()
            };
 }
 
-core::result<> core::Instance::CreateReferenceSpace()
+core::result<> core::Application::CreateReferenceSpace()
 {
     const XrReferenceSpaceCreateInfo reference_space_create_info
     {
         .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
-        .next = nullptr,
         .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE,
         .poseInReferenceSpace = {
             .orientation = {
@@ -212,13 +212,13 @@ core::result<> core::Instance::CreateReferenceSpace()
            };
 }
 
-core::result<core::SwapchainReference> core::Instance::CreateSwapchain(
+core::result<core::XrSwapchainInfo> core::Application::CreateSwapchain(
     const XrViewConfigurationView &view,
     const XrSwapchainUsageFlags usage,
     const VkFormat format,
     const VkImageAspectFlags aspect)
 {
-    SwapchainReference reference
+    XrSwapchainInfo reference
     {
         .Format = format,
         .Swapchain = {},
@@ -229,8 +229,6 @@ core::result<core::SwapchainReference> core::Instance::CreateSwapchain(
     const XrSwapchainCreateInfo swapchain_create_info
     {
         .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
-        .next = nullptr,
-        .createFlags = 0,
         .usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | usage,
         .format = format,
         .sampleCount = view.recommendedSwapchainSampleCount,
@@ -243,7 +241,7 @@ core::result<core::SwapchainReference> core::Instance::CreateSwapchain(
 
     TRY_CAST(
         xr::Swapchain::create(m_Session, swapchain_create_info) >> reference.Swapchain,
-        SwapchainReference
+        XrSwapchainInfo
     );
 
     auto set_images = [&](const auto &value)
@@ -258,7 +256,7 @@ core::result<core::SwapchainReference> core::Instance::CreateSwapchain(
 
     TRY_CAST(
         xr::EnumerateSwapchainImages<XrSwapchainImageVulkanKHR>(reference.Swapchain) | set_images,
-        SwapchainReference
+        XrSwapchainInfo
     );
 
     reference.Views.resize(reference.Images.size());
@@ -268,8 +266,6 @@ core::result<core::SwapchainReference> core::Instance::CreateSwapchain(
         const VkImageViewCreateInfo image_view_create_info
         {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
             .image = reference.Images[i],
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = format,
@@ -290,7 +286,7 @@ core::result<core::SwapchainReference> core::Instance::CreateSwapchain(
 
         TRY_CAST(
             vk::ImageView::create(m_Device, image_view_create_info) >> reference.Views[i],
-            SwapchainReference
+            XrSwapchainInfo
         );
     }
 

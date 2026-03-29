@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-void core::Instance::GetInstanceExtensions(std::vector<const char *> &dst)
+void core::Application::GetInstanceExtensions(std::vector<const char *> &dst)
 {
     dst.insert(dst.end(), VK_INSTANCE_EXTENSIONS.begin(), VK_INSTANCE_EXTENSIONS.end());
 
@@ -12,12 +12,12 @@ void core::Instance::GetInstanceExtensions(std::vector<const char *> &dst)
     dst.insert(dst.end(), glfw_extensions, glfw_extensions + glfw_extension_count);
 }
 
-void core::Instance::GetDeviceExtensions(std::vector<const char *> &dst)
+void core::Application::GetDeviceExtensions(std::vector<const char *> &dst)
 {
     dst.insert(dst.end(), VK_DEVICE_EXTENSIONS.begin(), VK_DEVICE_EXTENSIONS.end());
 }
 
-core::result<> core::Instance::FindFormats(
+core::result<> core::Application::FindFormats(
     VkPhysicalDevice physical_device,
     const std::vector<int64_t> &formats,
     const std::vector<FormatReference> &references)
@@ -34,10 +34,10 @@ core::result<> core::Instance::FindFormats(
 
     for (const auto format : formats)
         for (auto &reference : references)
-            if (!reference.format
-                && properties[static_cast<VkFormat>(format)].optimalTilingFeatures & reference.features)
+            if (!reference.Format
+                && properties[static_cast<VkFormat>(format)].optimalTilingFeatures & reference.Features)
             {
-                reference.format = static_cast<VkFormat>(format);
+                reference.Format = static_cast<VkFormat>(format);
                 count++;
             }
 
@@ -46,10 +46,10 @@ core::result<> core::Instance::FindFormats(
 
     for (const auto format : formats)
         for (auto &reference : references)
-            if (!reference.format
-                && properties[static_cast<VkFormat>(format)].linearTilingFeatures & reference.features)
+            if (!reference.Format
+                && properties[static_cast<VkFormat>(format)].linearTilingFeatures & reference.Features)
             {
-                reference.format = static_cast<VkFormat>(format);
+                reference.Format = static_cast<VkFormat>(format);
                 count++;
             }
 
@@ -58,13 +58,13 @@ core::result<> core::Instance::FindFormats(
 
     std::vector<std::string_view> missing;
     for (auto &reference : references)
-        if (!reference.format)
-            missing.push_back(reference.name);
+        if (!reference.Format)
+            missing.push_back(reference.Name);
 
     return error("failed to find formats for references {}.", missing);
 }
 
-core::result<uint32_t> core::Instance::FindMemoryType(
+core::result<uint32_t> core::Application::FindMemoryType(
     VkPhysicalDevice physical_device,
     uint32_t type_filter,
     VkMemoryPropertyFlags type_flags)
@@ -82,7 +82,7 @@ core::result<uint32_t> core::Instance::FindMemoryType(
     return error<uint32_t>("failed to find any suitable memory type.");
 }
 
-std::vector<char> core::Instance::LoadShaderModuleBinary(const std::filesystem::path &path)
+std::vector<char> core::Application::LoadShaderModuleBinary(const std::filesystem::path &path)
 {
     std::ifstream stream(path, std::ios::binary | std::ios::ate);
     if (!stream)

@@ -4,27 +4,51 @@
 #include <titan/format.hxx>
 #include <titan/result.hxx>
 #include <titan/typename.hxx>
-#include <titan/wrapper.hxx>
 #include <titan/format/vk.hxx>
+#include <titan/wrapper/base.hxx>
 
 namespace core
 {
     template<>
-    constexpr const char *typename_string<VkSurfaceKHR>()
+    constexpr const char *typename_string<VkBuffer>()
     {
-        return "VkSurfaceKHR";
+        return "VkBuffer";
     }
 
     template<>
-    constexpr const char *typename_string<VkPipeline>()
+    constexpr const char *typename_string<VkCommandBuffer>()
     {
-        return "VkPipeline";
+        return "VkCommandBuffer";
     }
 
     template<>
-    constexpr const char *typename_string<VkInstance>()
+    constexpr const char *typename_string<VkCommandPool>()
     {
-        return "VkInstance";
+        return "VkCommandPool";
+    }
+
+    template<>
+    constexpr const char *typename_string<VkDebugUtilsMessengerEXT>()
+    {
+        return "VkDebugUtilsMessengerEXT";
+    }
+
+    template<>
+    constexpr const char *typename_string<VkDescriptorPool>()
+    {
+        return "VkDescriptorPool";
+    }
+
+    template<>
+    constexpr const char *typename_string<VkDescriptorSet>()
+    {
+        return "VkDescriptorSet";
+    }
+
+    template<>
+    constexpr const char *typename_string<VkDescriptorSetLayout>()
+    {
+        return "VkDescriptorSetLayout";
     }
 
     template<>
@@ -34,9 +58,21 @@ namespace core
     }
 
     template<>
-    constexpr const char *typename_string<VkDebugUtilsMessengerEXT>()
+    constexpr const char *typename_string<VkDeviceMemory>()
     {
-        return "VkDebugUtilsMessengerEXT";
+        return "VkDeviceMemory";
+    }
+
+    template<>
+    constexpr const char *typename_string<VkFence>()
+    {
+        return "VkFence";
+    }
+
+    template<>
+    constexpr const char *typename_string<VkFramebuffer>()
+    {
+        return "VkFramebuffer";
     }
 
     template<>
@@ -52,15 +88,15 @@ namespace core
     }
 
     template<>
-    constexpr const char *typename_string<VkRenderPass>()
+    constexpr const char *typename_string<VkInstance>()
     {
-        return "VkRenderPass";
+        return "VkInstance";
     }
 
     template<>
-    constexpr const char *typename_string<VkShaderModule>()
+    constexpr const char *typename_string<VkPipeline>()
     {
-        return "VkShaderModule";
+        return "VkPipeline";
     }
 
     template<>
@@ -76,21 +112,15 @@ namespace core
     }
 
     template<>
-    constexpr const char *typename_string<VkFramebuffer>()
+    constexpr const char *typename_string<VkPresentModeKHR>()
     {
-        return "VkFramebuffer";
+        return "VkPresentModeKHR";
     }
 
     template<>
-    constexpr const char *typename_string<VkCommandPool>()
+    constexpr const char *typename_string<VkRenderPass>()
     {
-        return "VkCommandPool";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkCommandBuffer>()
-    {
-        return "VkCommandBuffer";
+        return "VkRenderPass";
     }
 
     template<>
@@ -100,39 +130,33 @@ namespace core
     }
 
     template<>
-    constexpr const char *typename_string<VkFence>()
+    constexpr const char *typename_string<VkShaderModule>()
     {
-        return "VkFence";
+        return "VkShaderModule";
     }
 
     template<>
-    constexpr const char *typename_string<VkDescriptorSetLayout>()
+    constexpr const char *typename_string<VkSurfaceKHR>()
     {
-        return "VkDescriptorSetLayout";
+        return "VkSurfaceKHR";
     }
 
     template<>
-    constexpr const char *typename_string<VkDescriptorSet>()
+    constexpr const char *typename_string<VkSurfaceFormatKHR>()
     {
-        return "VkDescriptorSet";
+        return "VkSurfaceFormatKHR";
     }
 
     template<>
-    constexpr const char *typename_string<VkDescriptorPool>()
+    constexpr const char *typename_string<VkSurfaceFormat2KHR>()
     {
-        return "VkDescriptorPool";
+        return "VkSurfaceFormat2KHR";
     }
 
     template<>
-    constexpr const char *typename_string<VkBuffer>()
+    constexpr const char *typename_string<VkSwapchainKHR>()
     {
-        return "VkBuffer";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDeviceMemory>()
-    {
-        return "VkDeviceMemory";
+        return "VkSwapchainKHR";
     }
 }
 
@@ -363,46 +387,216 @@ namespace core::vk
         }
     };
 
-    class GLFWSurface : public wrapper_base<VkSurfaceKHR, GLFWSurface>
+    using Buffer = wrapper_same_param<
+        VkBuffer,
+        VkBufferCreateInfo,
+        VkDevice,
+        vkCreateBuffer,
+        vkDestroyBuffer>;
+
+    class CommandBuffer : public wrapper_base<VkCommandBuffer, CommandBuffer>
     {
-        explicit GLFWSurface(VkInstance instance, VkSurfaceKHR value)
+        explicit CommandBuffer(VkDevice device, VkCommandPool pool, VkCommandBuffer value)
             : wrapper_base(value),
-              instance(instance)
+              device(device),
+              pool(pool)
         {
         }
 
     public:
-        GLFWSurface() = default;
+        CommandBuffer() = default;
 
-        static result<GLFWSurface> create(VkInstance instance, GLFWwindow *window)
+        static result<CommandBuffer> create(
+            VkDevice device,
+            const VkCommandBufferAllocateInfo &allocate_info)
         {
-            VkSurfaceKHR value;
-            if (auto res = glfwCreateWindowSurface(instance, window, nullptr, &value))
-                return error<GLFWSurface>(
+            VkCommandBuffer value;
+            if (auto res = vkAllocateCommandBuffers(device, &allocate_info, &value))
+                return error<CommandBuffer>(
                     "failed to create {} ({})",
-                    typename_string<VkSurfaceKHR>(),
+                    typename_string<VkCommandBuffer>(),
                     res);
-            return GLFWSurface(instance, value);
+            return CommandBuffer(device, allocate_info.commandPool, value);
         }
 
-        static GLFWSurface wrap(VkInstance instance, VkSurfaceKHR value)
+        static result<std::vector<CommandBuffer>> create2(
+            VkDevice device,
+            const VkCommandBufferAllocateInfo &allocate_info)
         {
-            return GLFWSurface(instance, value);
+            std::vector<VkCommandBuffer> values(allocate_info.commandBufferCount);
+            if (auto res = vkAllocateCommandBuffers(device, &allocate_info, values.data()))
+                return error<std::vector<CommandBuffer>>(
+                    "failed to create <{} x {}> ({})",
+                    values.size(),
+                    typename_string<VkCommandBuffer>(),
+                    res);
+
+            std::vector<CommandBuffer> vec(values.size());
+            for (uint32_t i = 0; i < values.size(); ++i)
+                vec[i] = CommandBuffer(device, allocate_info.commandPool, values[i]);
+            return vec;
+        }
+
+        static CommandBuffer wrap(VkDevice device, VkCommandPool pool, VkCommandBuffer value)
+        {
+            return CommandBuffer(device, pool, value);
         }
 
     protected:
         void destroy() override
         {
-            vkDestroySurfaceKHR(instance, value, nullptr);
+            vkFreeCommandBuffers(device, pool, 1, &value);
         }
 
-        void swap(GLFWSurface &&other) noexcept override
+        void swap(CommandBuffer &&other) noexcept override
         {
-            std::swap(instance, other.instance);
+            std::swap(device, other.device);
+            std::swap(pool, other.pool);
         }
 
-        VkInstance instance{};
+    private:
+        VkDevice device{};
+        VkCommandPool pool{};
     };
+
+    using CommandPool = wrapper_same_param<
+        VkCommandPool,
+        VkCommandPoolCreateInfo,
+        VkDevice,
+        vkCreateCommandPool,
+        vkDestroyCommandPool>;
+
+    using DebugUtilsMessengerEXT = wrapper_same_param<
+        VkDebugUtilsMessengerEXT,
+        VkDebugUtilsMessengerCreateInfoEXT,
+        VkInstance,
+        vkCreateDebugUtilsMessengerEXT,
+        vkDestroyDebugUtilsMessengerEXT>;
+
+    using DescriptorPool = wrapper_same_param<
+        VkDescriptorPool,
+        VkDescriptorPoolCreateInfo,
+        VkDevice,
+        vkCreateDescriptorPool,
+        vkDestroyDescriptorPool>;
+
+    class DescriptorSet : public wrapper_base<VkDescriptorSet, DescriptorSet>
+    {
+        explicit DescriptorSet(VkDevice device, VkDescriptorPool pool, VkDescriptorSet value)
+            : wrapper_base(value),
+              device(device),
+              pool(pool)
+        {
+        }
+
+    public:
+        DescriptorSet() = default;
+
+        static result<DescriptorSet> create(VkDevice device, const VkDescriptorSetAllocateInfo &allocate_info)
+        {
+            VkDescriptorSet value;
+            if (auto res = vkAllocateDescriptorSets(device, &allocate_info, &value))
+                return error<DescriptorSet>(
+                    "failed to create {} ({})",
+                    typename_string<VkDescriptorSet>(),
+                    res);
+            return DescriptorSet(device, allocate_info.descriptorPool, value);
+        }
+
+        static result<std::vector<DescriptorSet>> create2(
+            VkDevice device,
+            const VkDescriptorSetAllocateInfo &allocate_info)
+        {
+            std::vector<VkDescriptorSet> values(allocate_info.descriptorSetCount);
+            if (auto res = vkAllocateDescriptorSets(device, &allocate_info, values.data()))
+                return error<std::vector<DescriptorSet>>(
+                    "failed to create <{} x {}> ({})",
+                    values.size(),
+                    typename_string<VkDescriptorSet>(),
+                    res);
+
+            std::vector<DescriptorSet> vec(values.size());
+            for (uint32_t i = 0; i < values.size(); ++i)
+                vec[i] = DescriptorSet(device, allocate_info.descriptorPool, values[i]);
+            return vec;
+        }
+
+        static DescriptorSet wrap(VkDevice device, VkDescriptorPool pool, VkDescriptorSet value)
+        {
+            return DescriptorSet(device, pool, value);
+        }
+
+    protected:
+        void destroy() override
+        {
+            vkFreeDescriptorSets(device, pool, 1, &value);
+        }
+
+        void swap(DescriptorSet &&other) noexcept override
+        {
+            std::swap(device, other.device);
+            std::swap(pool, other.pool);
+        }
+
+    private:
+        VkDevice device{};
+        VkDescriptorPool pool{};
+    };
+
+    using DescriptorSetLayout = wrapper_same_param<
+        VkDescriptorSetLayout,
+        VkDescriptorSetLayoutCreateInfo,
+        VkDevice,
+        vkCreateDescriptorSetLayout,
+        vkDestroyDescriptorSetLayout>;
+
+    using Device = wrapper_create_param<
+        VkDevice,
+        VkDeviceCreateInfo,
+        VkPhysicalDevice,
+        vkCreateDevice,
+        vkDestroyDevice>;
+
+    using DeviceMemory = wrapper_same_param<
+        VkDeviceMemory,
+        VkMemoryAllocateInfo,
+        VkDevice,
+        vkAllocateMemory,
+        vkFreeMemory>;
+
+    using Fence = wrapper_same_param<
+        VkFence,
+        VkFenceCreateInfo,
+        VkDevice,
+        vkCreateFence,
+        vkDestroyFence>;
+
+    using Framebuffer = wrapper_same_param<
+        VkFramebuffer,
+        VkFramebufferCreateInfo,
+        VkDevice,
+        vkCreateFramebuffer,
+        vkDestroyFramebuffer>;
+
+    using Image = wrapper_same_param<
+        VkImage,
+        VkImageCreateInfo,
+        VkDevice,
+        vkCreateImage,
+        vkDestroyImage>;
+
+    using ImageView = wrapper_same_param<
+        VkImageView,
+        VkImageViewCreateInfo,
+        VkDevice,
+        vkCreateImageView,
+        vkDestroyImageView>;
+
+    using Instance = wrapper_void_param<
+        VkInstance,
+        VkInstanceCreateInfo,
+        vkCreateInstance,
+        vkDestroyInstance>;
 
     class Pipeline : public wrapper_base<VkPipeline, Pipeline>
     {
@@ -509,175 +703,9 @@ namespace core::vk
             std::swap(device, other.device);
         }
 
+    private:
         VkDevice device{};
     };
-
-    class CommandBuffer : public wrapper_base<VkCommandBuffer, CommandBuffer>
-    {
-        explicit CommandBuffer(VkDevice device, VkCommandPool pool, VkCommandBuffer value)
-            : wrapper_base(value),
-              device(device),
-              pool(pool)
-        {
-        }
-
-    public:
-        CommandBuffer() = default;
-
-        static result<CommandBuffer> create(
-            VkDevice device,
-            const VkCommandBufferAllocateInfo &allocate_info)
-        {
-            VkCommandBuffer value;
-            if (auto res = vkAllocateCommandBuffers(device, &allocate_info, &value))
-                return error<CommandBuffer>(
-                    "failed to create {} ({})",
-                    typename_string<VkCommandBuffer>(),
-                    res);
-            return CommandBuffer(device, allocate_info.commandPool, value);
-        }
-
-        static result<std::vector<CommandBuffer>> create2(
-            VkDevice device,
-            const VkCommandBufferAllocateInfo &allocate_info)
-        {
-            std::vector<VkCommandBuffer> values(allocate_info.commandBufferCount);
-            if (auto res = vkAllocateCommandBuffers(device, &allocate_info, values.data()))
-                return error<std::vector<CommandBuffer>>(
-                    "failed to create <{} x {}> ({})",
-                    values.size(),
-                    typename_string<VkCommandBuffer>(),
-                    res);
-
-            std::vector<CommandBuffer> vec(values.size());
-            for (uint32_t i = 0; i < values.size(); ++i)
-                vec[i] = CommandBuffer(device, allocate_info.commandPool, values[i]);
-            return vec;
-        }
-
-        static CommandBuffer wrap(VkDevice device, VkCommandPool pool, VkCommandBuffer value)
-        {
-            return CommandBuffer(device, pool, value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            vkFreeCommandBuffers(device, pool, 1, &value);
-        }
-
-        void swap(CommandBuffer &&other) noexcept override
-        {
-            std::swap(device, other.device);
-            std::swap(pool, other.pool);
-        }
-
-        VkDevice device{};
-        VkCommandPool pool{};
-    };
-
-    class DescriptorSet : public wrapper_base<VkDescriptorSet, DescriptorSet>
-    {
-        explicit DescriptorSet(VkDevice device, VkDescriptorPool pool, VkDescriptorSet value)
-            : wrapper_base(value),
-              device(device),
-              pool(pool)
-        {
-        }
-
-    public:
-        DescriptorSet() = default;
-
-        static result<DescriptorSet> create(VkDevice device, const VkDescriptorSetAllocateInfo &allocate_info)
-        {
-            VkDescriptorSet value;
-            if (auto res = vkAllocateDescriptorSets(device, &allocate_info, &value))
-                return error<DescriptorSet>(
-                    "failed to create {} ({})",
-                    typename_string<VkDescriptorSet>(),
-                    res);
-            return DescriptorSet(device, allocate_info.descriptorPool, value);
-        }
-
-        static result<std::vector<DescriptorSet>> create2(
-            VkDevice device,
-            const VkDescriptorSetAllocateInfo &allocate_info)
-        {
-            std::vector<VkDescriptorSet> values(allocate_info.descriptorSetCount);
-            if (auto res = vkAllocateDescriptorSets(device, &allocate_info, values.data()))
-                return error<std::vector<DescriptorSet>>(
-                    "failed to create <{} x {}> ({})",
-                    values.size(),
-                    typename_string<VkDescriptorSet>(),
-                    res);
-
-            std::vector<DescriptorSet> vec(values.size());
-            for (uint32_t i = 0; i < values.size(); ++i)
-                vec[i] = DescriptorSet(device, allocate_info.descriptorPool, values[i]);
-            return vec;
-        }
-
-        static DescriptorSet wrap(VkDevice device, VkDescriptorPool pool, VkDescriptorSet value)
-        {
-            return DescriptorSet(device, pool, value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            vkFreeDescriptorSets(device, pool, 1, &value);
-        }
-
-        void swap(DescriptorSet &&other) noexcept override
-        {
-            std::swap(device, other.device);
-            std::swap(pool, other.pool);
-        }
-
-        VkDevice device{};
-        VkDescriptorPool pool{};
-    };
-
-    using Instance = wrapper_void_param<
-        VkInstance,
-        VkInstanceCreateInfo,
-        vkCreateInstance,
-        vkDestroyInstance>;
-
-    using Device = wrapper_create_param<
-        VkDevice,
-        VkDeviceCreateInfo,
-        VkPhysicalDevice,
-        vkCreateDevice,
-        vkDestroyDevice>;
-
-    using DebugUtilsMessengerEXT = wrapper_same_param<
-        VkDebugUtilsMessengerEXT,
-        VkDebugUtilsMessengerCreateInfoEXT,
-        VkInstance,
-        vkCreateDebugUtilsMessengerEXT,
-        vkDestroyDebugUtilsMessengerEXT>;
-
-    using Buffer = wrapper_same_param<
-        VkBuffer,
-        VkBufferCreateInfo,
-        VkDevice,
-        vkCreateBuffer,
-        vkDestroyBuffer>;
-
-    using Image = wrapper_same_param<
-        VkImage,
-        VkImageCreateInfo,
-        VkDevice,
-        vkCreateImage,
-        vkDestroyImage>;
-
-    using ImageView = wrapper_same_param<
-        VkImageView,
-        VkImageViewCreateInfo,
-        VkDevice,
-        vkCreateImageView,
-        vkDestroyImageView>;
 
     using PipelineCache = wrapper_same_param<
         VkPipelineCache,
@@ -695,38 +723,10 @@ namespace core::vk
 
     using RenderPass = wrapper_same_param<
         VkRenderPass,
-        VkRenderPassCreateInfo,
+        VkRenderPassCreateInfo2,
         VkDevice,
-        vkCreateRenderPass,
+        vkCreateRenderPass2,
         vkDestroyRenderPass>;
-
-    using ShaderModule = wrapper_same_param<
-        VkShaderModule,
-        VkShaderModuleCreateInfo,
-        VkDevice,
-        vkCreateShaderModule,
-        vkDestroyShaderModule>;
-
-    using DescriptorSetLayout = wrapper_same_param<
-        VkDescriptorSetLayout,
-        VkDescriptorSetLayoutCreateInfo,
-        VkDevice,
-        vkCreateDescriptorSetLayout,
-        vkDestroyDescriptorSetLayout>;
-
-    using Framebuffer = wrapper_same_param<
-        VkFramebuffer,
-        VkFramebufferCreateInfo,
-        VkDevice,
-        vkCreateFramebuffer,
-        vkDestroyFramebuffer>;
-
-    using CommandPool = wrapper_same_param<
-        VkCommandPool,
-        VkCommandPoolCreateInfo,
-        VkDevice,
-        vkCreateCommandPool,
-        vkDestroyCommandPool>;
 
     using Semaphore = wrapper_same_param<
         VkSemaphore,
@@ -735,24 +735,59 @@ namespace core::vk
         vkCreateSemaphore,
         vkDestroySemaphore>;
 
-    using Fence = wrapper_same_param<
-        VkFence,
-        VkFenceCreateInfo,
+    using ShaderModule = wrapper_same_param<
+        VkShaderModule,
+        VkShaderModuleCreateInfo,
         VkDevice,
-        vkCreateFence,
-        vkDestroyFence>;
+        vkCreateShaderModule,
+        vkDestroyShaderModule>;
 
-    using DescriptorPool = wrapper_same_param<
-        VkDescriptorPool,
-        VkDescriptorPoolCreateInfo,
-        VkDevice,
-        vkCreateDescriptorPool,
-        vkDestroyDescriptorPool>;
+    class SurfaceKHR : public wrapper_base<VkSurfaceKHR, SurfaceKHR>
+    {
+        explicit SurfaceKHR(VkInstance instance, VkSurfaceKHR value)
+            : wrapper_base(value),
+              instance(instance)
+        {
+        }
 
-    using DeviceMemory = wrapper_same_param<
-        VkDeviceMemory,
-        VkMemoryAllocateInfo,
+    public:
+        SurfaceKHR() = default;
+
+        static result<SurfaceKHR> create(VkInstance instance, GLFWwindow *window)
+        {
+            VkSurfaceKHR value;
+            if (auto res = glfwCreateWindowSurface(instance, window, nullptr, &value))
+                return error<SurfaceKHR>(
+                    "failed to create {} ({})",
+                    typename_string<VkSurfaceKHR>(),
+                    res);
+            return SurfaceKHR(instance, value);
+        }
+
+        static SurfaceKHR wrap(VkInstance instance, VkSurfaceKHR value)
+        {
+            return SurfaceKHR(instance, value);
+        }
+
+    protected:
+        void destroy() override
+        {
+            vkDestroySurfaceKHR(instance, value, nullptr);
+        }
+
+        void swap(SurfaceKHR &&other) noexcept override
+        {
+            std::swap(instance, other.instance);
+        }
+
+    private:
+        VkInstance instance{};
+    };
+
+    using SwapchainKHR = wrapper_same_param<
+        VkSwapchainKHR,
+        VkSwapchainCreateInfoKHR,
         VkDevice,
-        vkAllocateMemory,
-        vkFreeMemory>;
+        vkCreateSwapchainKHR,
+        vkDestroySwapchainKHR>;
 }

@@ -1,13 +1,18 @@
 #include <titan/core.hxx>
 #include <titan/log.hxx>
-#include <titan/format/xr.hxx>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include <cstring>
+#include <utility>
 
-core::result<> core::Instance::Initialize(const std::string_view exec, const std::vector<std::string_view> &args)
+core::Application::Application(ApplicationInfo info)
+    : m_Info(std::move(info))
+{
+}
+
+core::result<> core::Application::Initialize(const std::string_view exec, const std::vector<std::string_view> &args)
 {
     (void) exec;
     (void) args;
@@ -18,28 +23,33 @@ core::result<> core::Instance::Initialize(const std::string_view exec, const std
     TRY(InitializeAudio());
     TRY(InitializeGraphics());
 
+    OnStart();
+
     return ok();
 }
 
-void core::Instance::Terminate()
+void core::Application::Terminate()
 {
-    m_GlfwWindow.Close();
+    m_Window.Close();
 }
 
-core::result<> core::Instance::Spin()
+core::result<bool> core::Application::Spin()
 {
     glfw::PollEvents();
 
-    if (m_GlfwWindow.ShouldClose())
-        return error("window should close");
+    if (m_Window.ShouldClose())
+    {
+        OnStop();
+        return false;
+    }
 
-    TRY(PollEvents());
-    TRY(RenderFrame());
+    TRY_CAST(PollEvents(), bool);
+    TRY_CAST(RenderFrame(), bool);
 
-    return ok();
+    return true;
 }
 
-core::result<> core::Instance::InitializeGraphics()
+core::result<> core::Application::InitializeGraphics()
 {
     TRY(CreateXrInstance());
     TRY(CreateXrMessenger());
@@ -47,9 +57,11 @@ core::result<> core::Instance::InitializeGraphics()
     TRY(CreateVkInstance());
     TRY(CreateVkMessenger());
     TRY(GetPhysicalDevice());
+    TRY(CreateWindowSurface());
+    TRY(GetQueueFamilyIndices());
     TRY(CreateDevice());
-    TRY(GetQueueFamilyIndex());
-    TRY(GetQueueIndex());
+    TRY(CreateWindowSwapchain());
+    TRY(GetDeviceQueues());
     TRY(CreateSession());
     TRY(GetViewConfigurationType());
     TRY(GetViewConfigurationViews());
@@ -57,33 +69,29 @@ core::result<> core::Instance::InitializeGraphics()
     TRY(CreateSwapchains());
     TRY(GetEnvironmentBlendMode());
     TRY(CreateReferenceSpace());
-    TRY(CreateSurface());
     TRY(CreateRenderPass());
     TRY(CreateFramebuffers());
     TRY(CreatePipelineCache());
-    TRY(CreateDescriptorSetLayout());
     TRY(CreateDescriptorPool());
+    TRY(CreateDescriptorSetLayouts());
     TRY(CreateDescriptorSet());
     TRY(CreatePipelineLayout());
     TRY(CreatePipeline());
-    TRY(CreateCommandPool());
-    TRY(CreateCommandBuffer());
+    TRY(CreateCommandPools());
+    TRY(CreateCommandBuffers());
     TRY(CreateSynchronization());
     TRY(CreateVertexBuffer());
     TRY(CreateVertexMemory());
     TRY(FillVertexBuffer());
-    TRY(CreateCameraBuffer());
-    TRY(CreateCameraMemory());
 
     return ok();
 }
 
-core::result<> core::Instance::PollEvents()
+core::result<> core::Application::PollEvents()
 {
     XrEventDataBuffer event_data
     {
         .type = XR_TYPE_EVENT_DATA_BUFFER,
-        .next = nullptr,
         .varying = {},
     };
 
@@ -167,7 +175,6 @@ core::result<> core::Instance::PollEvents()
                 const XrSessionBeginInfo session_begin_info
                 {
                     .type = XR_TYPE_SESSION_BEGIN_INFO,
-                    .next = nullptr,
                     .primaryViewConfigurationType = m_ViewConfigurationType,
                 };
 
@@ -216,18 +223,16 @@ core::result<> core::Instance::PollEvents()
     return ok();
 }
 
-core::result<> core::Instance::RenderFrame()
+core::result<> core::Application::RenderFrame()
 {
     const XrFrameWaitInfo frame_wait_info
     {
         .type = XR_TYPE_FRAME_WAIT_INFO,
-        .next = nullptr,
     };
 
     XrFrameState frame_state
     {
         .type = XR_TYPE_FRAME_STATE,
-        .next = nullptr,
         .predictedDisplayTime = {},
         .predictedDisplayPeriod = {},
         .shouldRender = {},
@@ -236,16 +241,19 @@ core::result<> core::Instance::RenderFrame()
     if (auto res = xrWaitFrame(m_Session, &frame_wait_info, &frame_state))
         return error("xrWaitFrame => {}", res);
 
+    PreFrame();
+
     const XrFrameBeginInfo frame_begin_info
     {
         .type = XR_TYPE_FRAME_BEGIN_INFO,
-        .next = nullptr,
     };
 
     if (auto res = xrBeginFrame(m_Session, &frame_begin_info))
         return error("xrBeginFrame => {}", res);
 
-    LayerReference render_layer_reference
+    OnFrame();
+
+    RenderLayerInfo render_layer_info
     {
         .PredictedDisplayTime = frame_state.predictedDisplayTime,
     };
@@ -256,41 +264,37 @@ core::result<> core::Instance::RenderFrame()
 
     if (session_active && frame_state.shouldRender)
     {
-        TRY(RenderLayer(render_layer_reference));
+        TRY(RenderLayer(render_layer_info));
 
-        render_layer_reference.Layers.push_back(
-            reinterpret_cast<XrCompositionLayerBaseHeader *>(&render_layer_reference.Projection));
+        render_layer_info.Layers.push_back(
+            reinterpret_cast<XrCompositionLayerBaseHeader *>(&render_layer_info.Projection));
     }
 
     const XrFrameEndInfo frame_end_info
     {
         .type = XR_TYPE_FRAME_END_INFO,
-        .next = nullptr,
         .displayTime = frame_state.predictedDisplayTime,
         .environmentBlendMode = m_EnvironmentBlendMode,
-        .layerCount = static_cast<uint32_t>(render_layer_reference.Layers.size()),
-        .layers = render_layer_reference.Layers.data(),
+        .layerCount = static_cast<uint32_t>(render_layer_info.Layers.size()),
+        .layers = render_layer_info.Layers.data(),
     };
 
     if (auto res = xrEndFrame(m_Session, &frame_end_info))
         return error("xrEndFrame => {}", res);
 
+    PostFrame();
+
     return ok();
 }
 
-core::result<> core::Instance::RenderLayer(LayerReference &reference)
+core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
 {
     std::vector<XrView> views(m_ViewConfigurationViews.size(), { .type = XR_TYPE_VIEW });
+    XrViewState view_state{ .type = XR_TYPE_VIEW_STATE };
 
-    XrViewState view_state
-    {
-        .type = XR_TYPE_VIEW_STATE
-    };
-
-    XrViewLocateInfo view_locate_info
+    const XrViewLocateInfo view_locate_info
     {
         .type = XR_TYPE_VIEW_LOCATE_INFO,
-        .next = nullptr,
         .viewConfigurationType = m_ViewConfigurationType,
         .displayTime = reference.PredictedDisplayTime,
         .space = m_ReferenceSpace,
@@ -308,20 +312,35 @@ core::result<> core::Instance::RenderLayer(LayerReference &reference)
 
     reference.Views.resize(view_count, { .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
 
-    for (uint32_t i = 0; i < view_count; ++i)
+    std::optional<BlitViewInfo> blit_view_info;
+
+    if (auto res = vkWaitForFences(
+        m_Device,
+        1,
+        &*m_Fence,
+        true,
+        std::numeric_limits<uint64_t>::max()))
+        return error("vkWaitForFences => {}", res);
+
+    if (auto res = vkResetFences(
+        m_Device,
+        1,
+        &*m_Fence))
+        return error("vkResetFences => {}", res);
+
+    for (uint32_t view_index = 0; view_index < view_count; ++view_index)
     {
-        const auto &configuration = m_ViewConfigurationViews[i];
+        const auto &view = views[view_index];
+        const auto &view_configuration_view = m_ViewConfigurationViews[view_index];
 
-        auto &[color, depth, framebuffers] = m_SwapchainFrames[i];
-
-        uint32_t color_index, depth_index;
+        auto &[color, depth, _0, _1] = m_SwapchainViews[view_index];
 
         const XrSwapchainImageAcquireInfo swapchain_image_acquire_info
         {
             .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
-            .next = nullptr,
         };
 
+        uint32_t color_index, depth_index;
         if (auto res = xrAcquireSwapchainImage(color.Swapchain, &swapchain_image_acquire_info, &color_index))
             return error("xrAcquireSwapchainImage => {}", res);
         if (auto res = xrAcquireSwapchainImage(depth.Swapchain, &swapchain_image_acquire_info, &depth_index))
@@ -330,7 +349,6 @@ core::result<> core::Instance::RenderLayer(LayerReference &reference)
         const XrSwapchainImageWaitInfo swapchain_image_wait_info
         {
             .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
-            .next = nullptr,
             .timeout = XR_INFINITE_DURATION,
         };
 
@@ -339,11 +357,38 @@ core::result<> core::Instance::RenderLayer(LayerReference &reference)
         if (auto res = xrWaitSwapchainImage(depth.Swapchain, &swapchain_image_wait_info))
             return error("xrWaitSwapchainImage => {}", res);
 
-        const auto width = configuration.recommendedImageRectWidth;
-        const auto height = configuration.recommendedImageRectHeight;
+        const auto &pose = view.pose;
+        const auto &fov = view.fov;
 
-        const auto &pose = views[i].pose;
-        const auto &fov = views[i].fov;
+        const auto &width = view_configuration_view.recommendedImageRectWidth;
+        const auto &height = view_configuration_view.recommendedImageRectHeight;
+
+        reference.Views[view_index] = {
+            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+            .pose = pose,
+            .fov = fov,
+            .subImage = {
+                .swapchain = color.Swapchain,
+                .imageRect = {
+                    .offset = {
+                        .x = 0,
+                        .y = 0,
+                    },
+                    .extent = {
+                        .width = static_cast<int32_t>(width),
+                        .height = static_cast<int32_t>(height),
+                    },
+                },
+                .imageArrayIndex = 0,
+            },
+        };
+
+        if (!blit_view_info)
+            blit_view_info = {
+                .Index = color_index,
+                .Width = width,
+                .Height = height,
+            };
 
         glm::mat4 model_mat;
         {
@@ -396,127 +441,44 @@ core::result<> core::Instance::RenderLayer(LayerReference &reference)
             proj_mat = glm::frustumRH_ZO(l, r, t, b, near, far);
         }
 
-        reference.Views[i] = {
-            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-            .next = nullptr,
-            .pose = pose,
-            .fov = fov,
-            .subImage = {
-                .swapchain = color.Swapchain,
-                .imageRect = {
-                    .offset = {
-                        .x = 0,
-                        .y = 0,
-                    },
-                    .extent = {
-                        .width = static_cast<int32_t>(width),
-                        .height = static_cast<int32_t>(height),
-                    },
-                },
-                .imageArrayIndex = 0,
-            },
+        const CameraData camera_data
+        {
+            .Screen = proj_mat * view_mat * model_mat,
+            .Normal = glm::transpose(glm::inverse(model_mat)),
         };
 
-        const std::array<VkFence, 1> fences
+        TRY(RecordCommandBuffer(view_index, color_index, camera_data));
+    }
+
+    {
+        std::vector<VkCommandBufferSubmitInfo> command_buffers(view_count);
+        for (uint32_t i = 0; i < view_count; ++i)
+            command_buffers[i] = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .commandBuffer = m_SwapchainViews[i].Buffer,
+            };
+
+        const std::array submits
         {
-            m_InFlightFence,
-        };
-
-        if (auto res = vkWaitForFences(m_Device, fences.size(), fences.data(), true, UINT64_MAX))
-            return error("vkWaitForFences => {}", res);
-
-        vkResetFences(m_Device, fences.size(), fences.data());
-
-        m_CameraData = {
-            .model = model_mat,
-            .inv_model = glm::inverse(model_mat),
-            .view = view_mat,
-            .inv_view = glm::inverse(view_mat),
-            .proj = proj_mat,
-            .inv_proj = glm::inverse(proj_mat),
-        };
-
-        {
-            void *data;
-            if (auto res = vkMapMemory(m_Device, m_CameraMemory, 0, sizeof(CameraData), 0, &data))
-                return error("vkMapMemory => {}", res);
-
-            memcpy(data, &m_CameraData, sizeof(CameraData));
-
-            vkUnmapMemory(m_Device, m_CameraMemory);
-        }
-
-        const VkDescriptorBufferInfo buffer_info
-        {
-            .buffer = m_CameraBuffer,
-            .offset = 0,
-            .range = sizeof(CameraData),
-        };
-
-        const std::array writes
-        {
-            VkWriteDescriptorSet
+            VkSubmitInfo2
             {
-                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .pNext = nullptr,
-                .dstSet = m_DescriptorSet,
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .pImageInfo = nullptr,
-                .pBufferInfo = &buffer_info,
-                .pTexelBufferView = nullptr,
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+                .commandBufferInfoCount = static_cast<uint32_t>(command_buffers.size()),
+                .pCommandBufferInfos = command_buffers.data(),
             },
         };
 
-        vkUpdateDescriptorSets(m_Device, writes.size(), writes.data(), 0, nullptr);
+        if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), m_Fence))
+            return error("vkQueueSubmit2 => {}", res);
+    }
 
-        TRY(RecordCommandBuffer(i, color_index));
-
-        const std::array<VkCommandBuffer, 1> command_buffers
-        {
-            m_CommandBuffer,
-        };
-
-        const std::array<VkSemaphore, 1> wait_semaphores
-        {
-            m_ImageAvailableSemaphore,
-        };
-
-        const std::array<VkPipelineStageFlags, 1> wait_stages
-        {
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        };
-
-        const std::array<VkSemaphore, 1> signal_semaphores
-        {
-            m_RenderFinishedSemaphore,
-        };
-
-        const VkSubmitInfo submit_info
-        {
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .pNext = nullptr,
-            .waitSemaphoreCount = 0,
-            .pWaitSemaphores = wait_semaphores.data(),
-            .pWaitDstStageMask = wait_stages.data(),
-            .commandBufferCount = command_buffers.size(),
-            .pCommandBuffers = command_buffers.data(),
-            .signalSemaphoreCount = 0,
-            .pSignalSemaphores = signal_semaphores.data(),
-        };
-
-        VkQueue queue;
-        vkGetDeviceQueue(m_Device, m_QueueFamilyIndex, m_QueueIndex, &queue);
-
-        if (auto res = vkQueueSubmit(queue, 1, &submit_info, m_InFlightFence))
-            return error("vkQueueSubmit => {}", res);
+    for (std::uint32_t view_index = 0; view_index < view_count; ++view_index)
+    {
+        auto &[color, depth, _0, _1] = m_SwapchainViews[view_index];
 
         const XrSwapchainImageReleaseInfo swapchain_image_release_info
         {
             .type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO,
-            .next = nullptr,
         };
 
         if (auto res = xrReleaseSwapchainImage(color.Swapchain, &swapchain_image_release_info))
@@ -525,9 +487,10 @@ core::result<> core::Instance::RenderLayer(LayerReference &reference)
             return error("xrReleaseSwapchainImage => {}", res);
     }
 
+    TRY(BlitView(*blit_view_info));
+
     reference.Projection = {
         .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
-        .next = nullptr,
         .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
                       | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT,
         .space = m_ReferenceSpace,
@@ -536,4 +499,316 @@ core::result<> core::Instance::RenderLayer(LayerReference &reference)
     };
 
     return ok();
+}
+
+core::result<> core::Application::BlitView(const BlitViewInfo &info)
+{
+    auto &[available, finished, fence, buffer] = m_Frames[m_FrameIndex];
+    m_FrameIndex = (m_FrameIndex + 1) % m_Frames.size();
+
+    if (auto res = vkWaitForFences(
+        m_Device,
+        1,
+        &*fence,
+        true,
+        std::numeric_limits<uint64_t>::max()))
+        return error("vkWaitForFences => {}", res);
+
+    if (auto res = vkResetFences(
+        m_Device,
+        1,
+        &*fence))
+        return error("vkResetFences => {}", res);
+
+    uint32_t image_index;
+    if (auto res = vkAcquireNextImageKHR(
+        m_Device,
+        m_WindowSwapchain.Swapchain,
+        std::numeric_limits<uint64_t>::max(),
+        available,
+        nullptr,
+        &image_index))
+        return error("vkAcquireNextImageKHR => {}", res);
+
+    if (auto res = vkResetCommandBuffer(buffer, 0))
+        return error("vkResetCommandBuffer => {}", res);
+
+    const VkCommandBufferBeginInfo command_buffer_begin_info
+    {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    };
+
+    if (auto res = vkBeginCommandBuffer(buffer, &command_buffer_begin_info))
+        return error("vkBeginCommandBuffer => {}", res);
+
+    auto &src_image = m_SwapchainViews[0].Color.Images[info.Index];
+    auto &dst_image = m_WindowSwapchain.Images[image_index];
+
+    {
+        const VkImageMemoryBarrier2 src_image_memory_barrier
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
+            .dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+            .image = src_image,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        const VkImageMemoryBarrier2 dst_image_memory_barrier
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
+            .srcAccessMask = VK_ACCESS_2_NONE,
+            .dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
+            .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+            .image = dst_image,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        const std::array image_memory_barriers
+        {
+            src_image_memory_barrier,
+            dst_image_memory_barrier,
+        };
+
+        const VkDependencyInfo dependency_info
+        {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = image_memory_barriers.size(),
+            .pImageMemoryBarriers = image_memory_barriers.data(),
+        };
+
+        vkCmdPipelineBarrier2(buffer, &dependency_info);
+    }
+
+    {
+        const std::array regions
+        {
+            VkImageBlit2
+            {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+                .srcSubresource = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+                .srcOffsets = {
+                    { 0, 0, 0 },
+                    {
+                        static_cast<int32_t>(info.Width),
+                        static_cast<int32_t>(info.Height),
+                        1,
+                    },
+                },
+                .dstSubresource = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+                .dstOffsets = {
+                    { 0, 0, 0 },
+                    {
+                        static_cast<int32_t>(m_WindowSwapchain.Width),
+                        static_cast<int32_t>(m_WindowSwapchain.Height),
+                        1,
+                    },
+                },
+            }
+        };
+
+        const VkBlitImageInfo2 blit_image_info
+        {
+            .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+            .srcImage = src_image,
+            .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .dstImage = dst_image,
+            .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .regionCount = regions.size(),
+            .pRegions = regions.data(),
+            .filter = VK_FILTER_LINEAR,
+        };
+
+        vkCmdBlitImage2(buffer, &blit_image_info);
+    }
+
+    {
+        const VkImageMemoryBarrier2 src_image_memory_barrier
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
+            .srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
+            .dstAccessMask = VK_ACCESS_2_NONE,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+            .image = src_image,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        const VkImageMemoryBarrier2 dst_image_memory_barrier
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
+            .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
+            .dstAccessMask = VK_ACCESS_2_NONE,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+            .image = dst_image,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        const std::array image_memory_barriers
+        {
+            src_image_memory_barrier,
+            dst_image_memory_barrier,
+        };
+
+        const VkDependencyInfo dependency_info
+        {
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = image_memory_barriers.size(),
+            .pImageMemoryBarriers = image_memory_barriers.data(),
+        };
+
+        vkCmdPipelineBarrier2(buffer, &dependency_info);
+    }
+
+    if (auto res = vkEndCommandBuffer(buffer))
+        return error("vkEndCommandBuffer => {}", res);
+
+    {
+        const std::array wait_semaphores
+        {
+            VkSemaphoreSubmitInfo
+            {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = available,
+                .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            },
+        };
+
+        const std::array command_buffers
+        {
+            VkCommandBufferSubmitInfo
+            {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .commandBuffer = buffer,
+            }
+        };
+
+        const std::array signal_semaphores
+        {
+            VkSemaphoreSubmitInfo
+            {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .semaphore = finished,
+                .stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            },
+        };
+
+        const std::array submits
+        {
+            VkSubmitInfo2
+            {
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+                .waitSemaphoreInfoCount = wait_semaphores.size(),
+                .pWaitSemaphoreInfos = wait_semaphores.data(),
+                .commandBufferInfoCount = command_buffers.size(),
+                .pCommandBufferInfos = command_buffers.data(),
+                .signalSemaphoreInfoCount = signal_semaphores.size(),
+                .pSignalSemaphoreInfos = signal_semaphores.data(),
+            },
+        };
+
+        if (auto res = vkQueueSubmit2(m_TransferQueue, submits.size(), submits.data(), fence))
+            return error("vkQueueSubmit2 => {}", res);
+    }
+
+    {
+        const std::array wait_semaphores
+        {
+            *finished,
+        };
+
+        const std::array swapchains
+        {
+            *m_WindowSwapchain.Swapchain,
+        };
+
+        const VkPresentInfoKHR present_info
+        {
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = wait_semaphores.size(),
+            .pWaitSemaphores = wait_semaphores.data(),
+            .swapchainCount = swapchains.size(),
+            .pSwapchains = swapchains.data(),
+            .pImageIndices = &image_index,
+        };
+
+        if (auto res = vkQueuePresentKHR(m_PresentQueue, &present_info))
+            return error("vkQueuePresentKHR =>{}", res);
+    }
+
+    return ok();
+}
+
+void core::Application::OnStart()
+{
+}
+
+void core::Application::PreFrame()
+{
+}
+
+void core::Application::OnFrame()
+{
+}
+
+void core::Application::PostFrame()
+{
+}
+
+void core::Application::OnStop()
+{
 }

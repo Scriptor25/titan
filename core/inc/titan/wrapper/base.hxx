@@ -1,8 +1,11 @@
 #pragma once
 
+#include <titan/log.hxx>
+
 namespace core
 {
     template<typename T, typename W>
+        requires std::is_convertible_v<T, bool> && std::is_convertible_v<T, const void *>
     class wrapper_base
     {
     public:
@@ -13,21 +16,17 @@ namespace core
         explicit wrapper_base(T value)
             : value(value)
         {
+            info("create {} {}", typename_string<T>(), reinterpret_cast<const void *>(value));
         }
 
         virtual ~wrapper_base()
         {
-            if constexpr (std::is_convertible_v<T, bool>)
+            if (value)
             {
-                if (value)
-                {
-                    wrapper_base::destroy();
-                    value = {};
-                }
-            }
-            else
-            {
+                info("destroy {} {}", typename_string<T>(), reinterpret_cast<const void *>(value));
+
                 wrapper_base::destroy();
+                value = {};
             }
         }
 

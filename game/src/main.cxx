@@ -4,7 +4,50 @@
 #include <iostream>
 #include <map>
 
-core::Instance instance;
+class Game final : core::Application
+{
+public:
+    Game()
+        : Application(
+            {
+                .Name = "Titan Game",
+                .Version = {
+                    .Major = 0,
+                    .Minor = 0,
+                    .Patch = 0,
+                },
+            }
+        )
+    {
+    }
+
+    using Application::Initialize;
+    using Application::Terminate;
+    using Application::Spin;
+
+protected:
+    void OnStart() override
+    {
+    }
+
+    void PreFrame() override
+    {
+    }
+
+    void OnFrame() override
+    {
+    }
+
+    void PostFrame() override
+    {
+    }
+
+    void OnStop() override
+    {
+    }
+};
+
+static Game game;
 
 static void signal_handler(const int signal)
 {
@@ -14,7 +57,7 @@ static void signal_handler(const int signal)
         { SIGTERM, "SIGTERM" },
     };
 
-    instance.Terminate();
+    game.Terminate();
 
     std::cerr << "exit on signal " << signal_map.at(signal) << std::endl;
 }
@@ -24,11 +67,13 @@ int main(const int argc, const char *const *argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    auto res = instance.Initialize(*argv, { argv + 1, argv + argc })
+    auto res = game.Initialize(*argv, { argv + 1, argv + argc })
                | []
                {
-                   core::result<> e;
-                   while ((e = instance.Spin()));
+                   core::result<bool> e;
+                   do
+                       e = game.Spin();
+                   while (e && *e);
                    return e;
                };
 
@@ -36,5 +81,5 @@ int main(const int argc, const char *const *argv)
         return 0;
 
     std::cerr << res.error() << std::endl;
-    return 0;
+    return 1;
 }

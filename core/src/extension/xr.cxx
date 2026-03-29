@@ -1,37 +1,5 @@
 #include <titan/extension.hxx>
 
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanInstanceExtensionsKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    uint32_t bufferCapacityInput,
-    uint32_t *bufferCountOutput,
-    char *buffer)
-{
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanInstanceExtensionsKHR>(
-        instance,
-        "xrGetVulkanInstanceExtensionsKHR");
-
-    return pfn
-               ? pfn(instance, systemId, bufferCapacityInput, bufferCountOutput, buffer)
-               : XR_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanDeviceExtensionsKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    uint32_t bufferCapacityInput,
-    uint32_t *bufferCountOutput,
-    char *buffer)
-{
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanDeviceExtensionsKHR>(
-        instance,
-        "xrGetVulkanDeviceExtensionsKHR");
-
-    return pfn
-               ? pfn(instance, systemId, bufferCapacityInput, bufferCountOutput, buffer)
-               : XR_ERROR_EXTENSION_NOT_PRESENT;
-}
-
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
     XrInstance instance,
     const XrDebugUtilsMessengerCreateInfoEXT *createInfo,
@@ -56,35 +24,6 @@ XRAPI_ATTR XrResult XRAPI_CALL xrDestroyDebugUtilsMessengerEXT(
 
     return pfn
                ? pfn(messenger)
-               : XR_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanGraphicsDeviceKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    VkInstance vkInstance,
-    VkPhysicalDevice *vkPhysicalDevice)
-{
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanGraphicsDeviceKHR>(
-        instance,
-        "xrGetVulkanGraphicsDeviceKHR");
-
-    return pfn
-               ? pfn(instance, systemId, vkInstance, vkPhysicalDevice)
-               : XR_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanGraphicsRequirementsKHR(
-    XrInstance instance,
-    XrSystemId systemId,
-    XrGraphicsRequirementsVulkanKHR *graphicsRequirements)
-{
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanGraphicsRequirementsKHR>(
-        instance,
-        "xrGetVulkanGraphicsRequirementsKHR");
-
-    return pfn
-               ? pfn(instance, systemId, graphicsRequirements)
                : XR_ERROR_EXTENSION_NOT_PRESENT;
 }
 

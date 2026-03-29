@@ -2,18 +2,18 @@
 
 #include <iostream>
 
-void core::Instance::GlfwDebugCallback(const int code, const char *description)
+void core::Application::GlfwDebugCallback(const int code, const char *description)
 {
     std::cerr << std::format("[GLFW:{}] {}", code, description) << std::endl;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL core::Instance::VkDebugCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL core::Application::VkDebugCallback(
     const VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     const VkDebugUtilsMessageTypeFlagsEXT message_type,
     const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
     void *user_data)
 {
-    const auto instance = static_cast<Instance *>(user_data);
+    const auto instance = static_cast<Application *>(user_data);
     (void) instance;
 
     std::cerr << std::format(
@@ -25,13 +25,13 @@ VKAPI_ATTR VkBool32 VKAPI_CALL core::Instance::VkDebugCallback(
     return VK_FALSE;
 }
 
-XRAPI_ATTR XrBool32 XRAPI_CALL core::Instance::XrDebugCallback(
+XRAPI_ATTR XrBool32 XRAPI_CALL core::Application::XrDebugCallback(
     const XrDebugUtilsMessageSeverityFlagsEXT message_severity,
     const XrDebugUtilsMessageTypeFlagsEXT message_types,
     const XrDebugUtilsMessengerCallbackDataEXT *callback_data,
     void *user_data)
 {
-    const auto instance = static_cast<Instance *>(user_data);
+    const auto instance = static_cast<Application *>(user_data);
     (void) instance;
 
     static const std::map<XrDebugUtilsMessageSeverityFlagsEXT, const char *> message_severity_map

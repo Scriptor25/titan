@@ -18,22 +18,31 @@
 
 namespace core
 {
-    struct SwapchainReference
+    struct XrSwapchainInfo
     {
-        VkFormat Format;
+        VkFormat Format{};
         xr::Swapchain Swapchain;
         std::vector<vk::Image> Images;
         std::vector<vk::ImageView> Views;
     };
 
-    struct SwapchainFrame
+    struct XrSwapchainView
     {
-        SwapchainReference Color;
-        SwapchainReference Depth;
+        XrSwapchainInfo Color;
+        XrSwapchainInfo Depth;
+        vk::CommandBuffer Buffer;
         std::vector<vk::Framebuffer> Framebuffers;
     };
 
-    struct LayerReference
+    struct VkSwapchainInfo
+    {
+        VkFormat Format{};
+        uint32_t Width{}, Height{};
+        vk::SwapchainKHR Swapchain;
+        std::vector<vk::Image> Images;
+    };
+
+    struct RenderLayerInfo
     {
         XrTime PredictedDisplayTime;
         std::vector<XrCompositionLayerBaseHeader *> Layers;
@@ -43,36 +52,79 @@ namespace core
 
     struct CameraData
     {
-        glm::mat4 model;
-        glm::mat4 inv_model;
-        glm::mat4 view;
-        glm::mat4 inv_view;
-        glm::mat4 proj;
-        glm::mat4 inv_proj;
+        glm::mat4 Screen;
+        glm::mat4 Normal;
     };
 
     struct FormatReference
     {
-        std::string_view name;
-        VkFormat &format;
-        VkFormatFeatureFlags features;
+        std::string_view Name;
+        VkFormat &Format;
+        VkFormatFeatureFlags Features;
     };
 
-    class Instance
+    struct ApplicationVersion
     {
-        static constexpr std::array VK_LAYERS
+        int Major;
+        int Minor;
+        int Patch;
+    };
+
+    struct ApplicationInfo
+    {
+        std::string Name;
+        ApplicationVersion Version;
+    };
+
+    struct QueueFamilyIndices
+    {
+        uint32_t Default{};
+        uint32_t Graphics{};
+        uint32_t Compute{};
+        uint32_t Transfer{};
+        uint32_t Present{};
+    };
+
+    struct BlitViewInfo
+    {
+        uint32_t Index;
+        uint32_t Width;
+        uint32_t Height;
+    };
+
+    struct Frame
+    {
+        vk::Semaphore Available;
+        vk::Semaphore Finished;
+        vk::Fence Fence;
+        vk::CommandBuffer Buffer;
+    };
+
+    class Application
+    {
+        static constexpr auto VERSION_MAJOR = 0;
+        static constexpr auto VERSION_MINOR = 0;
+        static constexpr auto VERSION_PATCH = 0;
+
+        static constexpr std::array VK_INSTANCE_LAYERS
         {
             "VK_LAYER_KHRONOS_validation",
+        };
+
+        static constexpr std::array<const char *, 0> VK_DEVICE_LAYERS
+        {
         };
 
         static constexpr std::array VK_INSTANCE_EXTENSIONS
         {
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+            VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
         };
 
         static constexpr std::array VK_DEVICE_EXTENSIONS
         {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
             VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
         };
 
@@ -126,11 +178,11 @@ namespace core
         static std::vector<char> LoadShaderModuleBinary(const std::filesystem::path &path);
 
     public:
-        Instance() = default;
-        ~Instance() = default;
+        explicit Application(ApplicationInfo info);
+        virtual ~Application() = default;
 
-        Instance(const Instance &) = delete;
-        Instance &operator=(const Instance &) = delete;
+        Application(const Application &) = delete;
+        Application &operator=(const Application &) = delete;
 
         result<> Initialize(
             std::string_view exec,
@@ -138,9 +190,9 @@ namespace core
 
         void Terminate();
 
-        result<> Spin();
+        result<bool> Spin();
 
-    protected:
+    private:
         result<> InitializeWindow();
         result<> InitializeAudio();
         result<> InitializeGraphics();
@@ -153,9 +205,9 @@ namespace core
         result<> CreateVkMessenger();
 
         result<> GetPhysicalDevice();
+        result<> GetQueueFamilyIndices();
         result<> CreateDevice();
-        result<> GetQueueFamilyIndex();
-        result<> GetQueueIndex();
+        result<> GetDeviceQueues();
 
         result<> CreateSession();
 
@@ -166,15 +218,16 @@ namespace core
         result<> GetEnvironmentBlendMode();
         result<> CreateReferenceSpace();
 
-        result<> CreateSurface();
+        result<> CreateWindowSurface();
+        result<> CreateWindowSwapchain();
 
-        result<SwapchainReference> CreateSwapchain(
+        result<XrSwapchainInfo> CreateSwapchain(
             const XrViewConfigurationView &view,
             XrSwapchainUsageFlags usage,
             VkFormat format,
             VkImageAspectFlags aspect);
 
-        result<> CreateDescriptorSetLayout();
+        result<> CreateDescriptorSetLayouts();
         result<> CreateDescriptorPool();
         result<> CreateDescriptorSet();
 
@@ -185,8 +238,8 @@ namespace core
 
         result<> CreateFramebuffers();
 
-        result<> CreateCommandPool();
-        result<> CreateCommandBuffer();
+        result<> CreateCommandPools();
+        result<> CreateCommandBuffers();
 
         result<> CreateSynchronization();
 
@@ -194,22 +247,29 @@ namespace core
         result<> CreateVertexMemory();
         result<> FillVertexBuffer();
 
-        result<> CreateCameraBuffer();
-        result<> CreateCameraMemory();
-
-        result<> RecordCommandBuffer(uint32_t view_index, uint32_t image_index);
+        result<> RecordCommandBuffer(uint32_t view_index, uint32_t image_index, const CameraData &camera_data);
 
         result<> PollEvents();
 
         result<> RenderFrame();
-        result<> RenderLayer(LayerReference &reference);
+        result<> RenderLayer(RenderLayerInfo &reference);
+
+        result<> BlitView(const BlitViewInfo &info);
+
+    protected:
+        virtual void OnStart();
+        virtual void PreFrame();
+        virtual void OnFrame();
+        virtual void PostFrame();
+        virtual void OnStop();
 
     private:
-        obj::Mesh m_Mesh;
-        CameraData m_CameraData{};
+        ApplicationInfo m_Info;
 
-        glfw::Library m_GlfwLibrary;
-        glfw::Window m_GlfwWindow;
+        obj::Mesh m_Mesh;
+
+        glfw::Instance m_GlfwInstance;
+        glfw::Window m_Window;
 
         al::Device m_AlDevice;
         al::Context m_AlContext;
@@ -217,7 +277,7 @@ namespace core
         xr::Instance m_XrInstance;
         xr::DebugUtilsMessengerEXT m_XrMessenger;
 
-        xr::SystemId m_SystemId;
+        XrSystemId m_SystemId{};
 
         XrViewConfigurationType m_ViewConfigurationType{};
         std::vector<XrViewConfigurationView> m_ViewConfigurationViews;
@@ -227,38 +287,38 @@ namespace core
 
         VkPhysicalDevice m_PhysicalDevice{};
         vk::Device m_Device;
-        uint32_t m_QueueFamilyIndex = UINT32_MAX, m_QueueIndex = UINT32_MAX;
 
-        vk::GLFWSurface m_Surface;
+        QueueFamilyIndices m_QueueFamilyIndices;
+        VkQueue m_DefaultQueue{}, m_TransferQueue{}, m_PresentQueue{};
+
+        vk::SurfaceKHR m_WindowSurface;
+        VkSwapchainInfo m_WindowSwapchain;
 
         XrSessionState m_SessionState{};
         xr::Session m_Session;
 
         VkFormat m_ColorFormat{}, m_DepthFormat{};
-        std::vector<SwapchainFrame> m_SwapchainFrames;
+        std::vector<XrSwapchainView> m_SwapchainViews;
 
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
         xr::ReferenceSpace m_ReferenceSpace;
 
-        vk::DescriptorSetLayout m_DescriptorSetLayout;
         vk::DescriptorPool m_DescriptorPool;
-        vk::DescriptorSet m_DescriptorSet;
+        std::vector<vk::DescriptorSetLayout> m_DescriptorSetLayouts;
+        std::vector<vk::DescriptorSet> m_DescriptorSets;
 
         vk::RenderPass m_RenderPass;
         vk::PipelineCache m_PipelineCache;
         vk::PipelineLayout m_PipelineLayout;
         vk::Pipeline m_Pipeline;
 
-        vk::CommandPool m_CommandPool;
-        vk::CommandBuffer m_CommandBuffer;
+        vk::CommandPool m_DefaultPool, m_TransferPool;
 
-        vk::Semaphore m_ImageAvailableSemaphore, m_RenderFinishedSemaphore;
-        vk::Fence m_InFlightFence;
+        vk::Fence m_Fence{};
+        std::vector<Frame> m_Frames{ 4 };
+        uint32_t m_FrameIndex{};
 
         vk::Buffer m_VertexBuffer;
         vk::DeviceMemory m_VertexMemory;
-
-        vk::Buffer m_CameraBuffer;
-        vk::DeviceMemory m_CameraMemory;
     };
 }

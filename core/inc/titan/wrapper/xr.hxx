@@ -4,22 +4,11 @@
 #include <titan/extension.hxx>
 #include <titan/result.hxx>
 #include <titan/typename.hxx>
-#include <titan/wrapper.hxx>
+#include <titan/format/xr.hxx>
+#include <titan/wrapper/base.hxx>
 
 namespace core
 {
-    template<>
-    constexpr const char *typename_string<XrInstance>()
-    {
-        return "XrInstance";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSession>()
-    {
-        return "XrSession";
-    }
-
     template<>
     constexpr const char *typename_string<XrAction>()
     {
@@ -30,6 +19,30 @@ namespace core
     constexpr const char *typename_string<XrActionSet>()
     {
         return "XrActionSet";
+    }
+
+    template<>
+    constexpr const char *typename_string<XrDebugUtilsMessengerEXT>()
+    {
+        return "XrDebugUtilsMessengerEXT";
+    }
+
+    template<>
+    constexpr const char *typename_string<XrEnvironmentBlendMode>()
+    {
+        return "XrEnvironmentBlendMode";
+    }
+
+    template<>
+    constexpr const char *typename_string<XrInstance>()
+    {
+        return "XrInstance";
+    }
+
+    template<>
+    constexpr const char *typename_string<XrSession>()
+    {
+        return "XrSession";
     }
 
     template<>
@@ -45,21 +58,9 @@ namespace core
     }
 
     template<>
-    constexpr const char *typename_string<XrDebugUtilsMessengerEXT>()
+    constexpr const char *typename_string<XrSwapchainImageBaseHeader>()
     {
-        return "XrDebugUtilsMessengerEXT";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrViewConfigurationView>()
-    {
-        return "XrViewConfigurationView";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrViewConfigurationType>()
-    {
-        return "XrViewConfigurationType";
+        return "XrSwapchainImageBaseHeader";
     }
 
     template<>
@@ -69,21 +70,21 @@ namespace core
     }
 
     template<>
-    constexpr const char *typename_string<XrSwapchainImageBaseHeader>()
-    {
-        return "XrSwapchainImageBaseHeader";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrEnvironmentBlendMode>()
-    {
-        return "XrEnvironmentBlendMode";
-    }
-
-    template<>
     constexpr const char *typename_string<XrSystemId>()
     {
         return "XrSystemId";
+    }
+
+    template<>
+    constexpr const char *typename_string<XrViewConfigurationType>()
+    {
+        return "XrViewConfigurationType";
+    }
+
+    template<>
+    constexpr const char *typename_string<XrViewConfigurationView>()
+    {
+        return "XrViewConfigurationView";
     }
 }
 
@@ -218,19 +219,6 @@ namespace core::xr
         }
     };
 
-    using Instance = wrapper_void_param<
-        XrInstance,
-        XrInstanceCreateInfo,
-        xrCreateInstance,
-        xrDestroyInstance>;
-
-    using Session = wrapper_create_param<
-        XrSession,
-        XrSessionCreateInfo,
-        XrInstance,
-        xrCreateSession,
-        xrDestroySession>;
-
     using Action = wrapper_create_param<
         XrAction,
         XrActionCreateInfo,
@@ -252,20 +240,6 @@ namespace core::xr
         xrCreateActionSpace,
         xrDestroySpace>;
 
-    using ReferenceSpace = wrapper_create_param<
-        XrSpace,
-        XrReferenceSpaceCreateInfo,
-        XrSession,
-        xrCreateReferenceSpace,
-        xrDestroySpace>;
-
-    using Swapchain = wrapper_create_param<
-        XrSwapchain,
-        XrSwapchainCreateInfo,
-        XrSession,
-        xrCreateSwapchain,
-        xrDestroySwapchain>;
-
     using DebugUtilsMessengerEXT = wrapper_same_param<
         XrDebugUtilsMessengerEXT,
         XrDebugUtilsMessengerCreateInfoEXT,
@@ -273,5 +247,30 @@ namespace core::xr
         xrCreateDebugUtilsMessengerEXT,
         xrDestroyDebugUtilsMessengerEXT>;
 
-    using SystemId = wrapper_get<XrSystemId, XrSystemGetInfo, XrInstance, xrGetSystem>;
+    using Instance = wrapper_void_param<
+        XrInstance,
+        XrInstanceCreateInfo,
+        xrCreateInstance,
+        xrDestroyInstance>;
+
+    using ReferenceSpace = wrapper_create_param<
+        XrSpace,
+        XrReferenceSpaceCreateInfo,
+        XrSession,
+        xrCreateReferenceSpace,
+        xrDestroySpace>;
+
+    using Session = wrapper_create_param<
+        XrSession,
+        XrSessionCreateInfo,
+        XrInstance,
+        xrCreateSession,
+        xrDestroySession>;
+
+    using Swapchain = wrapper_create_param<
+        XrSwapchain,
+        XrSwapchainCreateInfo,
+        XrSession,
+        xrCreateSwapchain,
+        xrDestroySwapchain>;
 }
