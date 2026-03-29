@@ -1,11 +1,11 @@
 #pragma once
 
+#include <titan/api.hxx>
+#include <titan/result.hxx>
+#include <titan/typename.hxx>
+
 #include <format>
 #include <vector>
-
-#include <api.hxx>
-#include <result.hxx>
-#include <typename.hxx>
 
 namespace core
 {

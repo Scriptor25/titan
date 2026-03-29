@@ -1,4 +1,4 @@
-#include <wrapper/glfw.hxx>
+#include <titan/wrapper/glfw.hxx>
 
 unsigned core::glfw::Library::instance_count = 0;
 

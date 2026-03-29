@@ -1,11 +1,11 @@
 #pragma once
 
-#include <api.hxx>
-#include <format.hxx>
-#include <result.hxx>
-#include <typename.hxx>
-#include <wrapper.hxx>
-#include <format/vk.hxx>
+#include <titan/api.hxx>
+#include <titan/format.hxx>
+#include <titan/result.hxx>
+#include <titan/typename.hxx>
+#include <titan/wrapper.hxx>
+#include <titan/format/vk.hxx>
 
 namespace core
 {

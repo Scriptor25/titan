@@ -1,5 +1,4 @@
-#include <result.hxx>
-#include <wrapper/al.hxx>
+#include <titan/wrapper/al.hxx>
 
 core::result<core::al::Device> core::al::Device::Open(const ALCchar *device_name)
 {

@@ -1,8 +1,8 @@
+#include <titan/core.hxx>
+
 #include <csignal>
 #include <iostream>
 #include <map>
-
-#include <core.hxx>
 
 core::Instance instance;
 

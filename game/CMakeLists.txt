@@ -75,7 +75,7 @@ add_shaders(shaders
         frag res/shader/frag.glsl
 )
 
-add_meshes(meshes res/mesh/cube.obj)
+add_meshes(meshes res/mesh/cube.obj res/mesh/teapot.obj)
 
 file(GLOB_RECURSE SRC src/*.cxx)
 

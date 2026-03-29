@@ -1,6 +1,6 @@
-#include <fstream>
+#include <titan/obj.hxx>
 
-#include <obj.hxx>
+#include <fstream>
 
 static std::vector<std::string> split(const std::string &line, const char delim)
 {
@@ -42,9 +42,9 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
 
         if (segments.front() == "v")
         {
-            auto x = segments[1];
-            auto y = segments[2];
-            auto z = segments[3];
+            auto &x = segments[1];
+            auto &y = segments[2];
+            auto &z = segments[3];
 
             positions.emplace_back(std::stof(x), std::stof(y), std::stof(z));
             continue;
@@ -52,9 +52,9 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
 
         if (segments.front() == "vn")
         {
-            auto x = segments[1];
-            auto y = segments[2];
-            auto z = segments[3];
+            auto &x = segments[1];
+            auto &y = segments[2];
+            auto &z = segments[3];
 
             normals.emplace_back(std::stof(x), std::stof(y), std::stof(z));
             continue;
@@ -62,8 +62,8 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
 
         if (segments.front() == "vt")
         {
-            auto x = segments[1];
-            auto y = segments[2];
+            auto &x = segments[1];
+            auto &y = segments[2];
 
             textures.emplace_back(std::stof(x), std::stof(y));
             continue;
@@ -78,11 +78,11 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
                 auto &[position, texture, normal] = vertices[i - 1];
                 auto indices = split(segments[i], '/');
 
-                if (indices.size() >= 1)
+                if (!indices.empty())
                 {
                     auto index = std::stoi(indices[0]);
                     if (index < 0)
-                        index = positions.size() + index;
+                        index = static_cast<int>(positions.size()) + index;
                     else
                         index = index - 1;
                     position = positions[index];
@@ -92,7 +92,7 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
                 {
                     auto index = std::stoi(indices[1]);
                     if (index < 0)
-                        index = textures.size() + index;
+                        index = static_cast<int>(textures.size()) + index;
                     else
                         index = index - 1;
                     texture = textures[index];
@@ -102,7 +102,7 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
                 {
                     auto index = std::stoi(indices[2]);
                     if (index < 0)
-                        index = normals.size() + index;
+                        index = static_cast<int>(normals.size()) + index;
                     else
                         index = index - 1;
                     normal = normals[index];

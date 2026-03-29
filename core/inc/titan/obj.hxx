@@ -1,10 +1,9 @@
 #pragma once
 
-#include <filesystem>
-#include <istream>
-#include <vector>
-
 #include <glm/glm.hpp>
+
+#include <filesystem>
+#include <vector>
 
 namespace core::obj
 {

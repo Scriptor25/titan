@@ -3,18 +3,18 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_RIGHT_HANDED
 
+#include <titan/obj.hxx>
+#include <titan/result.hxx>
+#include <titan/wrapper/al.hxx>
+#include <titan/wrapper/glfw.hxx>
+#include <titan/wrapper/vk.hxx>
+#include <titan/wrapper/xr.hxx>
+
+#include <glm/glm.hpp>
+
 #include <filesystem>
 #include <string_view>
 #include <vector>
-
-#include <obj.hxx>
-#include <result.hxx>
-#include <wrapper/al.hxx>
-#include <wrapper/glfw.hxx>
-#include <wrapper/vk.hxx>
-#include <wrapper/xr.hxx>
-
-#include <glm/glm.hpp>
 
 namespace core
 {
@@ -51,20 +51,79 @@ namespace core
         glm::mat4 inv_proj;
     };
 
+    struct FormatReference
+    {
+        std::string_view name;
+        VkFormat &format;
+        VkFormatFeatureFlags features;
+    };
+
     class Instance
     {
-        static constexpr std::array VIEW_CONFIGURATION_TYPES
+        static constexpr std::array VK_LAYERS
+        {
+            "VK_LAYER_KHRONOS_validation",
+        };
+
+        static constexpr std::array VK_INSTANCE_EXTENSIONS
+        {
+            VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+        };
+
+        static constexpr std::array VK_DEVICE_EXTENSIONS
+        {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+        };
+
+        static constexpr std::array XR_INSTANCE_EXTENSIONS
+        {
+            XR_EXT_DEBUG_UTILS_EXTENSION_NAME,
+            XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
+            XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME,
+        };
+
+        static constexpr std::array XR_VIEW_CONFIGURATION_TYPES
         {
             XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
             XR_VIEW_CONFIGURATION_TYPE_PRIMARY_MONO,
         };
 
-        static constexpr std::array ENVIRONMENT_BLEND_MODES
+        static constexpr std::array XR_ENVIRONMENT_BLEND_MODES
         {
             XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND,
             XR_ENVIRONMENT_BLEND_MODE_ADDITIVE,
             XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
         };
+
+        static void GlfwDebugCallback(int code, const char *description);
+
+        static VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+            VkDebugUtilsMessageTypeFlagsEXT message_type,
+            const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+            void *user_data);
+
+        static XRAPI_ATTR XrBool32 XRAPI_CALL XrDebugCallback(
+            XrDebugUtilsMessageSeverityFlagsEXT message_severity,
+            XrDebugUtilsMessageTypeFlagsEXT message_types,
+            const XrDebugUtilsMessengerCallbackDataEXT *callback_data,
+            void *user_data);
+
+        static void GetInstanceExtensions(std::vector<const char *> &dst);
+        static void GetDeviceExtensions(std::vector<const char *> &dst);
+
+        static result<> FindFormats(
+            VkPhysicalDevice physical_device,
+            const std::vector<int64_t> &formats,
+            const std::vector<FormatReference> &references);
+
+        static result<uint32_t> FindMemoryType(
+            VkPhysicalDevice physical_device,
+            uint32_t type_filter,
+            VkMemoryPropertyFlags type_flags);
+
+        static std::vector<char> LoadShaderModuleBinary(const std::filesystem::path &path);
 
     public:
         Instance() = default;
@@ -144,8 +203,6 @@ namespace core
 
         result<> RenderFrame();
         result<> RenderLayer(LayerReference &reference);
-
-        static std::vector<char> LoadShaderModuleBinary(const std::filesystem::path &path);
 
     private:
         obj::Mesh m_Mesh;
