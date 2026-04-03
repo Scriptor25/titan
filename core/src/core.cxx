@@ -4,9 +4,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <cstring>
-#include <utility>
-
 core::Application::Application(ApplicationInfo info)
     : m_Info(std::move(info))
 {
@@ -57,16 +54,16 @@ core::result<> core::Application::InitializeGraphics()
     TRY(CreateVkInstance());
     TRY(CreateVkMessenger());
     TRY(GetPhysicalDevice());
+    TRY(GetFormats());
     TRY(CreateWindowSurface());
     TRY(GetQueueFamilyIndices());
     TRY(CreateDevice());
-    TRY(CreateWindowSwapchain());
+    TRY(CreateWindowSwapchainView());
     TRY(GetDeviceQueues());
     TRY(CreateSession());
     TRY(GetViewConfigurationType());
     TRY(GetViewConfigurationViews());
-    TRY(GetFormats());
-    TRY(CreateSwapchains());
+    TRY(CreateSwapchainViews());
     TRY(GetEnvironmentBlendMode());
     TRY(CreateReferenceSpace());
     TRY(CreateRenderPass());
@@ -74,14 +71,14 @@ core::result<> core::Application::InitializeGraphics()
     TRY(CreatePipelineCache());
     TRY(CreateDescriptorPool());
     TRY(CreateDescriptorSetLayouts());
-    TRY(CreateDescriptorSet());
+    TRY(AllocateDescriptorSets());
     TRY(CreatePipelineLayout());
     TRY(CreatePipeline());
     TRY(CreateCommandPools());
-    TRY(CreateCommandBuffers());
+    TRY(AllocateCommandBuffers());
     TRY(CreateSynchronization());
-    TRY(CreateVertexBuffer());
-    TRY(CreateVertexMemory());
+    TRY(CreateBuffers());
+    TRY(AllocateBufferMemory());
     TRY(FillVertexBuffer());
 
     return ok();
@@ -264,6 +261,8 @@ core::result<> core::Application::RenderFrame()
 
     if (session_active && frame_state.shouldRender)
     {
+        TRY(UpdateModel());
+        TRY(RenderThirdEye(frame_state.predictedDisplayTime));
         TRY(RenderLayer(render_layer_info));
 
         render_layer_info.Layers.push_back(
@@ -289,8 +288,7 @@ core::result<> core::Application::RenderFrame()
 
 core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
 {
-    std::vector<XrView> views(m_ViewConfigurationViews.size(), { .type = XR_TYPE_VIEW });
-    XrViewState view_state{ .type = XR_TYPE_VIEW_STATE };
+    auto &projection_views = reference.Views;
 
     const XrViewLocateInfo view_locate_info
     {
@@ -300,73 +298,86 @@ core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
         .space = m_ReferenceSpace,
     };
 
-    uint32_t view_count;
-    if (auto res = xrLocateViews(
-        m_Session,
-        &view_locate_info,
-        &view_state,
+    XrViewState view_state
+    {
+        .type = XR_TYPE_VIEW_STATE,
+    };
+
+    std::vector<XrView> views;
+    TRY(xr::LocateViews(*m_Session, view_locate_info, view_state) >> views);
+
+    projection_views = {
         views.size(),
-        &view_count,
-        views.data()))
-        return error("xrLocateViews => {}", res);
+        { .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW },
+    };
 
-    reference.Views.resize(view_count, { .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
+    std::vector<VkCommandBufferSubmitInfo> command_buffers
+    {
+        views.size(),
+        { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO },
+    };
 
-    std::optional<BlitViewInfo> blit_view_info;
+    const std::array fences
+    {
+        *m_Fence,
+    };
 
     if (auto res = vkWaitForFences(
         m_Device,
-        1,
-        &*m_Fence,
+        fences.size(),
+        fences.data(),
         true,
         std::numeric_limits<uint64_t>::max()))
         return error("vkWaitForFences => {}", res);
 
     if (auto res = vkResetFences(
         m_Device,
-        1,
-        &*m_Fence))
+        fences.size(),
+        fences.data()))
         return error("vkResetFences => {}", res);
 
-    for (uint32_t view_index = 0; view_index < view_count; ++view_index)
+    const XrSwapchainImageAcquireInfo acquire_info
+    {
+        .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
+    };
+
+    const XrSwapchainImageReleaseInfo release_info
+    {
+        .type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO,
+    };
+
+    const XrSwapchainImageWaitInfo wait_info
+    {
+        .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
+        .timeout = XR_INFINITE_DURATION,
+    };
+
+    for (uint32_t view_index = 0; view_index < views.size(); ++view_index)
     {
         const auto &view = views[view_index];
-        const auto &view_configuration_view = m_ViewConfigurationViews[view_index];
 
-        auto &[color, depth, _0, _1] = m_SwapchainViews[view_index];
+        auto &[
+            view_configuration_view,
+            color,
+            depth,
+            buffer,
+            framebuffers
+        ] = m_SwapchainViews[view_index];
 
-        const XrSwapchainImageAcquireInfo swapchain_image_acquire_info
-        {
-            .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
-        };
-
-        uint32_t color_index, depth_index;
-        if (auto res = xrAcquireSwapchainImage(color.Swapchain, &swapchain_image_acquire_info, &color_index))
-            return error("xrAcquireSwapchainImage => {}", res);
-        if (auto res = xrAcquireSwapchainImage(depth.Swapchain, &swapchain_image_acquire_info, &depth_index))
+        uint32_t image_index;
+        if (auto res = xrAcquireSwapchainImage(color.Swapchain, &acquire_info, &image_index))
             return error("xrAcquireSwapchainImage => {}", res);
 
-        const XrSwapchainImageWaitInfo swapchain_image_wait_info
-        {
-            .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
-            .timeout = XR_INFINITE_DURATION,
-        };
-
-        if (auto res = xrWaitSwapchainImage(color.Swapchain, &swapchain_image_wait_info))
-            return error("xrWaitSwapchainImage => {}", res);
-        if (auto res = xrWaitSwapchainImage(depth.Swapchain, &swapchain_image_wait_info))
+        if (auto res = xrWaitSwapchainImage(color.Swapchain, &wait_info))
             return error("xrWaitSwapchainImage => {}", res);
 
-        const auto &pose = view.pose;
-        const auto &fov = view.fov;
+        const auto width = view_configuration_view.recommendedImageRectWidth;
+        const auto height = view_configuration_view.recommendedImageRectHeight;
 
-        const auto &width = view_configuration_view.recommendedImageRectWidth;
-        const auto &height = view_configuration_view.recommendedImageRectHeight;
-
-        reference.Views[view_index] = {
+        projection_views[view_index] = {
             .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-            .pose = pose,
-            .fov = fov,
+            .pose = view.pose,
+            .fov = view.fov,
             .subImage = {
                 .swapchain = color.Swapchain,
                 .imageRect = {
@@ -383,43 +394,26 @@ core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
             },
         };
 
-        if (!blit_view_info)
-            blit_view_info = {
-                .Index = color_index,
-                .Width = width,
-                .Height = height,
-            };
-
-        glm::mat4 model_mat;
-        {
-            static auto begin = std::chrono::high_resolution_clock::now();
-            auto now = std::chrono::high_resolution_clock::now();
-
-            auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
-
-            model_mat = { 1.0f };
-            model_mat = glm::translate(model_mat, glm::vec3(0.0f, 0.0f, 0.0f));
-            model_mat = glm::scale(model_mat, glm::vec3(0.1f));
-            model_mat = glm::rotate(model_mat, delta * glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-            // model_mat = glm::rotate(model_mat, delta * glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 1.0f));
-            // model_mat = glm::translate(model_mat, glm::vec3(-0.5f, -0.5f, -0.5f));
-        }
+        command_buffers[view_index] = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = buffer,
+        };
 
         glm::mat4 view_mat;
         {
             const glm::quat orientation
             {
-                pose.orientation.w,
-                pose.orientation.x,
-                pose.orientation.y,
-                pose.orientation.z,
+                view.pose.orientation.w,
+                view.pose.orientation.x,
+                view.pose.orientation.y,
+                view.pose.orientation.z,
             };
 
             const glm::vec3 position
             {
-                pose.position.x,
-                pose.position.y,
-                pose.position.z,
+                view.pose.position.x,
+                view.pose.position.y,
+                view.pose.position.z,
             };
 
             const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
@@ -430,292 +424,178 @@ core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
 
         glm::mat4 proj_mat;
         {
-            constexpr auto near = 0.01f;
-            constexpr auto far = 100.0f;
+            auto l = NEAR * tanf(view.fov.angleLeft);
+            auto r = NEAR * tanf(view.fov.angleRight);
+            auto b = NEAR * tanf(view.fov.angleDown);
+            auto t = NEAR * tanf(view.fov.angleUp);
 
-            auto l = near * tanf(fov.angleLeft);
-            auto r = near * tanf(fov.angleRight);
-            auto b = near * tanf(fov.angleDown);
-            auto t = near * tanf(fov.angleUp);
-
-            proj_mat = glm::frustumRH_ZO(l, r, t, b, near, far);
+            proj_mat = glm::frustumRH_ZO(l, r, t, b, NEAR, FAR);
         }
 
         const CameraData camera_data
         {
-            .Screen = proj_mat * view_mat * model_mat,
-            .Normal = glm::transpose(glm::inverse(model_mat)),
+            .Screen = proj_mat * view_mat,
+            .Model = m_Model,
+            .Normal = m_Normal,
         };
 
-        TRY(RecordCommandBuffer(view_index, color_index, camera_data));
+        TRY(RecordCommandBuffer(width, height, camera_data, buffer, framebuffers[image_index]));
     }
 
+    const std::array submits
     {
-        std::vector<VkCommandBufferSubmitInfo> command_buffers(view_count);
-        for (uint32_t i = 0; i < view_count; ++i)
-            command_buffers[i] = {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                .commandBuffer = m_SwapchainViews[i].Buffer,
-            };
-
-        const std::array submits
+        VkSubmitInfo2
         {
-            VkSubmitInfo2
-            {
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-                .commandBufferInfoCount = static_cast<uint32_t>(command_buffers.size()),
-                .pCommandBufferInfos = command_buffers.data(),
-            },
-        };
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .commandBufferInfoCount = static_cast<uint32_t>(command_buffers.size()),
+            .pCommandBufferInfos = command_buffers.data(),
+        },
+    };
 
-        if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), m_Fence))
-            return error("vkQueueSubmit2 => {}", res);
-    }
+    if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), m_Fence))
+        return error("vkQueueSubmit2 => {}", res);
 
-    for (std::uint32_t view_index = 0; view_index < view_count; ++view_index)
-    {
-        auto &[color, depth, _0, _1] = m_SwapchainViews[view_index];
-
-        const XrSwapchainImageReleaseInfo swapchain_image_release_info
-        {
-            .type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO,
-        };
-
-        if (auto res = xrReleaseSwapchainImage(color.Swapchain, &swapchain_image_release_info))
+    for (auto &view : m_SwapchainViews)
+        if (auto res = xrReleaseSwapchainImage(view.Color.Swapchain, &release_info))
             return error("xrReleaseSwapchainImage => {}", res);
-        if (auto res = xrReleaseSwapchainImage(depth.Swapchain, &swapchain_image_release_info))
-            return error("xrReleaseSwapchainImage => {}", res);
-    }
-
-    TRY(BlitView(*blit_view_info));
 
     reference.Projection = {
         .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
         .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
                       | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT,
         .space = m_ReferenceSpace,
-        .viewCount = static_cast<uint32_t>(reference.Views.size()),
-        .views = reference.Views.data(),
+        .viewCount = static_cast<uint32_t>(projection_views.size()),
+        .views = projection_views.data(),
     };
 
     return ok();
 }
 
-core::result<> core::Application::BlitView(const BlitViewInfo &info)
+core::result<> core::Application::UpdateModel()
 {
-    auto &[available, finished, fence, buffer] = m_Frames[m_FrameIndex];
+    static auto begin = std::chrono::high_resolution_clock::now();
+    const auto now = std::chrono::high_resolution_clock::now();
+
+    const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
+
+    m_Model = { 1.0f };
+    m_Model = glm::translate(m_Model, glm::vec3(0.0f, 0.0f, 0.0f));
+    m_Model = glm::scale(m_Model, glm::vec3(0.1f));
+    m_Model = glm::rotate(m_Model, delta * glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    // m_Model = glm::rotate(m_Model, delta * glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 1.0f));
+    // m_Model = glm::translate(m_Model, glm::vec3(-0.5f, -0.5f, -0.5f));
+
+    m_Normal = glm::transpose(glm::inverse(m_Model));
+
+    return ok();
+}
+
+core::result<> core::Application::RenderThirdEye(const XrTime time)
+{
+    auto &[
+        available,
+        finished,
+        fence,
+        buffer,
+        framebuffer
+    ] = m_Frames[m_FrameIndex];
     m_FrameIndex = (m_FrameIndex + 1) % m_Frames.size();
+
+    const std::array fences
+    {
+        *fence,
+    };
 
     if (auto res = vkWaitForFences(
         m_Device,
-        1,
-        &*fence,
+        fences.size(),
+        fences.data(),
         true,
         std::numeric_limits<uint64_t>::max()))
         return error("vkWaitForFences => {}", res);
 
     if (auto res = vkResetFences(
         m_Device,
-        1,
-        &*fence))
+        fences.size(),
+        fences.data()))
         return error("vkResetFences => {}", res);
 
-    uint32_t image_index;
-    if (auto res = vkAcquireNextImageKHR(
-        m_Device,
-        m_WindowSwapchain.Swapchain,
-        std::numeric_limits<uint64_t>::max(),
-        available,
-        nullptr,
-        &image_index))
-        return error("vkAcquireNextImageKHR => {}", res);
-
-    if (auto res = vkResetCommandBuffer(buffer, 0))
-        return error("vkResetCommandBuffer => {}", res);
-
-    const VkCommandBufferBeginInfo command_buffer_begin_info
+    const VkAcquireNextImageInfoKHR acquire_info
     {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
+        .swapchain = m_WindowSwapchainView.Color.Swapchain,
+        .timeout = std::numeric_limits<uint64_t>::max(),
+        .semaphore = available,
+        .fence = nullptr,
+        .deviceMask = 1,
     };
 
-    if (auto res = vkBeginCommandBuffer(buffer, &command_buffer_begin_info))
-        return error("vkBeginCommandBuffer => {}", res);
+    uint32_t image_index;
+    if (auto res = vkAcquireNextImage2KHR(m_Device, &acquire_info, &image_index))
+        return error("vkAcquireNextImage2KHR => {}", res);
 
-    auto &src_image = m_SwapchainViews[0].Color.Images[info.Index];
-    auto &dst_image = m_WindowSwapchain.Images[image_index];
-
+    XrSpaceLocation view
     {
-        const VkImageMemoryBarrier2 src_image_memory_barrier
+        .type = XR_TYPE_SPACE_LOCATION,
+    };
+
+    if (auto res = xrLocateSpace(m_ViewSpace, m_ReferenceSpace, time, &view))
+        return error("xrLocateSpace => {}", res);
+
+    int width, height;
+    m_Window.GetFramebufferSize(width, height);
+
+    glm::mat4 view_mat;
+    {
+        glm::quat orientation
         {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
-            .dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image = src_image,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
+            view.pose.orientation.w,
+            view.pose.orientation.x,
+            view.pose.orientation.y,
+            view.pose.orientation.z,
         };
 
-        const VkImageMemoryBarrier2 dst_image_memory_barrier
+        glm::vec3 position
         {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_NONE,
-            .srcAccessMask = VK_ACCESS_2_NONE,
-            .dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
-            .dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image = dst_image,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
+            view.pose.position.x,
+            view.pose.position.y,
+            view.pose.position.z,
         };
 
-        const std::array image_memory_barriers
-        {
-            src_image_memory_barrier,
-            dst_image_memory_barrier,
+        orientation = glm::slerp(m_HeadPose.Orientation, orientation, 0.1f);
+        position = glm::mix(m_HeadPose.Position, position, 0.1f);
+
+        m_HeadPose = {
+            .Orientation = orientation,
+            .Position = position,
         };
 
-        const VkDependencyInfo dependency_info
-        {
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = image_memory_barriers.size(),
-            .pImageMemoryBarriers = image_memory_barriers.data(),
-        };
+        const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
+        const auto translation = glm::translate(glm::mat4(1.0f), -position);
 
-        vkCmdPipelineBarrier2(buffer, &dependency_info);
+        view_mat = rotation * translation;
     }
 
+    glm::mat4 proj_mat;
     {
-        const std::array regions
-        {
-            VkImageBlit2
-            {
-                .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
-                .srcSubresource = {
-                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .mipLevel = 0,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
-                .srcOffsets = {
-                    { 0, 0, 0 },
-                    {
-                        static_cast<int32_t>(info.Width),
-                        static_cast<int32_t>(info.Height),
-                        1,
-                    },
-                },
-                .dstSubresource = {
-                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .mipLevel = 0,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
-                .dstOffsets = {
-                    { 0, 0, 0 },
-                    {
-                        static_cast<int32_t>(m_WindowSwapchain.Width),
-                        static_cast<int32_t>(m_WindowSwapchain.Height),
-                        1,
-                    },
-                },
-            }
-        };
+        proj_mat = glm::perspectiveFovRH_ZO(
+            glm::radians(FOV),
+            static_cast<float>(width),
+            static_cast<float>(height),
+            NEAR,
+            FAR);
 
-        const VkBlitImageInfo2 blit_image_info
-        {
-            .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
-            .srcImage = src_image,
-            .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            .dstImage = dst_image,
-            .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .regionCount = regions.size(),
-            .pRegions = regions.data(),
-            .filter = VK_FILTER_LINEAR,
-        };
-
-        vkCmdBlitImage2(buffer, &blit_image_info);
+        proj_mat[1][1] *= -1.0f;
     }
 
+    const CameraData camera_data
     {
-        const VkImageMemoryBarrier2 src_image_memory_barrier
-        {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
-            .srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
-            .dstAccessMask = VK_ACCESS_2_NONE,
-            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image = src_image,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
+        .Screen = proj_mat * view_mat,
+        .Model = m_Model,
+        .Normal = m_Normal,
+    };
 
-        const VkImageMemoryBarrier2 dst_image_memory_barrier
-        {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT,
-            .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_2_NONE,
-            .dstAccessMask = VK_ACCESS_2_NONE,
-            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image = dst_image,
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
-
-        const std::array image_memory_barriers
-        {
-            src_image_memory_barrier,
-            dst_image_memory_barrier,
-        };
-
-        const VkDependencyInfo dependency_info
-        {
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = image_memory_barriers.size(),
-            .pImageMemoryBarriers = image_memory_barriers.data(),
-        };
-
-        vkCmdPipelineBarrier2(buffer, &dependency_info);
-    }
-
-    if (auto res = vkEndCommandBuffer(buffer))
-        return error("vkEndCommandBuffer => {}", res);
+    TRY(RecordCommandBuffer(width, height, camera_data, buffer, framebuffer));
 
     {
         const std::array wait_semaphores
@@ -761,7 +641,7 @@ core::result<> core::Application::BlitView(const BlitViewInfo &info)
             },
         };
 
-        if (auto res = vkQueueSubmit2(m_TransferQueue, submits.size(), submits.data(), fence))
+        if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), fence))
             return error("vkQueueSubmit2 => {}", res);
     }
 
@@ -773,7 +653,7 @@ core::result<> core::Application::BlitView(const BlitViewInfo &info)
 
         const std::array swapchains
         {
-            *m_WindowSwapchain.Swapchain,
+            *m_WindowSwapchainView.Color.Swapchain,
         };
 
         const VkPresentInfoKHR present_info

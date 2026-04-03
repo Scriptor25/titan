@@ -51,9 +51,9 @@ template<typename T>
 auto operator>>(core::result<T> &&r, T &t)
 {
     return std::move(r).and_then(
-        [&t](auto v)
+        [&t]<typename V>(V &&v)
         {
-            t = std::move(v);
+            t = std::forward<V>(v);
             return core::ok();
         });
 }

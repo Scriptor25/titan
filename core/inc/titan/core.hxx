@@ -1,8 +1,5 @@
 #pragma once
 
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_RIGHT_HANDED
-
 #include <titan/obj.hxx>
 #include <titan/result.hxx>
 #include <titan/wrapper/al.hxx>
@@ -11,6 +8,7 @@
 #include <titan/wrapper/xr.hxx>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <filesystem>
 #include <string_view>
@@ -18,28 +16,55 @@
 
 namespace core
 {
-    struct XrSwapchainInfo
+    struct XrSwapchainReference
     {
         VkFormat Format{};
+
         xr::Swapchain Swapchain;
+
         std::vector<vk::Image> Images;
+        std::vector<vk::DeviceMemory> Memory;
         std::vector<vk::ImageView> Views;
     };
 
     struct XrSwapchainView
     {
-        XrSwapchainInfo Color;
-        XrSwapchainInfo Depth;
+        XrViewConfigurationView View;
+
+        XrSwapchainReference Color;
+        XrSwapchainReference Depth;
+
         vk::CommandBuffer Buffer;
         std::vector<vk::Framebuffer> Framebuffers;
     };
 
-    struct VkSwapchainInfo
+    struct VkSwapchainReference
     {
         VkFormat Format{};
-        uint32_t Width{}, Height{};
+
         vk::SwapchainKHR Swapchain;
+
         std::vector<vk::Image> Images;
+        std::vector<vk::DeviceMemory> Memory;
+        std::vector<vk::ImageView> Views;
+    };
+
+    struct VkSwapchainView
+    {
+        uint32_t Width{}, Height{};
+
+        VkSwapchainReference Color;
+        VkSwapchainReference Depth;
+    };
+
+    struct VkFrameInfo
+    {
+        vk::Semaphore Available;
+        vk::Semaphore Finished;
+        vk::Fence Fence;
+
+        vk::CommandBuffer Buffer;
+        vk::Framebuffer Framebuffer;
     };
 
     struct RenderLayerInfo
@@ -53,6 +78,7 @@ namespace core
     struct CameraData
     {
         glm::mat4 Screen;
+        glm::mat4 Model;
         glm::mat4 Normal;
     };
 
@@ -60,7 +86,8 @@ namespace core
     {
         std::string_view Name;
         VkFormat &Format;
-        VkFormatFeatureFlags Features;
+        VkImageTiling Tiling;
+        VkFormatFeatureFlags2 Features;
     };
 
     struct ApplicationVersion
@@ -85,19 +112,41 @@ namespace core
         uint32_t Present{};
     };
 
-    struct BlitViewInfo
+    struct Pose
     {
-        uint32_t Index;
-        uint32_t Width;
-        uint32_t Height;
+        glm::quat Orientation{ 0.0f, 0.0f, 0.0f, 1.0f };
+        glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
     };
 
-    struct Frame
+    struct VkSwapchainReferenceCreateInfo
     {
-        vk::Semaphore Available;
-        vk::Semaphore Finished;
-        vk::Fence Fence;
-        vk::CommandBuffer Buffer;
+        bool useSwapchain;
+        uint32_t imageCount;
+        VkExtent2D imageExtent;
+        VkFormat imageFormat;
+        VkImageAspectFlags aspectMask;
+        VkImageUsageFlags imageUsage;
+        VkColorSpaceKHR imageColorSpace;
+        VkSharingMode imageSharingMode;
+        VkPresentModeKHR presentMode;
+        VkSurfaceTransformFlagBitsKHR preTransform;
+        uint32_t queueFamilyIndexCount;
+        const uint32_t *pQueueFamilyIndices;
+    };
+
+    struct XrSwapchainReferenceCreateInfo
+    {
+        bool useSwapchain;
+        uint32_t sampleCount;
+        XrSwapchainUsageFlags usageFlags;
+        uint32_t imageCount;
+        VkExtent2D imageExtent;
+        VkFormat imageFormat;
+        VkImageAspectFlags aspectMask;
+        VkImageUsageFlags imageUsage;
+        VkSharingMode imageSharingMode;
+        uint32_t queueFamilyIndexCount;
+        const uint32_t *pQueueFamilyIndices;
     };
 
     class Application
@@ -131,7 +180,6 @@ namespace core
         static constexpr std::array XR_INSTANCE_EXTENSIONS
         {
             XR_EXT_DEBUG_UTILS_EXTENSION_NAME,
-            XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
             XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME,
         };
 
@@ -146,6 +194,22 @@ namespace core
             XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND,
             XR_ENVIRONMENT_BLEND_MODE_ADDITIVE,
             XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+        };
+
+        static constexpr auto FOV = 110.0f;
+        static constexpr auto NEAR = 0.01f;
+        static constexpr auto FAR = 100.0f;
+
+        static constexpr std::array VK_COLOR_FORMATS
+        {
+            VK_FORMAT_R8G8B8A8_SRGB,
+        };
+
+        static constexpr std::array VK_DEPTH_FORMATS
+        {
+            VK_FORMAT_D32_SFLOAT,
+            VK_FORMAT_D32_SFLOAT_S8_UINT,
+            VK_FORMAT_D24_UNORM_S8_UINT,
         };
 
         static void GlfwDebugCallback(int code, const char *description);
@@ -167,7 +231,7 @@ namespace core
 
         static result<> FindFormats(
             VkPhysicalDevice physical_device,
-            const std::vector<int64_t> &formats,
+            const std::vector<VkFormat> &formats,
             const std::vector<FormatReference> &references);
 
         static result<uint32_t> FindMemoryType(
@@ -205,6 +269,7 @@ namespace core
         result<> CreateVkMessenger();
 
         result<> GetPhysicalDevice();
+        result<> GetFormats();
         result<> GetQueueFamilyIndices();
         result<> CreateDevice();
         result<> GetDeviceQueues();
@@ -213,23 +278,19 @@ namespace core
 
         result<> GetViewConfigurationType();
         result<> GetViewConfigurationViews();
-        result<> GetFormats();
-        result<> CreateSwapchains();
+        result<> CreateSwapchainViews();
         result<> GetEnvironmentBlendMode();
         result<> CreateReferenceSpace();
 
         result<> CreateWindowSurface();
-        result<> CreateWindowSwapchain();
+        result<> CreateWindowSwapchainView();
 
-        result<XrSwapchainInfo> CreateSwapchain(
-            const XrViewConfigurationView &view,
-            XrSwapchainUsageFlags usage,
-            VkFormat format,
-            VkImageAspectFlags aspect);
+        result<VkSwapchainReference> CreateSwapchainReference(const VkSwapchainReferenceCreateInfo &create_info);
+        result<XrSwapchainReference> CreateSwapchainReference(const XrSwapchainReferenceCreateInfo &create_info);
 
         result<> CreateDescriptorSetLayouts();
         result<> CreateDescriptorPool();
-        result<> CreateDescriptorSet();
+        result<> AllocateDescriptorSets();
 
         result<> CreateRenderPass();
         result<> CreatePipelineCache();
@@ -239,22 +300,30 @@ namespace core
         result<> CreateFramebuffers();
 
         result<> CreateCommandPools();
-        result<> CreateCommandBuffers();
+        result<> AllocateCommandBuffers();
 
         result<> CreateSynchronization();
 
-        result<> CreateVertexBuffer();
-        result<> CreateVertexMemory();
+        result<> CreateBuffers();
+        result<> AllocateBufferMemory();
         result<> FillVertexBuffer();
 
-        result<> RecordCommandBuffer(uint32_t view_index, uint32_t image_index, const CameraData &camera_data);
+        result<> RecordCommandBuffer(
+            uint32_t width,
+            uint32_t height,
+            const CameraData &camera_data,
+            vk::CommandBuffer &buffer,
+            vk::Framebuffer &
+            framebuffer);
 
         result<> PollEvents();
 
         result<> RenderFrame();
         result<> RenderLayer(RenderLayerInfo &reference);
 
-        result<> BlitView(const BlitViewInfo &info);
+        result<> UpdateModel();
+
+        result<> RenderThirdEye(XrTime time);
 
     protected:
         virtual void OnStart();
@@ -267,6 +336,7 @@ namespace core
         ApplicationInfo m_Info;
 
         obj::Mesh m_Mesh;
+        glm::mat4 m_Model{ 1.0f }, m_Normal{ 1.0f };
 
         glfw::Instance m_GlfwInstance;
         glfw::Window m_Window;
@@ -280,7 +350,6 @@ namespace core
         XrSystemId m_SystemId{};
 
         XrViewConfigurationType m_ViewConfigurationType{};
-        std::vector<XrViewConfigurationView> m_ViewConfigurationViews;
 
         vk::Instance m_VkInstance;
         vk::DebugUtilsMessengerEXT m_VkMessenger;
@@ -292,16 +361,18 @@ namespace core
         VkQueue m_DefaultQueue{}, m_TransferQueue{}, m_PresentQueue{};
 
         vk::SurfaceKHR m_WindowSurface;
-        VkSwapchainInfo m_WindowSwapchain;
+        VkSwapchainView m_WindowSwapchainView;
+        std::vector<VkFrameInfo> m_Frames;
+        uint32_t m_FrameIndex{};
 
         XrSessionState m_SessionState{};
         xr::Session m_Session;
 
-        VkFormat m_ColorFormat{}, m_DepthFormat{};
         std::vector<XrSwapchainView> m_SwapchainViews;
+        vk::Fence m_Fence;
 
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
-        xr::ReferenceSpace m_ReferenceSpace;
+        xr::ReferenceSpace m_ViewSpace, m_ReferenceSpace;
 
         vk::DescriptorPool m_DescriptorPool;
         std::vector<vk::DescriptorSetLayout> m_DescriptorSetLayouts;
@@ -314,11 +385,11 @@ namespace core
 
         vk::CommandPool m_DefaultPool, m_TransferPool;
 
-        vk::Fence m_Fence{};
-        std::vector<Frame> m_Frames{ 4 };
-        uint32_t m_FrameIndex{};
-
         vk::Buffer m_VertexBuffer;
         vk::DeviceMemory m_VertexMemory;
+
+        Pose m_HeadPose;
+
+        VkFormat m_ColorFormat{}, m_DepthFormat{};
     };
 }

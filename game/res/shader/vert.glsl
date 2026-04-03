@@ -2,6 +2,7 @@
 
 layout(push_constant) uniform CameraData {
     mat4 screen_mat;
+    mat4 model_mat;
     mat4 normal_mat;
 };
 
@@ -14,7 +15,7 @@ layout(location = 1) out vec3 output_normal;
 layout(location = 2) out vec2 output_texture;
 
 void main() {
-    vec4 position = screen_mat * vec4(input_position, 1.0);
+    vec4 position = screen_mat * model_mat * vec4(input_position, 1.0);
     gl_Position = position;
 
     output_position = position.xyz / position.w;

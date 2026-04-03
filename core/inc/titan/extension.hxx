@@ -100,6 +100,21 @@ namespace core
                 system_id,
                 view_configuration_type);
         }
+
+        template<typename T = XrView>
+        auto LocateViews(
+            XrSession session,
+            const XrViewLocateInfo &view_locate_info,
+            XrViewState &view_state,
+            const T &value = { .type = XR_TYPE_VIEW })
+        {
+            return Enumerate<T, XrView>(
+                xrLocateViews,
+                value,
+                session,
+                &view_locate_info,
+                &view_state);
+        }
     }
 
     namespace vk

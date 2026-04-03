@@ -19,39 +19,50 @@ void core::Application::GetDeviceExtensions(std::vector<const char *> &dst)
 
 core::result<> core::Application::FindFormats(
     VkPhysicalDevice physical_device,
-    const std::vector<int64_t> &formats,
+    const std::vector<VkFormat> &formats,
     const std::vector<FormatReference> &references)
 {
-    std::map<VkFormat, VkFormatProperties> properties;
-
-    for (const auto format : formats)
-        vkGetPhysicalDeviceFormatProperties(
-            physical_device,
-            static_cast<VkFormat>(format),
-            &properties[static_cast<VkFormat>(format)]);
-
     auto count = 0;
 
     for (const auto format : formats)
-        for (auto &reference : references)
-            if (!reference.Format
-                && properties[static_cast<VkFormat>(format)].optimalTilingFeatures & reference.Features)
-            {
-                reference.Format = static_cast<VkFormat>(format);
-                count++;
-            }
+    {
+        VkFormatProperties2 properties
+        {
+            .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2,
+        };
 
-    if (count >= references.size())
-        return ok();
+        vkGetPhysicalDeviceFormatProperties2(physical_device, format, &properties);
 
-    for (const auto format : formats)
+        auto &format_properties = properties.formatProperties;
+
         for (auto &reference : references)
-            if (!reference.Format
-                && properties[static_cast<VkFormat>(format)].linearTilingFeatures & reference.Features)
+        {
+            if (reference.Format)
+                continue;
+
+            switch (reference.Tiling)
             {
-                reference.Format = static_cast<VkFormat>(format);
-                count++;
+            case VK_IMAGE_TILING_LINEAR:
+                if (format_properties.linearTilingFeatures & reference.Features)
+                {
+                    reference.Format = format;
+                    count++;
+                }
+                break;
+
+            case VK_IMAGE_TILING_OPTIMAL:
+                if (format_properties.optimalTilingFeatures & reference.Features)
+                {
+                    reference.Format = format;
+                    count++;
+                }
+                break;
+
+            default:
+                break;
             }
+        }
+    }
 
     if (count >= references.size())
         return ok();
@@ -66,16 +77,19 @@ core::result<> core::Application::FindFormats(
 
 core::result<uint32_t> core::Application::FindMemoryType(
     VkPhysicalDevice physical_device,
-    uint32_t type_filter,
-    VkMemoryPropertyFlags type_flags)
+    const uint32_t type_filter,
+    const VkMemoryPropertyFlags type_flags)
 {
-    VkPhysicalDeviceMemoryProperties memory_properties;
-    vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
-
-    for (uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i)
+    VkPhysicalDeviceMemoryProperties2 memory_properties
     {
-        auto &[flags, _1] = memory_properties.memoryTypes[i];
-        if (type_filter & 1 << i && type_flags & flags)
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2,
+    };
+    vkGetPhysicalDeviceMemoryProperties2(physical_device, &memory_properties);
+
+    for (uint32_t i = 0; i < memory_properties.memoryProperties.memoryTypeCount; ++i)
+    {
+        auto &[property_flags, heap_index] = memory_properties.memoryProperties.memoryTypes[i];
+        if (type_filter & 1 << i && type_flags & property_flags)
             return i;
     }
 

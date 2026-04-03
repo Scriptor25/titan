@@ -22,6 +22,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL core::Application::VkDebugCallback(
         static_cast<VkDebugUtilsMessageTypeFlagBitsEXT>(message_type),
         callback_data->pMessage) << std::endl;
 
+    if (message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        __builtin_debugtrap();
+
     return VK_FALSE;
 }
 
@@ -54,6 +57,9 @@ XRAPI_ATTR XrBool32 XRAPI_CALL core::Application::XrDebugCallback(
         message_severity_map.at(message_severity),
         message_type_map.at(message_types),
         callback_data->message) << std::endl;
+
+    if (message_severity == XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        __builtin_debugtrap();
 
     return XR_FALSE;
 }

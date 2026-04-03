@@ -406,7 +406,7 @@ namespace core::vk
     public:
         CommandBuffer() = default;
 
-        static result<CommandBuffer> create(
+        static result<CommandBuffer> allocate(
             VkDevice device,
             const VkCommandBufferAllocateInfo &allocate_info)
         {
@@ -419,7 +419,7 @@ namespace core::vk
             return CommandBuffer(device, allocate_info.commandPool, value);
         }
 
-        static result<std::vector<CommandBuffer>> create2(
+        static result<std::vector<CommandBuffer>> allocate2(
             VkDevice device,
             const VkCommandBufferAllocateInfo &allocate_info)
         {
@@ -492,7 +492,7 @@ namespace core::vk
     public:
         DescriptorSet() = default;
 
-        static result<DescriptorSet> create(VkDevice device, const VkDescriptorSetAllocateInfo &allocate_info)
+        static result<DescriptorSet> allocate(VkDevice device, const VkDescriptorSetAllocateInfo &allocate_info)
         {
             VkDescriptorSet value;
             if (auto res = vkAllocateDescriptorSets(device, &allocate_info, &value))
@@ -503,7 +503,7 @@ namespace core::vk
             return DescriptorSet(device, allocate_info.descriptorPool, value);
         }
 
-        static result<std::vector<DescriptorSet>> create2(
+        static result<std::vector<DescriptorSet>> allocate2(
             VkDevice device,
             const VkDescriptorSetAllocateInfo &allocate_info)
         {
@@ -623,7 +623,7 @@ namespace core::vk
             return Pipeline(device, value);
         }
 
-        static result<std::vector<Pipeline>> create2(
+        static result<std::vector<Pipeline>> create(
             VkDevice device,
             VkPipelineCache cache,
             const std::vector<VkGraphicsPipelineCreateInfo> &create_infos)
@@ -662,7 +662,7 @@ namespace core::vk
             return Pipeline(device, value);
         }
 
-        static result<std::vector<Pipeline>> create2(
+        static result<std::vector<Pipeline>> create(
             VkDevice device,
             VkPipelineCache cache,
             const std::vector<VkComputePipelineCreateInfo> &create_infos)

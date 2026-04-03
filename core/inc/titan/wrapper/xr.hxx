@@ -76,6 +76,12 @@ namespace core
     }
 
     template<>
+    constexpr const char *typename_string<XrView>()
+    {
+        return "XrView";
+    }
+
+    template<>
     constexpr const char *typename_string<XrViewConfigurationType>()
     {
         return "XrViewConfigurationType";
