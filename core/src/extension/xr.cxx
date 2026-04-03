@@ -1,4 +1,4 @@
-#include <titan/extension.hxx>
+#include <titan/utils.hxx>
 
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
     XrInstance instance,

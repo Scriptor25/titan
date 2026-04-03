@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/utils.hxx>
 
 core::result<core::VkSwapchainReference> core::Application::CreateSwapchainReference(
     const VkSwapchainReferenceCreateInfo &create_info)
@@ -37,10 +38,11 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
             .clipped = true,
         };
 
-        TRY_CAST(
-            vk::SwapchainKHR::create(m_Device, swapchain_create_info) >> reference.Swapchain,
-            VkSwapchainReference);
-        TRY_CAST(vk::GetSwapchainImagesKHR(m_Device, reference.Swapchain) | set_images, VkSwapchainReference);
+        if (auto res = vk::SwapchainKHR::create(m_Device, swapchain_create_info) >> reference.Swapchain)
+            return error<VkSwapchainReference>(std::move(res));
+
+        if (auto res = vk::GetSwapchainImagesKHR(m_Device, reference.Swapchain) & set_images)
+            return error<VkSwapchainReference>(std::move(res));
     }
     else
     {
@@ -73,7 +75,8 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             };
 
-            TRY_CAST(vk::Image::create(m_Device, image_create_info) >> image, VkSwapchainReference);
+            if (auto res = vk::Image::create(m_Device, image_create_info) >> image)
+                return error<VkSwapchainReference>(std::move(res));
 
             const VkImageMemoryRequirementsInfo2 memory_requirements_info
             {
@@ -90,14 +93,12 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
             auto &memory_requirements = memory_requirements2.memoryRequirements;
 
             uint32_t memory_type_index;
-            TRY_CAST(
-                FindMemoryType(
-                    m_PhysicalDevice,
-                    memory_requirements.memoryTypeBits,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                >> memory_type_index,
-                VkSwapchainReference
-            );
+            if (auto res = FindMemoryType(
+                               m_PhysicalDevice,
+                               memory_requirements.memoryTypeBits,
+                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                           >> memory_type_index)
+                return error<VkSwapchainReference>(std::move(res));
 
             const VkMemoryAllocateInfo allocate_info
             {
@@ -106,21 +107,19 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
                 .memoryTypeIndex = memory_type_index,
             };
 
-            TRY_CAST(vk::DeviceMemory::create(m_Device, allocate_info) >> memory, VkSwapchainReference);
+            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory)
+                return error<VkSwapchainReference>(std::move(res));
 
-            const std::array bind_infos
+            const VkBindImageMemoryInfo bind_info
             {
-                VkBindImageMemoryInfo
-                {
-                    .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
-                    .image = image,
-                    .memory = memory,
-                    .memoryOffset = 0,
-                },
+                .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+                .image = image,
+                .memory = memory,
+                .memoryOffset = 0,
             };
 
-            if (auto res = vkBindImageMemory2(m_Device, bind_infos.size(), bind_infos.data()))
-                return error<VkSwapchainReference>("vkBindImageMemory2 => {}", res);
+            if (auto res = vk::BindImageMemory2(m_Device, bind_info))
+                return error<VkSwapchainReference>(std::move(res));
         }
     }
 
@@ -149,7 +148,8 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
             },
         };
 
-        TRY_CAST(vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i], VkSwapchainReference);
+        if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i])
+            return error<VkSwapchainReference>(std::move(res));
     }
 
     return reference;

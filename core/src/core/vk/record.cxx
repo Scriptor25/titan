@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/utils.hxx>
 
 core::result<> core::Application::RecordCommandBuffer(
     const uint32_t width,
@@ -7,16 +8,16 @@ core::result<> core::Application::RecordCommandBuffer(
     vk::CommandBuffer &buffer,
     vk::Framebuffer &framebuffer)
 {
-    if (auto res = vkResetCommandBuffer(buffer, 0))
-        return error("vkResetCommandBuffer => {}", res);
+    if (auto res = vk::ResetCommandBuffer(buffer, 0))
+        return res;
 
     const VkCommandBufferBeginInfo command_buffer_begin_info
     {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
 
-    if (auto res = vkBeginCommandBuffer(buffer, &command_buffer_begin_info))
-        return error("vkBeginCommandBuffer => {}", res);
+    if (auto res = vk::BeginCommandBuffer(buffer, command_buffer_begin_info))
+        return res;
 
     const VkViewport viewport
     {
@@ -129,8 +130,5 @@ core::result<> core::Application::RecordCommandBuffer(
 
     vkCmdEndRenderPass2(buffer, &subpass_end_info);
 
-    if (auto res = vkEndCommandBuffer(buffer))
-        return error("vkEndCommandBuffer => {}", res);
-
-    return ok();
+    return vk::EndCommandBuffer(buffer);
 }

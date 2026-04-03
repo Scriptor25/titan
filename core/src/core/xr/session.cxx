@@ -12,12 +12,12 @@ core::result<> core::Application::CreateSession()
         .queueIndex = 0,
     };
 
-    const XrSessionCreateInfo session_create_info
+    const XrSessionCreateInfo create_info
     {
         .type = XR_TYPE_SESSION_CREATE_INFO,
         .next = &graphics_binding_vulkan,
         .systemId = m_SystemId,
     };
 
-    return xr::Session::create(m_XrInstance, session_create_info) >> m_Session;
+    return xr::Session::create(m_XrInstance, create_info) >> m_Session;
 }

@@ -1,13 +1,15 @@
 #include <titan/core.hxx>
+#include <titan/utils.hxx>
 
 static const VkSurfaceFormatKHR &find_surface_format(
-    const std::vector<VkSurfaceFormatKHR> &formats,
+    const std::vector<VkSurfaceFormat2KHR> &formats,
     const VkFormat request)
 {
     for (auto &format : formats)
-        if (format.format == request && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            return format;
-    return formats[0];
+        if (format.surfaceFormat.format == request
+            && format.surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            return format.surfaceFormat;
+    return formats[0].surfaceFormat;
 }
 
 static VkPresentModeKHR select_present_mode(const std::vector<VkPresentModeKHR> &modes)
@@ -53,28 +55,19 @@ core::result<> core::Application::CreateWindowSwapchainView()
         .surface = m_WindowSurface,
     };
 
-    VkSurfaceCapabilities2KHR surface_capabilities
-    {
-        .sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR,
-    };
-    if (auto res = vkGetPhysicalDeviceSurfaceCapabilities2KHR(m_PhysicalDevice, &surface_info, &surface_capabilities))
-        return error("vkGetPhysicalDeviceSurfaceCapabilitiesKHR => {}", res);
+    VkSurfaceCapabilities2KHR surface_capabilities;
+    if (auto res = vk::GetPhysicalDeviceSurfaceCapabilities2KHR(m_PhysicalDevice, surface_info) >> surface_capabilities)
+        return res;
 
     auto &capabilities = surface_capabilities.surfaceCapabilities;
 
-    std::vector<VkSurfaceFormatKHR> surface_formats;
-    auto set_surface_formats = [&surface_formats](std::vector<VkSurfaceFormat2KHR> &&formats)
-    {
-        surface_formats.resize(formats.size());
-        for (uint32_t i = 0; i < formats.size(); ++i)
-            surface_formats[i] = formats[i].surfaceFormat;
-        return ok();
-    };
-
-    TRY(vk::GetPhysicalDeviceSurfaceFormats2KHR(m_PhysicalDevice, surface_info) | set_surface_formats);
+    std::vector<VkSurfaceFormat2KHR> surface_formats;
+    if (auto res = vk::GetPhysicalDeviceSurfaceFormats2KHR(m_PhysicalDevice, surface_info) >> surface_formats)
+        return res;
 
     std::vector<VkPresentModeKHR> present_modes;
-    TRY(vk::GetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_WindowSurface) >> present_modes);
+    if (auto res = vk::GetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_WindowSurface) >> present_modes)
+        return res;
 
     const auto &[color_format, color_space] = find_surface_format(surface_formats, m_ColorFormat);
     const auto presentMode = select_present_mode(present_modes);
@@ -122,7 +115,8 @@ core::result<> core::Application::CreateWindowSwapchainView()
             .pQueueFamilyIndices = queue_family_indices.data(),
         };
 
-        TRY(CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Color);
+        if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Color)
+            return res;
     }
 
     {
@@ -139,7 +133,8 @@ core::result<> core::Application::CreateWindowSwapchainView()
             .pQueueFamilyIndices = queue_family_indices.data(),
         };
 
-        TRY(CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Depth);
+        if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Depth)
+            return res;
     }
 
     return ok();

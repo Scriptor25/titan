@@ -67,7 +67,7 @@ namespace core
         vk::Framebuffer Framebuffer;
     };
 
-    struct RenderLayerInfo
+    struct LayerInfo
     {
         XrTime PredictedDisplayTime;
         std::vector<XrCompositionLayerBaseHeader *> Layers;
@@ -239,7 +239,8 @@ namespace core
             uint32_t type_filter,
             VkMemoryPropertyFlags type_flags);
 
-        static std::vector<char> LoadShaderModuleBinary(const std::filesystem::path &path);
+        static std::vector<char> LoadBinary(const std::filesystem::path &path);
+        static void StoreBinary(const std::filesystem::path &path, const std::vector<char> &data);
 
     public:
         explicit Application(ApplicationInfo info);
@@ -252,7 +253,7 @@ namespace core
             std::string_view exec,
             const std::vector<std::string_view> &args);
 
-        void Terminate();
+        void Terminate() const;
 
         result<bool> Spin();
 
@@ -294,6 +295,7 @@ namespace core
 
         result<> CreateRenderPass();
         result<> CreatePipelineCache();
+        result<> StorePipelineCache();
         result<> CreatePipelineLayout();
         result<> CreatePipeline();
 
@@ -319,18 +321,18 @@ namespace core
         result<> PollEvents();
 
         result<> RenderFrame();
-        result<> RenderLayer(RenderLayerInfo &reference);
+        result<> RenderLayer(LayerInfo &reference);
 
         result<> UpdateModel();
 
         result<> RenderThirdEye(XrTime time);
 
     protected:
-        virtual void OnStart();
-        virtual void PreFrame();
-        virtual void OnFrame();
-        virtual void PostFrame();
-        virtual void OnStop();
+        virtual result<> OnStart();
+        virtual result<> PreFrame();
+        virtual result<> OnFrame();
+        virtual result<> PostFrame();
+        virtual result<> OnStop();
 
     private:
         ApplicationInfo m_Info;

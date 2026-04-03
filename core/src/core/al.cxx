@@ -2,10 +2,18 @@
 
 core::result<> core::Application::InitializeAudio()
 {
-    TRY(al::Device::Open() >> m_AlDevice);
-    TRY(al::Context::Create(m_AlDevice) >> m_AlContext);
-
-    m_AlContext.MakeCurrent();
-
-    return ok();
+    return ok()
+           & [&]
+           {
+               return al::Device::Open() >> m_AlDevice;
+           }
+           & [&]
+           {
+               return al::Context::Create(m_AlDevice) >> m_AlContext;
+           }
+           & [&]
+           {
+               m_AlContext.MakeCurrent();
+               return ok();
+           };
 }

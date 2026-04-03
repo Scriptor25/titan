@@ -96,7 +96,7 @@ core::result<uint32_t> core::Application::FindMemoryType(
     return error<uint32_t>("failed to find any suitable memory type.");
 }
 
-std::vector<char> core::Application::LoadShaderModuleBinary(const std::filesystem::path &path)
+std::vector<char> core::Application::LoadBinary(const std::filesystem::path &path)
 {
     std::ifstream stream(path, std::ios::binary | std::ios::ate);
     if (!stream)
@@ -109,4 +109,13 @@ std::vector<char> core::Application::LoadShaderModuleBinary(const std::filesyste
     stream.read(binary.data(), static_cast<std::streamsize>(binary.size()));
 
     return binary;
+}
+
+void core::Application::StoreBinary(const std::filesystem::path &path, const std::vector<char> &data)
+{
+    std::ofstream stream(path, std::ios::binary);
+    if (!stream)
+        return;
+
+    stream.write(data.data(), static_cast<std::streamsize>(data.size()));
 }

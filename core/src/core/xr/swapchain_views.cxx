@@ -40,7 +40,8 @@ core::result<> core::Application::CreateSwapchainViews()
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             };
 
-            TRY(CreateSwapchainReference(create_info) >> color);
+            if (auto res = CreateSwapchainReference(create_info) >> color)
+                return res;
         }
 
         {
@@ -60,7 +61,8 @@ core::result<> core::Application::CreateSwapchainViews()
                 .pQueueFamilyIndices = queue_family_indices.data(),
             };
 
-            TRY(CreateSwapchainReference(create_info) >> depth);
+            if (auto res = CreateSwapchainReference(create_info) >> depth)
+                return res;
         }
     }
 

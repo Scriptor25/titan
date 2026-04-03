@@ -4,8 +4,8 @@ core::result<> core::Application::CreatePipeline()
 {
     vk::ShaderModule shader_module_vertex, shader_module_fragment;
 
-    auto shader_module_vertex_binary = LoadShaderModuleBinary("res/shader/vert.spv");
-    auto shader_module_fragment_binary = LoadShaderModuleBinary("res/shader/frag.spv");
+    auto shader_module_vertex_binary = LoadBinary("res/shader/vert.spv");
+    auto shader_module_fragment_binary = LoadBinary("res/shader/frag.spv");
 
     const VkShaderModuleCreateInfo shader_module_vertex_create_info
     {
@@ -21,8 +21,10 @@ core::result<> core::Application::CreatePipeline()
         .pCode = reinterpret_cast<const uint32_t *>(shader_module_fragment_binary.data()),
     };
 
-    TRY(vk::ShaderModule::create(m_Device, shader_module_vertex_create_info) >> shader_module_vertex);
-    TRY(vk::ShaderModule::create(m_Device, shader_module_fragment_create_info) >> shader_module_fragment);
+    if (auto res = vk::ShaderModule::create(m_Device, shader_module_vertex_create_info) >> shader_module_vertex)
+        return res;
+    if (auto res = vk::ShaderModule::create(m_Device, shader_module_fragment_create_info) >> shader_module_fragment)
+        return res;
 
     const std::array stage_create_info
     {

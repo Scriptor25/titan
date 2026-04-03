@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/utils.hxx>
 
 #include <set>
 
@@ -6,7 +7,7 @@ core::result<> core::Application::GetQueueFamilyIndices()
 {
     std::optional<uint32_t> index_default, index_graphics, index_compute, index_transfer, index_present;
 
-    auto queue_family_properties = vk::GetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice);
+    auto queue_family_properties = vk::GetPhysicalDeviceQueueFamilyProperties2(m_PhysicalDevice);
 
     for (uint32_t i = 0; i < queue_family_properties.size(); ++i)
     {

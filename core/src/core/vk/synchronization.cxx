@@ -13,7 +13,8 @@ core::result<> core::Application::CreateSynchronization()
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
 
-    TRY(vk::Fence::create(m_Device, fence_create_info) >> m_Fence);
+    if (auto res = vk::Fence::create(m_Device, fence_create_info) >> m_Fence)
+        return res;
 
     for (auto &[
              available,
@@ -23,9 +24,12 @@ core::result<> core::Application::CreateSynchronization()
              framebuffer
          ] : m_Frames)
     {
-        TRY(vk::Semaphore::create(m_Device, semaphore_create_info) >> available);
-        TRY(vk::Semaphore::create(m_Device, semaphore_create_info) >> finished);
-        TRY(vk::Fence::create(m_Device, fence_create_info) >> fence);
+        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> available)
+            return res;
+        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> finished)
+            return res;
+        if (auto res = vk::Fence::create(m_Device, fence_create_info) >> fence)
+            return res;
     }
 
     return ok();

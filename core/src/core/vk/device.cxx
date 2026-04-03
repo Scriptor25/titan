@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/utils.hxx>
 
 #include <set>
 
@@ -27,11 +28,7 @@ core::result<> core::Application::CreateDevice()
                 .pQueuePriorities = &queue_priority,
             });
 
-    VkPhysicalDeviceFeatures2 physical_device_features
-    {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-    };
-    vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &physical_device_features);
+    auto physical_device_features = vk::GetPhysicalDeviceFeatures2(m_PhysicalDevice);
 
     const VkPhysicalDeviceSynchronization2Features synchronization2_features
     {
@@ -52,7 +49,7 @@ core::result<> core::Application::CreateDevice()
         .pEnabledFeatures = &physical_device_features.features,
     };
 
-    const XrVulkanDeviceCreateInfoKHR vk_device_create_info
+    const XrVulkanDeviceCreateInfoKHR create_info
     {
         .type = XR_TYPE_VULKAN_DEVICE_CREATE_INFO_KHR,
         .systemId = m_SystemId,
@@ -61,13 +58,8 @@ core::result<> core::Application::CreateDevice()
         .vulkanCreateInfo = &device_create_info,
     };
 
-    VkDevice vk_device;
-    VkResult vk_result;
-
-    if (auto res = xrCreateVulkanDeviceKHR(m_XrInstance, &vk_device_create_info, &vk_device, &vk_result);
-        res || vk_result)
-        return error("xrCreateVulkanDeviceKHR => {}, {}", res, vk_result);
-
-    m_Device = vk::Device::wrap(vk_device);
-    return ok();
+    return xr::CreateVulkanDeviceKHR(
+               m_XrInstance,
+               create_info)
+           >> m_Device;
 }

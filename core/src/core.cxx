@@ -1,5 +1,6 @@
 #include <titan/core.hxx>
 #include <titan/log.hxx>
+#include <titan/utils.hxx>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -16,16 +17,17 @@ core::result<> core::Application::Initialize(const std::string_view exec, const 
 
     m_Mesh = obj::Open("res/mesh/teapot.obj");
 
-    TRY(InitializeWindow());
-    TRY(InitializeAudio());
-    TRY(InitializeGraphics());
+    if (auto res = InitializeWindow())
+        return res;
+    if (auto res = InitializeAudio())
+        return res;
+    if (auto res = InitializeGraphics())
+        return res;
 
-    OnStart();
-
-    return ok();
+    return OnStart();
 }
 
-void core::Application::Terminate()
+void core::Application::Terminate() const
 {
     m_Window.Close();
 }
@@ -36,52 +38,61 @@ core::result<bool> core::Application::Spin()
 
     if (m_Window.ShouldClose())
     {
-        OnStop();
+        if (auto res = OnStop())
+            return error<bool>(std::move(res));
+
+        if (auto res = vkDeviceWaitIdle(m_Device))
+            return error<bool>("vkDeviceWaitIdle => {}", res);
+
+        if (auto res = StorePipelineCache())
+            return error<bool>(std::move(res));
+
         return false;
     }
 
-    TRY_CAST(PollEvents(), bool);
-    TRY_CAST(RenderFrame(), bool);
+    if (auto res = PollEvents())
+        return error<bool>(std::move(res));
+    if (auto res = RenderFrame())
+        return error<bool>(std::move(res));
 
     return true;
 }
 
 core::result<> core::Application::InitializeGraphics()
 {
-    TRY(CreateXrInstance());
-    TRY(CreateXrMessenger());
-    TRY(GetSystemId());
-    TRY(CreateVkInstance());
-    TRY(CreateVkMessenger());
-    TRY(GetPhysicalDevice());
-    TRY(GetFormats());
-    TRY(CreateWindowSurface());
-    TRY(GetQueueFamilyIndices());
-    TRY(CreateDevice());
-    TRY(CreateWindowSwapchainView());
-    TRY(GetDeviceQueues());
-    TRY(CreateSession());
-    TRY(GetViewConfigurationType());
-    TRY(GetViewConfigurationViews());
-    TRY(CreateSwapchainViews());
-    TRY(GetEnvironmentBlendMode());
-    TRY(CreateReferenceSpace());
-    TRY(CreateRenderPass());
-    TRY(CreateFramebuffers());
-    TRY(CreatePipelineCache());
-    TRY(CreateDescriptorPool());
-    TRY(CreateDescriptorSetLayouts());
-    TRY(AllocateDescriptorSets());
-    TRY(CreatePipelineLayout());
-    TRY(CreatePipeline());
-    TRY(CreateCommandPools());
-    TRY(AllocateCommandBuffers());
-    TRY(CreateSynchronization());
-    TRY(CreateBuffers());
-    TRY(AllocateBufferMemory());
-    TRY(FillVertexBuffer());
-
-    return ok();
+    return ok()
+           & WRAP(CreateXrInstance)
+           & WRAP(CreateXrMessenger)
+           & WRAP(GetSystemId)
+           & WRAP(CreateVkInstance)
+           & WRAP(CreateVkMessenger)
+           & WRAP(GetPhysicalDevice)
+           & WRAP(GetFormats)
+           & WRAP(CreateWindowSurface)
+           & WRAP(GetQueueFamilyIndices)
+           & WRAP(CreateDevice)
+           & WRAP(CreateWindowSwapchainView)
+           & WRAP(GetDeviceQueues)
+           & WRAP(CreateSession)
+           & WRAP(GetViewConfigurationType)
+           & WRAP(GetViewConfigurationViews)
+           & WRAP(CreateSwapchainViews)
+           & WRAP(GetEnvironmentBlendMode)
+           & WRAP(CreateReferenceSpace)
+           & WRAP(CreateRenderPass)
+           & WRAP(CreateFramebuffers)
+           & WRAP(CreatePipelineCache)
+           & WRAP(CreateDescriptorPool)
+           & WRAP(CreateDescriptorSetLayouts)
+           & WRAP(AllocateDescriptorSets)
+           & WRAP(CreatePipelineLayout)
+           & WRAP(CreatePipeline)
+           & WRAP(CreateCommandPools)
+           & WRAP(AllocateCommandBuffers)
+           & WRAP(CreateSynchronization)
+           & WRAP(CreateBuffers)
+           & WRAP(AllocateBufferMemory)
+           & WRAP(FillVertexBuffer);
 }
 
 core::result<> core::Application::PollEvents()
@@ -222,23 +233,17 @@ core::result<> core::Application::PollEvents()
 
 core::result<> core::Application::RenderFrame()
 {
-    const XrFrameWaitInfo frame_wait_info
+    const XrFrameWaitInfo wait_info
     {
         .type = XR_TYPE_FRAME_WAIT_INFO,
     };
 
-    XrFrameState frame_state
-    {
-        .type = XR_TYPE_FRAME_STATE,
-        .predictedDisplayTime = {},
-        .predictedDisplayPeriod = {},
-        .shouldRender = {},
-    };
-
-    if (auto res = xrWaitFrame(m_Session, &frame_wait_info, &frame_state))
+    XrFrameState frame_state{ .type = XR_TYPE_FRAME_STATE };
+    if (auto res = xrWaitFrame(m_Session, &wait_info, &frame_state))
         return error("xrWaitFrame => {}", res);
 
-    PreFrame();
+    if (auto res = PreFrame())
+        return res;
 
     const XrFrameBeginInfo frame_begin_info
     {
@@ -248,9 +253,10 @@ core::result<> core::Application::RenderFrame()
     if (auto res = xrBeginFrame(m_Session, &frame_begin_info))
         return error("xrBeginFrame => {}", res);
 
-    OnFrame();
+    if (auto res = OnFrame())
+        return res;
 
-    RenderLayerInfo render_layer_info
+    LayerInfo layer_info
     {
         .PredictedDisplayTime = frame_state.predictedDisplayTime,
     };
@@ -261,12 +267,14 @@ core::result<> core::Application::RenderFrame()
 
     if (session_active && frame_state.shouldRender)
     {
-        TRY(UpdateModel());
-        TRY(RenderThirdEye(frame_state.predictedDisplayTime));
-        TRY(RenderLayer(render_layer_info));
+        if (auto res = UpdateModel())
+            return res;
+        if (auto res = RenderThirdEye(frame_state.predictedDisplayTime))
+            return res;
+        if (auto res = RenderLayer(layer_info))
+            return res;
 
-        render_layer_info.Layers.push_back(
-            reinterpret_cast<XrCompositionLayerBaseHeader *>(&render_layer_info.Projection));
+        layer_info.Layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer_info.Projection));
     }
 
     const XrFrameEndInfo frame_end_info
@@ -274,19 +282,17 @@ core::result<> core::Application::RenderFrame()
         .type = XR_TYPE_FRAME_END_INFO,
         .displayTime = frame_state.predictedDisplayTime,
         .environmentBlendMode = m_EnvironmentBlendMode,
-        .layerCount = static_cast<uint32_t>(render_layer_info.Layers.size()),
-        .layers = render_layer_info.Layers.data(),
+        .layerCount = static_cast<uint32_t>(layer_info.Layers.size()),
+        .layers = layer_info.Layers.data(),
     };
 
     if (auto res = xrEndFrame(m_Session, &frame_end_info))
         return error("xrEndFrame => {}", res);
 
-    PostFrame();
-
-    return ok();
+    return PostFrame();
 }
 
-core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
+core::result<> core::Application::RenderLayer(LayerInfo &reference)
 {
     auto &projection_views = reference.Views;
 
@@ -304,7 +310,8 @@ core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
     };
 
     std::vector<XrView> views;
-    TRY(xr::LocateViews(*m_Session, view_locate_info, view_state) >> views);
+    if (auto res = xr::LocateViews(*m_Session, view_locate_info, view_state) >> views)
+        return res;
 
     projection_views = {
         views.size(),
@@ -439,7 +446,8 @@ core::result<> core::Application::RenderLayer(RenderLayerInfo &reference)
             .Normal = m_Normal,
         };
 
-        TRY(RecordCommandBuffer(width, height, camera_data, buffer, framebuffers[image_index]));
+        if (auto res = RecordCommandBuffer(width, height, camera_data, buffer, framebuffers[image_index]))
+            return res;
     }
 
     const std::array submits
@@ -595,7 +603,8 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
         .Normal = m_Normal,
     };
 
-    TRY(RecordCommandBuffer(width, height, camera_data, buffer, framebuffer));
+    if (auto res = RecordCommandBuffer(width, height, camera_data, buffer, framebuffer))
+        return res;
 
     {
         const std::array wait_semaphores
@@ -673,22 +682,27 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
     return ok();
 }
 
-void core::Application::OnStart()
+core::result<> core::Application::OnStart()
 {
+    return ok();
 }
 
-void core::Application::PreFrame()
+core::result<> core::Application::PreFrame()
 {
+    return ok();
 }
 
-void core::Application::OnFrame()
+core::result<> core::Application::OnFrame()
 {
+    return ok();
 }
 
-void core::Application::PostFrame()
+core::result<> core::Application::PostFrame()
 {
+    return ok();
 }
 
-void core::Application::OnStop()
+core::result<> core::Application::OnStop()
 {
+    return ok();
 }

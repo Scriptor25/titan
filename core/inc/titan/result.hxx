@@ -2,14 +2,195 @@
 
 #include <expected>
 #include <format>
+#include <functional>
 
-#define TRY(EXP) if (auto res = (EXP); !res) return res;
-#define TRY_CAST(EXP, TY) if (auto res = (EXP); !res) return error<TY>(std::move(res));
+#define WRAP(FN) ([&]{ return (FN)(); })
 
 namespace core
 {
     template<typename T = void>
-    using result = std::expected<T, std::string>;
+    class result;
+
+    template<typename>
+    struct is_result_t : std::false_type
+    {
+    };
+
+    template<typename T>
+    struct is_result_t<result<T>> : std::true_type
+    {
+    };
+
+    template<typename T>
+    concept result_type = is_result_t<T>::value;
+
+    template<>
+    class result<void>
+    {
+    public:
+        using value_type = std::expected<void, std::string>;
+
+        result() = default;
+
+        result(value_type &&value)
+            : value(std::move(value))
+        {
+        }
+
+        result(const value_type &value)
+            : value(value)
+        {
+        }
+
+        result(result &&other) noexcept
+            : value(std::move(other.value))
+        {
+        }
+
+        result(const result &other)
+            : value(other.value)
+        {
+        }
+
+        result &operator=(result &&other) noexcept
+        {
+            std::swap(value, other.value);
+            return *this;
+        }
+
+        result &operator=(const result &other)
+        {
+            value = other.value;
+            return *this;
+        }
+
+        explicit operator bool() const
+        {
+            return !value;
+        }
+
+        template<typename F>
+        constexpr auto and_then(F &&f)
+        {
+            using R = std::invoke_result_t<F>;
+
+            return R
+            {
+                value.and_then(
+                    [&f]
+                    {
+                        return std::invoke(std::forward<F>(f)).value;
+                    })
+            };
+        }
+
+        template<typename F>
+        constexpr auto or_else(F &&f)
+        {
+            using R = std::invoke_result_t<F>;
+
+            return R
+            {
+                value.or_else(
+                    [&f]
+                    {
+                        return std::invoke(std::forward<F>(f)).value;
+                    })
+            };
+        }
+
+        value_type value;
+    };
+
+    template<typename T>
+    class result
+    {
+    public:
+        using value_type = std::expected<T, std::string>;
+
+        result() = default;
+
+        result(T &&value)
+            : value(std::forward<T>(value))
+        {
+        }
+
+        result(const T &value)
+            : value(value)
+        {
+        }
+
+        result(value_type &&value)
+            : value(std::move(value))
+        {
+        }
+
+        result(const value_type &value)
+            : value(value)
+        {
+        }
+
+        result(result &&other) noexcept
+            : value(std::move(other.value))
+        {
+        }
+
+        result(const result &other)
+            : value(other.value)
+        {
+        }
+
+        result &operator=(result &&other) noexcept
+        {
+            std::swap(value, other.value);
+            return *this;
+        }
+
+        result &operator=(const result &other)
+        {
+            value = other.value;
+            return *this;
+        }
+
+        explicit operator bool() const
+        {
+            return !value;
+        }
+
+        template<typename F>
+        constexpr auto and_then(F &&f)
+        {
+            using R = std::invoke_result_t<F, T>;
+            static_assert(result_type<R>);
+
+            return R
+            {
+                std::move(value).and_then(
+                    [&f]<typename V>(V &&v)
+                    {
+                        return std::invoke(std::forward<F>(f), std::forward<V>(v)).value;
+                    })
+            };
+        }
+
+        template<typename F>
+        constexpr auto or_else(F &&f)
+        {
+            using R = std::invoke_result_t<F, T>;
+            static_assert(result_type<R>);
+
+            return R
+            {
+                value.or_else(
+                    [&f]<typename V>(V &&v)
+                    {
+                        return std::invoke(std::forward<F>(f), std::forward<V>(v)).value;
+                    })
+            };
+        }
+
+        value_type value;
+    };
 
     inline result<> ok()
     {
@@ -19,53 +200,42 @@ namespace core
     template<typename... A>
     result<> error(std::format_string<A...> &&fmt, A &&... args)
     {
-        return std::unexpected(std::format(std::forward<std::format_string<A...>>(fmt), std::forward<A>(args)...));
+        return { std::unexpected(std::format(std::move(fmt), std::forward<A>(args)...)) };
     }
 
     template<typename T, typename... A>
     result<T> error(std::format_string<A...> &&fmt, A &&... args)
     {
-        return std::unexpected(std::format(std::forward<std::format_string<A...>>(fmt), std::forward<A>(args)...));
+        return { std::unexpected(std::format(std::move(fmt), std::forward<A>(args)...)) };
     }
 
     template<typename T, typename O>
     result<T> error(result<O> other)
     {
-        return std::unexpected(std::move(other).error());
+        return { std::unexpected(std::move(other.value).error()) };
     }
 
-    template<typename F>
-    struct if_error_t
+    template<typename T>
+    auto operator>>(result<T> &&r, T &t)
     {
-        F f;
-    };
-
-    template<typename F>
-    if_error_t<F> if_error(F &&f)
-    {
-        return { std::forward<F>(f) };
-    }
-}
-
-template<typename T>
-auto operator>>(core::result<T> &&r, T &t)
-{
-    return std::move(r).and_then(
-        [&t]<typename V>(V &&v)
+        auto f = [&t](T &&v) -> result<>
         {
-            t = std::forward<V>(v);
-            return core::ok();
-        });
-}
+            t = std::move(v);
+            return {};
+        };
 
-template<typename T, typename F>
-auto operator|(core::result<T> &&r, F &&f)
-{
-    return std::move(r).and_then(std::forward<F>(f));
-}
+        return std::move(r).and_then(f);
+    }
 
-template<typename T, typename F>
-auto operator|(core::result<T> &&r, core::if_error_t<F> &&e)
-{
-    return std::move(r).or_else(std::forward<F>(e.f));
+    template<typename T, typename F>
+    auto operator&(result<T> &&r, F &&f)
+    {
+        return std::move(r).and_then(std::forward<F>(f));
+    }
+
+    template<typename T, typename F>
+    auto operator|(result<T> &&r, F &&f)
+    {
+        return std::move(r).or_else(std::forward<F>(f));
+    }
 }

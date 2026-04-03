@@ -33,7 +33,8 @@ core::result<> core::Application::CreateFramebuffers()
                 .layers = 1,
             };
 
-            TRY(vk::Framebuffer::create(m_Device, create_info) >> framebuffer);
+            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer)
+                return res;
         }
     }
 
@@ -68,7 +69,8 @@ core::result<> core::Application::CreateFramebuffers()
                 .layers = 1,
             };
 
-            TRY(vk::Framebuffer::create(m_Device, create_info) >> framebuffer);
+            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer)
+                return res;
         }
     }
 
