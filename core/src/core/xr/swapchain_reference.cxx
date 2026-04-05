@@ -27,7 +27,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
         if (auto res = xr::Swapchain::create(m_Session, swapchain_create_info) >> reference.Swapchain)
             return error<XrSwapchainReference>(std::move(res));
 
-        auto set_images = [&reference](const std::vector<XrSwapchainImageVulkan2KHR> &images)
+        auto set_images = [&](const std::vector<XrSwapchainImageVulkan2KHR> &images)
         {
             reference.Images.resize(images.size());
             for (uint32_t i = 0; i < images.size(); ++i)

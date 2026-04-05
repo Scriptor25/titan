@@ -22,8 +22,8 @@ namespace core
 
         xr::Swapchain Swapchain;
 
-        std::vector<vk::Image> Images;
         std::vector<vk::DeviceMemory> Memory;
+        std::vector<vk::Image> Images;
         std::vector<vk::ImageView> Views;
     };
 
@@ -44,8 +44,8 @@ namespace core
 
         vk::SwapchainKHR Swapchain;
 
-        std::vector<vk::Image> Images;
         std::vector<vk::DeviceMemory> Memory;
+        std::vector<vk::Image> Images;
         std::vector<vk::ImageView> Views;
     };
 
@@ -350,7 +350,6 @@ namespace core
         xr::DebugUtilsMessengerEXT m_XrMessenger;
 
         XrSystemId m_SystemId{};
-
         XrViewConfigurationType m_ViewConfigurationType{};
 
         vk::Instance m_VkInstance;
@@ -361,6 +360,8 @@ namespace core
 
         QueueFamilyIndices m_QueueFamilyIndices;
         VkQueue m_DefaultQueue{}, m_TransferQueue{}, m_PresentQueue{};
+
+        vk::CommandPool m_DefaultPool, m_TransferPool;
 
         vk::SurfaceKHR m_WindowSurface;
         VkSwapchainView m_WindowSwapchainView;
@@ -383,12 +384,10 @@ namespace core
         vk::RenderPass m_RenderPass;
         vk::PipelineCache m_PipelineCache;
         vk::PipelineLayout m_PipelineLayout;
-        vk::Pipeline m_Pipeline;
+        vk::GraphicsPipeline m_Pipeline;
 
-        vk::CommandPool m_DefaultPool, m_TransferPool;
-
-        vk::Buffer m_VertexBuffer;
         vk::DeviceMemory m_VertexMemory;
+        vk::Buffer m_VertexBuffer;
 
         Pose m_HeadPose;
 

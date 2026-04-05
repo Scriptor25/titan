@@ -1,6 +1,8 @@
 #include <titan/core.hxx>
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
+#include <titan/format/vk.hxx>
+#include <titan/format/xr.hxx>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>

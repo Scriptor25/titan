@@ -17,5 +17,5 @@ core::result<> core::Application::AllocateDescriptorSets()
         .pSetLayouts = set_layouts.data(),
     };
 
-    return vk::DescriptorSet::allocate2(m_Device, allocate_info) >> m_DescriptorSets;
+    return vk::DescriptorSet::create_collection(m_Device, allocate_info) >> m_DescriptorSets;
 }

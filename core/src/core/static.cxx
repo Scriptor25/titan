@@ -33,7 +33,7 @@ core::result<> core::Application::FindFormats(
 
         vkGetPhysicalDeviceFormatProperties2(physical_device, format, &properties);
 
-        auto &format_properties = properties.formatProperties;
+        const auto &format_properties = properties.formatProperties;
 
         for (auto &reference : references)
         {

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <titan/api.hxx>
-#include <titan/result.hxx>
-#include <titan/typename.hxx>
 #include <titan/format/vk.hxx>
 #include <titan/wrapper/base.hxx>
 
@@ -11,784 +9,714 @@
 namespace core
 {
     template<>
-    constexpr const char *typename_string<VkBuffer>()
+    struct traits_t<VkBuffer>
     {
-        return "VkBuffer";
-    }
+        using value_type = VkBuffer;
 
-    template<>
-    constexpr const char *typename_string<VkCommandBuffer>()
-    {
-        return "VkCommandBuffer";
-    }
+        static constexpr auto create_name = "vkCreateBuffer";
 
-    template<>
-    constexpr const char *typename_string<VkCommandPool>()
-    {
-        return "VkCommandPool";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDebugUtilsMessengerEXT>()
-    {
-        return "VkDebugUtilsMessengerEXT";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDescriptorPool>()
-    {
-        return "VkDescriptorPool";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDescriptorSet>()
-    {
-        return "VkDescriptorSet";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDescriptorSetLayout>()
-    {
-        return "VkDescriptorSetLayout";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDevice>()
-    {
-        return "VkDevice";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkDeviceMemory>()
-    {
-        return "VkDeviceMemory";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkFence>()
-    {
-        return "VkFence";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkFramebuffer>()
-    {
-        return "VkFramebuffer";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkImage>()
-    {
-        return "VkImage";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkImageView>()
-    {
-        return "VkImageView";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkInstance>()
-    {
-        return "VkInstance";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkPipeline>()
-    {
-        return "VkPipeline";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkPipelineCache>()
-    {
-        return "VkPipelineCache";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkPipelineLayout>()
-    {
-        return "VkPipelineLayout";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkPresentModeKHR>()
-    {
-        return "VkPresentModeKHR";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkRenderPass>()
-    {
-        return "VkRenderPass";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkSemaphore>()
-    {
-        return "VkSemaphore";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkShaderModule>()
-    {
-        return "VkShaderModule";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkSurfaceKHR>()
-    {
-        return "VkSurfaceKHR";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkSurfaceFormatKHR>()
-    {
-        return "VkSurfaceFormatKHR";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkSurfaceFormat2KHR>()
-    {
-        return "VkSurfaceFormat2KHR";
-    }
-
-    template<>
-    constexpr const char *typename_string<VkSwapchainKHR>()
-    {
-        return "VkSwapchainKHR";
-    }
-}
-
-namespace core::vk
-{
-    template<
-        typename T,
-        typename I,
-        typename CP,
-        typename DP,
-        VkResult(*C)(CP, const I *, const VkAllocationCallbacks *, T *),
-        void(*D)(DP, T, const VkAllocationCallbacks *)>
-    class wrapper : public wrapper_base<T, wrapper<T, I, CP, DP, C, D>>
-    {
-        explicit wrapper(DP destroy_param, T value)
-            : wrapper_base<T, wrapper>(value),
-              destroy_param(destroy_param)
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkBufferCreateInfo &)
         {
+            return std::tuple{ device };
         }
 
-    public:
-        wrapper() = default;
-
-        static result<wrapper> create(CP create_param, DP destroy_param, const I &create_info)
+        static auto create(
+            VkDevice device,
+            const VkBufferCreateInfo &create_info,
+            value_type &value)
         {
-            T value;
-            if (auto res = C(create_param, &create_info, nullptr, &value))
-                return error<wrapper>("failed to create {} ({})", typename_string<T>(), res);
-            return wrapper(destroy_param, value);
+            return vkCreateBuffer(device, &create_info, nullptr, &value);
         }
 
-        static wrapper wrap(DP destroy_param, T value)
+        static auto destroy(
+            VkDevice device,
+            value_type value)
         {
-            return wrapper(destroy_param, value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            D(destroy_param, this->value, nullptr);
-        }
-
-        void swap(wrapper &&other) noexcept override
-        {
-            std::swap(destroy_param, other.destroy_param);
-        }
-
-        DP destroy_param{};
-    };
-
-    template<
-        typename T,
-        typename I,
-        typename P,
-        VkResult(*C)(P, const I *, const VkAllocationCallbacks *, T *),
-        void(*D)(P, T, const VkAllocationCallbacks *)>
-    class wrapper_same_param : public wrapper_base<T, wrapper_same_param<T, I, P, C, D>>
-    {
-        explicit wrapper_same_param(P param, T value)
-            : wrapper_base<T, wrapper_same_param>(value),
-              param(param)
-        {
-        }
-
-    public:
-        wrapper_same_param() = default;
-
-        static result<wrapper_same_param> create(P param, const I &create_info)
-        {
-            T value;
-            if (auto res = C(param, &create_info, nullptr, &value))
-                return error<wrapper_same_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    res);
-            return wrapper_same_param(param, value);
-        }
-
-        static wrapper_same_param wrap(P param, T value)
-        {
-            return wrapper_same_param(param, value);
-        }
-
-        static wrapper_same_param wrap(T value)
-        {
-            return wrapper_same_param({}, value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            if (param)
-            {
-                D(param, this->value, nullptr);
-                param = {};
-            }
-        }
-
-        void swap(wrapper_same_param &&other) noexcept override
-        {
-            std::swap(param, other.param);
-        }
-
-        P param{};
-    };
-
-    template<
-        typename T,
-        typename I,
-        typename CP,
-        VkResult(*C)(CP, const I *, const VkAllocationCallbacks *, T *),
-        void(*D)(T, const VkAllocationCallbacks *)>
-    class wrapper_create_param : public wrapper_base<T, wrapper_create_param<T, I, CP, C, D>>
-    {
-        explicit wrapper_create_param(T value)
-            : wrapper_base<T, wrapper_create_param>(value)
-        {
-        }
-
-    public:
-        wrapper_create_param() = default;
-
-        static result<wrapper_create_param> create(CP create_param, const I &create_info)
-        {
-            T value;
-            if (auto res = C(create_param, &create_info, nullptr, &value))
-                return error<wrapper_create_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    res);
-            return wrapper_create_param(value);
-        }
-
-        static wrapper_create_param wrap(T value)
-        {
-            return wrapper_create_param(value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            D(this->value, nullptr);
+            return vkDestroyBuffer(device, value, nullptr);
         }
     };
 
-    template<
-        typename T,
-        typename I,
-        typename DP,
-        VkResult(*C)(const I *, const VkAllocationCallbacks *, T *),
-        void(*D)(DP, T, const VkAllocationCallbacks *)>
-    class wrapper_destroy_param : public wrapper_base<T, wrapper_destroy_param<T, I, DP, C, D>>
+    template<>
+    struct traits_t<VkCommandBuffer>
     {
-        explicit wrapper_destroy_param(DP destroy_param, T value)
-            : wrapper_base<T, wrapper_destroy_param>(value),
-              destroy_param(destroy_param)
-        {
-        }
+        using value_type = VkCommandBuffer;
 
-    public:
-        wrapper_destroy_param() = default;
+        static constexpr auto create_name = "vkAllocateCommandBuffers";
 
-        static result<wrapper_destroy_param> create(DP destroy_param, const I &create_info)
-        {
-            T value;
-            if (auto res = C(&create_info, nullptr, &value))
-                return error<wrapper_destroy_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    res);
-            return wrapper_destroy_param(destroy_param, value);
-        }
-
-        static wrapper_destroy_param wrap(DP destroy_param, T value)
-        {
-            return wrapper_destroy_param(destroy_param, value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            D(destroy_param, this->value, nullptr);
-        }
-
-        void swap(wrapper_destroy_param &&other) noexcept override
-        {
-            std::swap(destroy_param, other.destroy_param);
-        }
-
-        DP destroy_param{};
-    };
-
-    template<
-        typename T,
-        typename I,
-        VkResult(*C)(const I *, const VkAllocationCallbacks *, T *),
-        void(*D)(T, const VkAllocationCallbacks *)>
-    class wrapper_void_param : public wrapper_base<T, wrapper_void_param<T, I, C, D>>
-    {
-        explicit wrapper_void_param(T value)
-            : wrapper_base<T, wrapper_void_param>(value)
-        {
-        }
-
-    public:
-        wrapper_void_param() = default;
-
-        static result<wrapper_void_param> create(const I &create_info)
-        {
-            T value;
-            if (auto res = C(&create_info, nullptr, &value))
-                return error<wrapper_void_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    res);
-            return wrapper_void_param(value);
-        }
-
-        static wrapper_void_param wrap(T value)
-        {
-            return wrapper_void_param(value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            D(this->value, nullptr);
-        }
-    };
-
-    using Buffer = wrapper_same_param<
-        VkBuffer,
-        VkBufferCreateInfo,
-        VkDevice,
-        vkCreateBuffer,
-        vkDestroyBuffer>;
-
-    class CommandBuffer : public wrapper_base<VkCommandBuffer, CommandBuffer>
-    {
-        explicit CommandBuffer(VkDevice device, VkCommandPool pool, VkCommandBuffer value)
-            : wrapper_base(value),
-              device(device),
-              pool(pool)
-        {
-        }
-
-    public:
-        CommandBuffer() = default;
-
-        static result<CommandBuffer> allocate(
+        static auto make_destroy_args(
             VkDevice device,
             const VkCommandBufferAllocateInfo &allocate_info)
         {
-            VkCommandBuffer value;
-            if (auto res = vkAllocateCommandBuffers(device, &allocate_info, &value))
-                return error<CommandBuffer>(
-                    "failed to create {} ({})",
-                    typename_string<VkCommandBuffer>(),
-                    res);
-            return CommandBuffer(device, allocate_info.commandPool, value);
+            return std::tuple{ device, allocate_info.commandPool };
         }
 
-        static result<std::vector<CommandBuffer>> allocate2(
+        static auto create(
             VkDevice device,
-            const VkCommandBufferAllocateInfo &allocate_info)
+            const VkCommandBufferAllocateInfo &allocate_info,
+            value_type &value)
         {
-            std::vector<VkCommandBuffer> values(allocate_info.commandBufferCount);
-            if (auto res = vkAllocateCommandBuffers(device, &allocate_info, values.data()))
-                return error<std::vector<CommandBuffer>>(
-                    "failed to create <{} x {}> ({})",
-                    values.size(),
-                    typename_string<VkCommandBuffer>(),
-                    res);
-
-            std::vector<CommandBuffer> vec(values.size());
-            for (uint32_t i = 0; i < values.size(); ++i)
-                vec[i] = CommandBuffer(device, allocate_info.commandPool, values[i]);
-            return vec;
+            return vkAllocateCommandBuffers(device, &allocate_info, &value);
         }
 
-        static CommandBuffer wrap(VkDevice device, VkCommandPool pool, VkCommandBuffer value)
+        static auto create_collection(
+            VkDevice device,
+            const VkCommandBufferAllocateInfo &allocate_info,
+            std::vector<value_type> &values)
         {
-            return CommandBuffer(device, pool, value);
+            values.resize(allocate_info.commandBufferCount);
+            return vkAllocateCommandBuffers(device, &allocate_info, values.data());
         }
 
-    protected:
-        void destroy() override
+        static auto destroy(
+            VkDevice device,
+            VkCommandPool pool,
+            value_type value)
         {
-            vkFreeCommandBuffers(device, pool, 1, &value);
+            return vkFreeCommandBuffers(device, pool, 1, &value);
         }
 
-        void swap(CommandBuffer &&other) noexcept override
+        static auto destroy_collection(
+            VkDevice device,
+            VkCommandPool pool,
+            const std::vector<value_type> &values)
         {
-            std::swap(device, other.device);
-            std::swap(pool, other.pool);
+            return vkFreeCommandBuffers(device, pool, values.size(), values.data());
         }
-
-    private:
-        VkDevice device{};
-        VkCommandPool pool{};
     };
 
-    using CommandPool = wrapper_same_param<
-        VkCommandPool,
-        VkCommandPoolCreateInfo,
-        VkDevice,
-        vkCreateCommandPool,
-        vkDestroyCommandPool>;
-
-    using DebugUtilsMessengerEXT = wrapper_same_param<
-        VkDebugUtilsMessengerEXT,
-        VkDebugUtilsMessengerCreateInfoEXT,
-        VkInstance,
-        vkCreateDebugUtilsMessengerEXT,
-        vkDestroyDebugUtilsMessengerEXT>;
-
-    using DescriptorPool = wrapper_same_param<
-        VkDescriptorPool,
-        VkDescriptorPoolCreateInfo,
-        VkDevice,
-        vkCreateDescriptorPool,
-        vkDestroyDescriptorPool>;
-
-    class DescriptorSet : public wrapper_base<VkDescriptorSet, DescriptorSet>
+    template<>
+    struct traits_t<VkCommandPool>
     {
-        explicit DescriptorSet(VkDevice device, VkDescriptorPool pool, VkDescriptorSet value)
-            : wrapper_base(value),
-              device(device),
-              pool(pool)
+        using value_type = VkCommandPool;
+
+        static constexpr auto create_name = "vkCreateCommandPool";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkCommandPoolCreateInfo &)
         {
+            return std::tuple{ device };
         }
 
-    public:
-        DescriptorSet() = default;
-
-        static result<DescriptorSet> allocate(VkDevice device, const VkDescriptorSetAllocateInfo &allocate_info)
+        static auto create(
+            VkDevice device,
+            const VkCommandPoolCreateInfo &create_info,
+            value_type &value)
         {
-            VkDescriptorSet value;
-            if (auto res = vkAllocateDescriptorSets(device, &allocate_info, &value))
-                return error<DescriptorSet>(
-                    "failed to create {} ({})",
-                    typename_string<VkDescriptorSet>(),
-                    res);
-            return DescriptorSet(device, allocate_info.descriptorPool, value);
+            return vkCreateCommandPool(device, &create_info, nullptr, &value);
         }
 
-        static result<std::vector<DescriptorSet>> allocate2(
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyCommandPool(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkDebugUtilsMessengerEXT>
+    {
+        using value_type = VkDebugUtilsMessengerEXT;
+
+        static constexpr auto create_name = "vkCreateDebugUtilsMessengerEXT";
+
+        static auto make_destroy_args(
+            VkInstance instance,
+            const VkDebugUtilsMessengerCreateInfoEXT &)
+        {
+            return std::tuple{ instance };
+        }
+
+        static auto create(
+            VkInstance instance,
+            const VkDebugUtilsMessengerCreateInfoEXT &create_info,
+            value_type &value)
+        {
+            return vkCreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkInstance instance,
+            value_type value)
+        {
+            return vkDestroyDebugUtilsMessengerEXT(instance, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkDescriptorPool>
+    {
+        using value_type = VkDescriptorPool;
+
+        static constexpr auto create_name = "vkCreateDescriptorPool";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkDescriptorPoolCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkDescriptorPoolCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateDescriptorPool(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyDescriptorPool(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkDescriptorSet>
+    {
+        using value_type = VkDescriptorSet;
+
+        static constexpr auto create_name = "vkAllocateDescriptorSets";
+
+        static auto make_destroy_args(
             VkDevice device,
             const VkDescriptorSetAllocateInfo &allocate_info)
         {
-            std::vector<VkDescriptorSet> values(allocate_info.descriptorSetCount);
-            if (auto res = vkAllocateDescriptorSets(device, &allocate_info, values.data()))
-                return error<std::vector<DescriptorSet>>(
-                    "failed to create <{} x {}> ({})",
-                    values.size(),
-                    typename_string<VkDescriptorSet>(),
-                    res);
-
-            std::vector<DescriptorSet> vec(values.size());
-            for (uint32_t i = 0; i < values.size(); ++i)
-                vec[i] = DescriptorSet(device, allocate_info.descriptorPool, values[i]);
-            return vec;
+            return std::tuple{ device, allocate_info.descriptorPool };
         }
 
-        static DescriptorSet wrap(VkDevice device, VkDescriptorPool pool, VkDescriptorSet value)
+        static auto create(
+            VkDevice device,
+            const VkDescriptorSetAllocateInfo &allocate_info,
+            value_type &value)
         {
-            return DescriptorSet(device, pool, value);
+            return vkAllocateDescriptorSets(device, &allocate_info, &value);
         }
 
-    protected:
-        void destroy() override
+        static auto create_collection(
+            VkDevice device,
+            const VkDescriptorSetAllocateInfo &allocate_info,
+            std::vector<value_type> &values)
         {
-            vkFreeDescriptorSets(device, pool, 1, &value);
+            values.resize(allocate_info.descriptorSetCount);
+            return vkAllocateDescriptorSets(device, &allocate_info, values.data());
         }
 
-        void swap(DescriptorSet &&other) noexcept override
+        static auto destroy(
+            VkDevice device,
+            VkDescriptorPool pool,
+            value_type value)
         {
-            std::swap(device, other.device);
-            std::swap(pool, other.pool);
+            return vkFreeDescriptorSets(device, pool, 1, &value);
         }
 
-    private:
-        VkDevice device{};
-        VkDescriptorPool pool{};
+        static auto destroy_collection(
+            VkDevice device,
+            VkDescriptorPool pool,
+            const std::vector<value_type> &values)
+        {
+            return vkFreeDescriptorSets(device, pool, values.size(), values.data());
+        }
     };
 
-    using DescriptorSetLayout = wrapper_same_param<
-        VkDescriptorSetLayout,
-        VkDescriptorSetLayoutCreateInfo,
-        VkDevice,
-        vkCreateDescriptorSetLayout,
-        vkDestroyDescriptorSetLayout>;
-
-    using Device = wrapper_create_param<
-        VkDevice,
-        VkDeviceCreateInfo,
-        VkPhysicalDevice,
-        vkCreateDevice,
-        vkDestroyDevice>;
-
-    using DeviceMemory = wrapper_same_param<
-        VkDeviceMemory,
-        VkMemoryAllocateInfo,
-        VkDevice,
-        vkAllocateMemory,
-        vkFreeMemory>;
-
-    using Fence = wrapper_same_param<
-        VkFence,
-        VkFenceCreateInfo,
-        VkDevice,
-        vkCreateFence,
-        vkDestroyFence>;
-
-    using Framebuffer = wrapper_same_param<
-        VkFramebuffer,
-        VkFramebufferCreateInfo,
-        VkDevice,
-        vkCreateFramebuffer,
-        vkDestroyFramebuffer>;
-
-    using Image = wrapper_same_param<
-        VkImage,
-        VkImageCreateInfo,
-        VkDevice,
-        vkCreateImage,
-        vkDestroyImage>;
-
-    using ImageView = wrapper_same_param<
-        VkImageView,
-        VkImageViewCreateInfo,
-        VkDevice,
-        vkCreateImageView,
-        vkDestroyImageView>;
-
-    using Instance = wrapper_void_param<
-        VkInstance,
-        VkInstanceCreateInfo,
-        vkCreateInstance,
-        vkDestroyInstance>;
-
-    class Pipeline : public wrapper_base<VkPipeline, Pipeline>
+    template<>
+    struct traits_t<VkDescriptorSetLayout>
     {
-        explicit Pipeline(VkDevice device, VkPipeline value)
-            : wrapper_base(value),
-              device(device)
-        {
-        }
+        using value_type = VkDescriptorSetLayout;
 
-    public:
-        Pipeline() = default;
-
-        static result<Pipeline> create(
+        static auto make_destroy_args(
             VkDevice device,
-            VkPipelineCache cache,
-            const VkGraphicsPipelineCreateInfo &create_info)
+            const VkDescriptorSetLayoutCreateInfo &)
         {
-            VkPipeline value;
-            if (auto res = vkCreateGraphicsPipelines(device, cache, 1, &create_info, nullptr, &value))
-                return error<Pipeline>(
-                    "failed to create {} ({})",
-                    typename_string<VkPipeline>(),
-                    res);
-            return Pipeline(device, value);
+            return std::tuple{ device };
         }
 
-        static result<std::vector<Pipeline>> create(
+        static auto create(
             VkDevice device,
-            VkPipelineCache cache,
-            const std::vector<VkGraphicsPipelineCreateInfo> &create_infos)
+            const VkDescriptorSetLayoutCreateInfo &create_info,
+            value_type &value)
         {
-            std::vector<VkPipeline> values(create_infos.size());
-            if (auto res = vkCreateGraphicsPipelines(
-                device,
-                cache,
-                create_infos.size(),
-                create_infos.data(),
-                nullptr,
-                values.data()))
-                return error<std::vector<Pipeline>>(
-                    "failed to create <{} x {}> ({})",
-                    values.size(),
-                    typename_string<VkPipeline>(),
-                    res);
-
-            std::vector<Pipeline> vec(values.size());
-            for (uint32_t i = 0; i < values.size(); ++i)
-                vec[i] = Pipeline(device, values[i]);
-            return vec;
+            return vkCreateDescriptorSetLayout(device, &create_info, nullptr, &value);
         }
 
-        static result<Pipeline> create(
+        static auto destroy(
             VkDevice device,
-            VkPipelineCache cache,
-            const VkComputePipelineCreateInfo &create_info)
+            value_type value)
         {
-            VkPipeline value;
-            if (auto res = vkCreateComputePipelines(device, cache, 1, &create_info, nullptr, &value))
-                return error<Pipeline>(
-                    "failed to create {} ({})",
-                    typename_string<VkPipeline>(),
-                    res);
-            return Pipeline(device, value);
+            return vkDestroyDescriptorSetLayout(device, value, nullptr);
         }
-
-        static result<std::vector<Pipeline>> create(
-            VkDevice device,
-            VkPipelineCache cache,
-            const std::vector<VkComputePipelineCreateInfo> &create_infos)
-        {
-            std::vector<VkPipeline> values(create_infos.size());
-            if (auto res = vkCreateComputePipelines(
-                device,
-                cache,
-                create_infos.size(),
-                create_infos.data(),
-                nullptr,
-                values.data()))
-                return error<std::vector<Pipeline>>(
-                    "failed to create <{} x {}> ({})",
-                    values.size(),
-                    typename_string<VkPipeline>(),
-                    res);
-
-            std::vector<Pipeline> vec(values.size());
-            for (uint32_t i = 0; i < values.size(); ++i)
-                vec[i] = Pipeline(device, values[i]);
-            return vec;
-        }
-
-        static Pipeline wrap(VkDevice device, VkPipeline value)
-        {
-            return Pipeline(device, value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            vkDestroyPipeline(device, value, nullptr);
-        }
-
-        void swap(Pipeline &&other) noexcept override
-        {
-            std::swap(device, other.device);
-        }
-
-    private:
-        VkDevice device{};
     };
 
-    using PipelineCache = wrapper_same_param<
-        VkPipelineCache,
-        VkPipelineCacheCreateInfo,
-        VkDevice,
-        vkCreatePipelineCache,
-        vkDestroyPipelineCache>;
-
-    using PipelineLayout = wrapper_same_param<
-        VkPipelineLayout,
-        VkPipelineLayoutCreateInfo,
-        VkDevice,
-        vkCreatePipelineLayout,
-        vkDestroyPipelineLayout>;
-
-    using RenderPass = wrapper_same_param<
-        VkRenderPass,
-        VkRenderPassCreateInfo2,
-        VkDevice,
-        vkCreateRenderPass2,
-        vkDestroyRenderPass>;
-
-    using Semaphore = wrapper_same_param<
-        VkSemaphore,
-        VkSemaphoreCreateInfo,
-        VkDevice,
-        vkCreateSemaphore,
-        vkDestroySemaphore>;
-
-    using ShaderModule = wrapper_same_param<
-        VkShaderModule,
-        VkShaderModuleCreateInfo,
-        VkDevice,
-        vkCreateShaderModule,
-        vkDestroyShaderModule>;
-
-    class SurfaceKHR : public wrapper_base<VkSurfaceKHR, SurfaceKHR>
+    template<>
+    struct traits_t<VkDevice>
     {
-        explicit SurfaceKHR(VkInstance instance, VkSurfaceKHR value)
-            : wrapper_base(value),
-              instance(instance)
+        using value_type = VkDevice;
+
+        static auto make_destroy_args(
+            VkPhysicalDevice,
+            const VkDeviceCreateInfo &)
         {
+            return std::tuple{};
         }
 
-    public:
-        SurfaceKHR() = default;
-
-        static result<SurfaceKHR> create(VkInstance instance, GLFWwindow *window)
+        static auto create(
+            VkPhysicalDevice physical_device,
+            const VkDeviceCreateInfo &create_info,
+            value_type &value)
         {
-            VkSurfaceKHR value;
-            if (auto res = glfwCreateWindowSurface(instance, window, nullptr, &value))
-                return error<SurfaceKHR>(
-                    "failed to create {} ({})",
-                    typename_string<VkSurfaceKHR>(),
-                    res);
-            return SurfaceKHR(instance, value);
+            return vkCreateDevice(physical_device, &create_info, nullptr, &value);
         }
 
-        static SurfaceKHR wrap(VkInstance instance, VkSurfaceKHR value)
+        static auto destroy(value_type value)
         {
-            return SurfaceKHR(instance, value);
+            return vkDestroyDevice(value, nullptr);
         }
-
-    protected:
-        void destroy() override
-        {
-            vkDestroySurfaceKHR(instance, value, nullptr);
-        }
-
-        void swap(SurfaceKHR &&other) noexcept override
-        {
-            std::swap(instance, other.instance);
-        }
-
-    private:
-        VkInstance instance{};
     };
 
-    using SwapchainKHR = wrapper_same_param<
-        VkSwapchainKHR,
-        VkSwapchainCreateInfoKHR,
-        VkDevice,
-        vkCreateSwapchainKHR,
-        vkDestroySwapchainKHR>;
+    template<>
+    struct traits_t<VkDeviceMemory>
+    {
+        using value_type = VkDeviceMemory;
+
+        static constexpr auto create_name = "vkAllocateMemory";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkMemoryAllocateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkMemoryAllocateInfo &create_info,
+            value_type &value)
+        {
+            return vkAllocateMemory(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkFreeMemory(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkFence>
+    {
+        using value_type = VkFence;
+
+        static constexpr auto create_name = "vkCreateFence";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkFenceCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkFenceCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateFence(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyFence(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkFramebuffer>
+    {
+        using value_type = VkFramebuffer;
+
+        static constexpr auto create_name = "vkCreateFramebuffer";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkFramebufferCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkFramebufferCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateFramebuffer(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyFramebuffer(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkPipeline, VkGraphicsPipelineCreateInfo>
+    {
+        using value_type = VkPipeline;
+
+        static constexpr auto create_name = "vkCreateGraphicsPipelines";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            VkPipelineCache,
+            const VkGraphicsPipelineCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            VkPipelineCache cache,
+            const VkGraphicsPipelineCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateGraphicsPipelines(device, cache, 1, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyPipeline(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkImage>
+    {
+        using value_type = VkImage;
+
+        static constexpr auto create_name = "vkCreateImage";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkImageCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkImageCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateImage(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyImage(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkImageView>
+    {
+        using value_type = VkImageView;
+
+        static constexpr auto create_name = "vkCreateImageView";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkImageViewCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkImageViewCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateImageView(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyImageView(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkInstance>
+    {
+        using value_type = VkInstance;
+
+        static auto make_destroy_args(const VkInstanceCreateInfo &)
+        {
+            return std::tuple{};
+        }
+
+        static auto create(
+            const VkInstanceCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateInstance(&create_info, nullptr, &value);
+        }
+
+        static auto destroy(value_type value)
+        {
+            return vkDestroyInstance(value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkPipelineCache>
+    {
+        using value_type = VkPipelineCache;
+
+        static constexpr auto create_name = "vkCreatePipelineCache";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkPipelineCacheCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkPipelineCacheCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreatePipelineCache(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyPipelineCache(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkPipelineLayout>
+    {
+        using value_type = VkPipelineLayout;
+
+        static constexpr auto create_name = "vkCreatePipelineLayout";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkPipelineLayoutCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkPipelineLayoutCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreatePipelineLayout(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyPipelineLayout(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkRenderPass>
+    {
+        using value_type = VkRenderPass;
+
+        static constexpr auto create_name = "vkCreateRenderPass";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkRenderPassCreateInfo2 &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkRenderPassCreateInfo2 &create_info,
+            value_type &value)
+        {
+            return vkCreateRenderPass2(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyRenderPass(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkSemaphore>
+    {
+        using value_type = VkSemaphore;
+
+        static constexpr auto create_name = "vkCreateSemaphore";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkSemaphoreCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkSemaphoreCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateSemaphore(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroySemaphore(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkShaderModule>
+    {
+        using value_type = VkShaderModule;
+
+        static constexpr auto create_name = "vkCreateShaderModule";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkShaderModuleCreateInfo &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkShaderModuleCreateInfo &create_info,
+            value_type &value)
+        {
+            return vkCreateShaderModule(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroyShaderModule(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkSurfaceKHR>
+    {
+        using value_type = VkSurfaceKHR;
+
+        static constexpr auto create_name = "glfwCreateWindowSurfaceKHR";
+
+        static auto make_destroy_args(
+            VkInstance instance,
+            GLFWwindow *)
+        {
+            return std::tuple{ instance };
+        }
+
+        static auto create(
+            VkInstance instance,
+            GLFWwindow *window,
+            value_type &value)
+        {
+            return glfwCreateWindowSurface(instance, window, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkInstance instance,
+            value_type value)
+        {
+            return vkDestroySurfaceKHR(instance, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkSwapchainKHR>
+    {
+        using value_type = VkSwapchainKHR;
+
+        static constexpr auto create_name = "vkCreateSwapchainKHR";
+
+        static auto make_destroy_args(
+            VkDevice device,
+            const VkSwapchainCreateInfoKHR &)
+        {
+            return std::tuple{ device };
+        }
+
+        static auto create(
+            VkDevice device,
+            const VkSwapchainCreateInfoKHR &create_info,
+            value_type &value)
+        {
+            return vkCreateSwapchainKHR(device, &create_info, nullptr, &value);
+        }
+
+        static auto destroy(
+            VkDevice device,
+            value_type value)
+        {
+            return vkDestroySwapchainKHR(device, value, nullptr);
+        }
+    };
+
+    namespace vk
+    {
+        using Buffer = wrapper_t<VkBuffer>;
+        using CommandBuffer = wrapper_t<VkCommandBuffer>;
+        using CommandPool = wrapper_t<VkCommandPool>;
+        using ComputePipeline = wrapper_t<VkPipeline, VkComputePipelineCreateInfo>;
+        using DebugUtilsMessengerEXT = wrapper_t<VkDebugUtilsMessengerEXT>;
+        using DescriptorPool = wrapper_t<VkDescriptorPool>;
+        using DescriptorSet = wrapper_t<VkDescriptorSet>;
+        using DescriptorSetLayout = wrapper_t<VkDescriptorSetLayout>;
+        using Device = wrapper_t<VkDevice>;
+        using DeviceMemory = wrapper_t<VkDeviceMemory>;
+        using Fence = wrapper_t<VkFence>;
+        using Framebuffer = wrapper_t<VkFramebuffer>;
+        using GraphicsPipeline = wrapper_t<VkPipeline, VkGraphicsPipelineCreateInfo>;
+        using Image = wrapper_t<VkImage>;
+        using ImageView = wrapper_t<VkImageView>;
+        using Instance = wrapper_t<VkInstance>;
+        using PipelineCache = wrapper_t<VkPipelineCache>;
+        using PipelineLayout = wrapper_t<VkPipelineLayout>;
+        using RenderPass = wrapper_t<VkRenderPass>;
+        using Semaphore = wrapper_t<VkSemaphore>;
+        using ShaderModule = wrapper_t<VkShaderModule>;
+        using SurfaceKHR = wrapper_t<VkSurfaceKHR>;
+        using SwapchainKHR = wrapper_t<VkSwapchainKHR>;
+    }
 }

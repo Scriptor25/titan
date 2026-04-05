@@ -2,281 +2,187 @@
 
 #include <titan/api.hxx>
 #include <titan/extension.hxx>
-#include <titan/result.hxx>
-#include <titan/typename.hxx>
 #include <titan/format/xr.hxx>
 #include <titan/wrapper/base.hxx>
 
 namespace core
 {
     template<>
-    constexpr const char *typename_string<XrAction>()
+    struct traits_t<XrDebugUtilsMessengerEXT>
     {
-        return "XrAction";
-    }
+        using value_type = XrDebugUtilsMessengerEXT;
 
-    template<>
-    constexpr const char *typename_string<XrActionSet>()
-    {
-        return "XrActionSet";
-    }
+        static constexpr auto create_name = "xrCreateDebugUtilsMessengerEXT";
 
-    template<>
-    constexpr const char *typename_string<XrDebugUtilsMessengerEXT>()
-    {
-        return "XrDebugUtilsMessengerEXT";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrEnvironmentBlendMode>()
-    {
-        return "XrEnvironmentBlendMode";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrInstance>()
-    {
-        return "XrInstance";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSession>()
-    {
-        return "XrSession";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSpace>()
-    {
-        return "XrSpace";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSwapchain>()
-    {
-        return "XrSwapchain";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSwapchainImageBaseHeader>()
-    {
-        return "XrSwapchainImageBaseHeader";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSwapchainImageVulkanKHR>()
-    {
-        return "XrSwapchainImageVulkanKHR";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrSystemId>()
-    {
-        return "XrSystemId";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrView>()
-    {
-        return "XrView";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrViewConfigurationType>()
-    {
-        return "XrViewConfigurationType";
-    }
-
-    template<>
-    constexpr const char *typename_string<XrViewConfigurationView>()
-    {
-        return "XrViewConfigurationView";
-    }
-}
-
-namespace core::xr
-{
-    template<
-        typename T,
-        typename I,
-        typename P,
-        XrResult(*C)(P, const I *, T *),
-        XrResult(*D)(P, T)>
-    class wrapper_same_param : public wrapper_base<T, wrapper_same_param<T, I, P, C, D>>
-    {
-        explicit wrapper_same_param(P param, T value)
-            : wrapper_base<T, wrapper_same_param>(value),
-              param(param)
+        static auto make_destroy_args(
+            XrInstance instance,
+            const XrDebugUtilsMessengerCreateInfoEXT &)
         {
+            return std::tuple{ instance };
         }
 
-    public:
-        wrapper_same_param() = default;
-
-        static result<wrapper_same_param> create(P param, const I &create_info)
+        static auto create(
+            XrInstance instance,
+            const XrDebugUtilsMessengerCreateInfoEXT &create_info,
+            value_type &value)
         {
-            T value;
-            if (auto code = C(param, &create_info, &value))
-                return error<wrapper_same_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    code);
-            return wrapper_same_param(param, value);
+            return xrCreateDebugUtilsMessengerEXT(instance, &create_info, &value);
         }
 
-    protected:
-        void destroy() override
+        static auto destroy(
+            XrInstance instance,
+            value_type value)
         {
-            D(param, this->value);
-        }
-
-        void swap(wrapper_same_param &&other) noexcept override
-        {
-            std::swap(param, other.param);
-        }
-
-        P param{};
-    };
-
-    template<typename T, typename I, typename CP, XrResult(*C)(CP, const I *, T *), XrResult(*D)(T)>
-    class wrapper_create_param : public wrapper_base<T, wrapper_create_param<T, I, CP, C, D>>
-    {
-        friend wrapper_base<T, wrapper_create_param>;
-
-        explicit wrapper_create_param(T value)
-            : wrapper_base<T, wrapper_create_param>(value)
-        {
-        }
-
-    public:
-        wrapper_create_param() = default;
-
-        static result<wrapper_create_param> create(CP create_param, const I &create_info)
-        {
-            T value;
-            if (auto code = C(create_param, &create_info, &value))
-                return error<wrapper_create_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    code);
-            return wrapper_create_param(value);
-        }
-
-    protected:
-        void destroy() override
-        {
-            D(this->value);
+            return xrDestroyDebugUtilsMessengerEXT(instance, value);
         }
     };
 
-    template<typename T, typename I, XrResult(*C)(const I *, T *), XrResult(*D)(T)>
-    class wrapper_void_param : public wrapper_base<T, wrapper_void_param<T, I, C, D>>
+    template<>
+    struct traits_t<XrInstance>
     {
-        friend wrapper_base<T, wrapper_void_param>;
+        using value_type = XrInstance;
 
-        explicit wrapper_void_param(T value)
-            : wrapper_base<T, wrapper_void_param>(value)
+        static constexpr auto create_name = "xrCreateInstance";
+
+        static auto make_destroy_args(const XrInstanceCreateInfo &)
         {
+            return std::tuple{};
         }
 
-    public:
-        wrapper_void_param() = default;
-
-        static result<wrapper_void_param> create(const I &create_info)
+        static auto create(
+            const XrInstanceCreateInfo &create_info,
+            value_type &value)
         {
-            T value;
-            if (auto code = C(&create_info, &value))
-                return error<wrapper_void_param>(
-                    "failed to create {} ({})",
-                    typename_string<T>(),
-                    code);
-            return wrapper_void_param(value);
+            return xrCreateInstance(&create_info, &value);
         }
 
-    protected:
-        void destroy() override
+        static auto destroy(value_type value)
         {
-            D(this->value);
+            return xrDestroyInstance(value);
         }
     };
 
-    template<typename T, typename I, typename P, XrResult(*G)(P, const I *, T *)>
-    class wrapper_get : public wrapper_base<T, wrapper_get<T, I, P, G>>
+    template<>
+    struct traits_t<XrSession>
     {
-        friend wrapper_base<T, wrapper_get>;
+        using value_type = XrSession;
 
-        explicit wrapper_get(T value)
-            : wrapper_base<T, wrapper_get>(value)
+        static constexpr auto create_name = "xrCreateSession";
+
+        static auto make_destroy_args(
+            XrInstance,
+            const XrSessionCreateInfo &)
         {
+            return std::tuple{};
         }
 
-    public:
-        wrapper_get() = default;
-
-        static result<wrapper_get> create(P param, const I &get_info)
+        static auto create(
+            XrInstance instance,
+            const XrSessionCreateInfo &create_info,
+            value_type &value)
         {
-            T value;
-            if (auto code = G(param, &get_info, &value))
-                return error<wrapper_get>(
-                    "failed to get {} ({})",
-                    typename_string<T>(),
-                    code);
-            return wrapper_get(value);
+            return xrCreateSession(instance, &create_info, &value);
+        }
+
+        static auto destroy(value_type value)
+        {
+            return xrDestroySession(value);
         }
     };
 
-    using Action = wrapper_create_param<
-        XrAction,
-        XrActionCreateInfo,
-        XrActionSet,
-        xrCreateAction,
-        xrDestroyAction>;
+    template<>
+    struct traits_t<XrSpace, XrActionSpaceCreateInfo>
+    {
+        using value_type = XrSpace;
 
-    using ActionSet = wrapper_create_param<
-        XrActionSet,
-        XrActionSetCreateInfo,
-        XrInstance,
-        xrCreateActionSet,
-        xrDestroyActionSet>;
+        static constexpr auto create_name = "xrCreateActionSpace";
 
-    using ActionSpace = wrapper_create_param<
-        XrSpace,
-        XrActionSpaceCreateInfo,
-        XrSession,
-        xrCreateActionSpace,
-        xrDestroySpace>;
+        static auto make_destroy_args(
+            XrSession,
+            const XrActionSpaceCreateInfo &)
+        {
+            return std::tuple{};
+        }
 
-    using DebugUtilsMessengerEXT = wrapper_same_param<
-        XrDebugUtilsMessengerEXT,
-        XrDebugUtilsMessengerCreateInfoEXT,
-        XrInstance,
-        xrCreateDebugUtilsMessengerEXT,
-        xrDestroyDebugUtilsMessengerEXT>;
+        static auto create(
+            XrSession session,
+            const XrActionSpaceCreateInfo &create_info,
+            value_type &value)
+        {
+            return xrCreateActionSpace(session, &create_info, &value);
+        }
 
-    using Instance = wrapper_void_param<
-        XrInstance,
-        XrInstanceCreateInfo,
-        xrCreateInstance,
-        xrDestroyInstance>;
+        static auto destroy(value_type value)
+        {
+            return xrDestroySpace(value);
+        }
+    };
 
-    using ReferenceSpace = wrapper_create_param<
-        XrSpace,
-        XrReferenceSpaceCreateInfo,
-        XrSession,
-        xrCreateReferenceSpace,
-        xrDestroySpace>;
+    template<>
+    struct traits_t<XrSpace, XrReferenceSpaceCreateInfo>
+    {
+        using value_type = XrSpace;
 
-    using Session = wrapper_create_param<
-        XrSession,
-        XrSessionCreateInfo,
-        XrInstance,
-        xrCreateSession,
-        xrDestroySession>;
+        static constexpr auto create_name = "xrCreateReferenceSpace";
 
-    using Swapchain = wrapper_create_param<
-        XrSwapchain,
-        XrSwapchainCreateInfo,
-        XrSession,
-        xrCreateSwapchain,
-        xrDestroySwapchain>;
+        static auto make_destroy_args(
+            XrSession,
+            const XrReferenceSpaceCreateInfo &)
+        {
+            return std::tuple{};
+        }
+
+        static auto create(
+            XrSession session,
+            const XrReferenceSpaceCreateInfo &create_info,
+            value_type &value)
+        {
+            return xrCreateReferenceSpace(session, &create_info, &value);
+        }
+
+        static auto destroy(value_type value)
+        {
+            return xrDestroySpace(value);
+        }
+    };
+
+    template<>
+    struct traits_t<XrSwapchain>
+    {
+        using value_type = XrSwapchain;
+
+        static constexpr auto create_name = "xrCreateSwapchain";
+
+        static auto make_destroy_args(
+            XrSession,
+            const XrSwapchainCreateInfo &)
+        {
+            return std::tuple{};
+        }
+
+        static auto create(
+            XrSession session,
+            const XrSwapchainCreateInfo &create_info,
+            value_type &value)
+        {
+            return xrCreateSwapchain(session, &create_info, &value);
+        }
+
+        static auto destroy(value_type value)
+        {
+            return xrDestroySwapchain(value);
+        }
+    };
+
+    namespace xr
+    {
+        using Action = wrapper_t<XrAction>;
+        using ActionSet = wrapper_t<XrActionSet>;
+        using ActionSpace = wrapper_t<XrSpace, XrActionSpaceCreateInfo>;
+        using DebugUtilsMessengerEXT = wrapper_t<XrDebugUtilsMessengerEXT>;
+        using Instance = wrapper_t<XrInstance>;
+        using ReferenceSpace = wrapper_t<XrSpace, XrReferenceSpaceCreateInfo>;
+        using Session = wrapper_t<XrSession>;
+        using Swapchain = wrapper_t<XrSwapchain>;
+    }
 }

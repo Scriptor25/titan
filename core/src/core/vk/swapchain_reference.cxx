@@ -15,7 +15,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
         {
             reference.Images.resize(images.size());
             for (uint32_t i = 0; i < images.size(); ++i)
-                reference.Images[i] = vk::Image::wrap(m_Device, images[i]);
+                reference.Images[i] = vk::Image::wrap(images[i]);
             return ok();
         };
 

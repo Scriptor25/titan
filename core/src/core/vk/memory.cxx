@@ -22,14 +22,14 @@ core::result<> core::Application::AllocateBufferMemory()
            }
            & [&](uint32_t &&memory_type_index)
            {
-               return vk::DeviceMemory::create(
-                          m_Device,
-                          {
-                              .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                              .allocationSize = requirements.size,
-                              .memoryTypeIndex = memory_type_index,
-                          })
-                      >> m_VertexMemory;
+               const VkMemoryAllocateInfo allocate_info
+               {
+                   .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                   .allocationSize = requirements.size,
+                   .memoryTypeIndex = memory_type_index,
+               };
+
+               return vk::DeviceMemory::create(m_Device, allocate_info) >> m_VertexMemory;
            }
            & [&]
            {

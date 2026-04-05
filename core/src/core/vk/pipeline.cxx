@@ -207,5 +207,5 @@ core::result<> core::Application::CreatePipeline()
         .subpass = 0,
     };
 
-    return vk::Pipeline::create(m_Device, m_PipelineCache, create_info) >> m_Pipeline;
+    return vk::GraphicsPipeline::create(m_Device, m_PipelineCache, create_info) >> m_Pipeline;
 }

@@ -2,7 +2,6 @@
 
 #include <titan/api.hxx>
 #include <titan/result.hxx>
-#include <titan/typename.hxx>
 #include <titan/wrapper/vk.hxx>
 #include <titan/wrapper/xr.hxx>
 
@@ -27,11 +26,11 @@ namespace core::xr
     {
         uint32_t count;
         if (auto res = fn(args..., 0, &count, nullptr))
-            return error<std::vector<T>>("xr::Enumerate<{}> => {}", typename_string<T>(), res);
+            return error<std::vector<T>>("xr::Enumerate => {}", res);
 
         std::vector<T> elements(count, value);
         if (auto res = fn(args..., count, &count, reinterpret_cast<E *>(elements.data())))
-            return error<std::vector<T>>("xr::Enumerate<{}> => {}", typename_string<T>(), res);
+            return error<std::vector<T>>("xr::Enumerate => {}", res);
 
         return elements;
     }
@@ -126,11 +125,11 @@ namespace core::vk
     {
         uint32_t count;
         if (auto res = fn(args..., &count, nullptr))
-            return error<std::vector<T>>("vk::Enumerate<{}> => {}", typename_string<T>(), res);
+            return error<std::vector<T>>("vk::Enumerate => {}", res);
 
         std::vector<T> elements(count, value);
         if (auto res = fn(args..., &count, reinterpret_cast<E *>(elements.data())))
-            return error<std::vector<T>>("vk::Enumerate<{}> => {}", typename_string<T>(), res);
+            return error<std::vector<T>>("vk::Enumerate => {}", res);
 
         return elements;
     }

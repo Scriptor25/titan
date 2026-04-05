@@ -13,7 +13,7 @@ core::result<> core::Application::AllocateCommandBuffers()
                    .commandBufferCount = static_cast<uint32_t>(m_SwapchainViews.size()),
                };
 
-               return vk::CommandBuffer::allocate2(m_Device, allocate_info);
+               return vk::CommandBuffer::create_collection(m_Device, allocate_info);
            }
            & [&](std::vector<vk::CommandBuffer> &&buffers)
            {
@@ -31,7 +31,7 @@ core::result<> core::Application::AllocateCommandBuffers()
                    .commandBufferCount = static_cast<uint32_t>(m_Frames.size()),
                };
 
-               return vk::CommandBuffer::allocate2(m_Device, allocate_info);
+               return vk::CommandBuffer::create_collection(m_Device, allocate_info);
            }
            & [&](std::vector<vk::CommandBuffer> &&buffers)
            {

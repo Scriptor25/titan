@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/log.hxx>
 #include <titan/utils.hxx>
 
 core::result<> core::Application::GetEnvironmentBlendMode()

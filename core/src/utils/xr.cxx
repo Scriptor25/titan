@@ -70,7 +70,7 @@ core::result<core::vk::Instance> core::xr::CreateVulkanInstanceKHR(
     if (auto res = xrCreateVulkanInstanceKHR(instance, &create_info, &vulkan_instance, &vulkan_result))
         return error<vk::Instance>("xrCreateVulkanInstanceKHR => {}, vkCreateInstance => {}", res, vulkan_result);
 
-    return vk::Instance::wrap(vulkan_instance);
+    return vk::Instance::wrap({}, vulkan_instance);
 }
 
 core::result<core::vk::Device> core::xr::CreateVulkanDeviceKHR(
@@ -83,7 +83,7 @@ core::result<core::vk::Device> core::xr::CreateVulkanDeviceKHR(
     if (auto res = xrCreateVulkanDeviceKHR(instance, &create_info, &vulkan_device, &vulkan_result))
         return error<vk::Device>("xrCreateVulkanDeviceKHR => {}, vkCreateDevice => {}", res, vulkan_result);
 
-    return vk::Device::wrap(vulkan_device);
+    return vk::Device::wrap({}, vulkan_device);
 }
 
 core::result<VkPhysicalDevice_T *> core::xr::GetVulkanGraphicsDevice2KHR(
