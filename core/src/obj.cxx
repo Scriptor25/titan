@@ -17,13 +17,13 @@ static std::vector<std::string> split(const std::string &line, const char delim)
     return result;
 }
 
-core::obj::Mesh core::obj::Open(std::istream &stream)
+core::MeshData core::obj::Open(std::istream &stream)
 {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> textures;
 
-    Mesh mesh;
+    MeshData mesh;
 
     for (std::string line; std::getline(stream, line);)
     {
@@ -71,11 +71,14 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
 
         if (segments.front() == "f")
         {
-            std::vector<Vertex> vertices(segments.size() - 1);
+            auto first = mesh.Vertices.size();
+            auto count = segments.size() - 1;
+
+            std::vector<VertexData> vertices(count);
 
             for (uint32_t i = 1; i < segments.size(); ++i)
             {
-                auto &[position, texture, normal] = vertices[i - 1];
+                auto &[position, normal, texture] = vertices[i - 1];
                 auto indices = split(segments[i], '/');
 
                 if (!indices.empty())
@@ -109,12 +112,15 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
                 }
             }
 
-            for (uint32_t i = 1; i < vertices.size() - 1; ++i)
+            mesh.Vertices.append_range(std::move(vertices));
+
+            for (uint32_t i = 1; i < count - 1; ++i)
             {
-                mesh.Vertices.push_back(vertices[0]);
-                mesh.Vertices.push_back(vertices[i]);
-                mesh.Vertices.push_back(vertices[i + 1]);
+                mesh.Indices.push_back(first);
+                mesh.Indices.push_back(first + i);
+                mesh.Indices.push_back(first + i + 1);
             }
+
             continue;
         }
 
@@ -124,7 +130,7 @@ core::obj::Mesh core::obj::Open(std::istream &stream)
     return mesh;
 }
 
-core::obj::Mesh core::obj::Open(const std::filesystem::path &path)
+core::MeshData core::obj::Open(const std::filesystem::path &path)
 {
     std::ifstream stream(path);
     if (!stream)

@@ -19,12 +19,12 @@ core::result<> core::Application::GetPhysicalDevice()
            {
                const auto properties = vk::GetPhysicalDeviceProperties2(m_PhysicalDevice).properties;
 
-               if (sizeof(CameraData) <= properties.limits.maxPushConstantsSize)
+               if (sizeof(ShaderData) <= properties.limits.maxPushConstantsSize)
                    return ok();
 
                return error(
-                   "camera data struct size is greater than physical device max push constants size ({} > {}).",
-                   sizeof(CameraData),
+                   "shader data struct size is greater than physical device max push constants size ({} > {}).",
+                   sizeof(ShaderData),
                    properties.limits.maxPushConstantsSize);
            };
 }

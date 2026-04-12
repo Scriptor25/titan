@@ -15,7 +15,16 @@ core::result<> core::Application::Initialize(const std::string_view exec, const 
     (void) exec;
     (void) args;
 
-    m_Mesh = obj::Open("res/mesh/teapot.obj");
+    m_ModelData = {
+        {
+            .Mesh = obj::Open("res/mesh/teapot.obj"),
+            .InstanceCount = 1,
+        },
+        {
+            .Mesh = obj::Open("res/mesh/cube.obj"),
+            .InstanceCount = 2,
+        },
+    };
 
     if (auto res = InitializeWindow())
         return res;
@@ -65,6 +74,10 @@ core::result<> core::Application::InitializeGraphics()
            & WRAP(CreateXrInstance)
            & WRAP(CreateXrMessenger)
            & WRAP(GetSystemId)
+           & WRAP(CreateActionSet)
+           & WRAP(CreateActions)
+           & WRAP(CreateHands)
+           & WRAP(SuggestBindings)
            & WRAP(CreateVkInstance)
            & WRAP(CreateVkMessenger)
            & WRAP(GetPhysicalDevice)
@@ -75,6 +88,8 @@ core::result<> core::Application::InitializeGraphics()
            & WRAP(CreateWindowSwapchainView)
            & WRAP(GetDeviceQueues)
            & WRAP(CreateSession)
+           & WRAP(CreateActionSpaces)
+           & WRAP(AttachActionSet)
            & WRAP(GetViewConfigurationType)
            & WRAP(GetViewConfigurationViews)
            & WRAP(CreateSwapchainViews)
@@ -83,17 +98,13 @@ core::result<> core::Application::InitializeGraphics()
            & WRAP(CreateRenderPass)
            & WRAP(CreateFramebuffers)
            & WRAP(CreatePipelineCache)
-           & WRAP(CreateDescriptorPool)
-           & WRAP(CreateDescriptorSetLayouts)
-           & WRAP(AllocateDescriptorSets)
            & WRAP(CreatePipelineLayout)
            & WRAP(CreatePipeline)
            & WRAP(CreateCommandPools)
            & WRAP(AllocateCommandBuffers)
            & WRAP(CreateSynchronization)
            & WRAP(CreateBuffers)
-           & WRAP(AllocateBufferMemory)
-           & WRAP(FillVertexBuffer);
+           & WRAP(FillBuffers);
 }
 
 core::result<bool> core::Application::PollEvents()
@@ -133,6 +144,7 @@ core::result<bool> core::Application::PollEvents()
                 break;
             }
 
+            RecordBindings();
             break;
         }
 
@@ -230,6 +242,131 @@ core::result<bool> core::Application::PollEvents()
     return true;
 }
 
+core::result<> core::Application::PollActions(const XrTime time)
+{
+    const std::array active_action_sets
+    {
+        XrActiveActionSet
+        {
+            .actionSet = m_ActionSet,
+        },
+    };
+
+    const XrActionsSyncInfo sync_info
+    {
+        .type = XR_TYPE_ACTIONS_SYNC_INFO,
+        .countActiveActionSets = static_cast<uint32_t>(active_action_sets.size()),
+        .activeActionSets = active_action_sets.data(),
+    };
+
+    if (auto res = xrSyncActions(m_Session, &sync_info))
+        return error("xrSyncActions => {}", res);
+
+    for (auto &hand : m_Hands)
+    {
+        const XrActionStateGetInfo get_info
+        {
+            .type = XR_TYPE_ACTION_STATE_GET_INFO,
+            .action = m_ActionPalmPose,
+            .subactionPath = hand.Path,
+        };
+
+        if (auto res = xrGetActionStatePose(m_Session, &get_info, &hand.PoseState))
+            return error("xrGetActionStatePose => {}", res);
+
+        if (!hand.PoseState.isActive)
+            continue;
+
+        XrSpaceLocation location{ .type = XR_TYPE_SPACE_LOCATION };
+        if (auto res = xrLocateSpace(hand.Space, m_ReferenceSpace, time, &location))
+        {
+            info("xrLocateSpace => {}", res);
+            hand.PoseState.isActive = false;
+            continue;
+        }
+
+        if (!(location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT))
+        {
+            info("invalid space location position");
+            hand.PoseState.isActive = false;
+            continue;
+        }
+
+        if (!(location.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT))
+        {
+            info("invalid space location orientation");
+            hand.PoseState.isActive = false;
+            continue;
+        }
+
+        const glm::quat orientation
+        {
+            location.pose.orientation.w,
+            location.pose.orientation.x,
+            location.pose.orientation.y,
+            location.pose.orientation.z,
+        };
+
+        const glm::vec3 position
+        {
+            location.pose.position.x,
+            location.pose.position.y,
+            location.pose.position.z,
+        };
+
+        // orientation = glm::slerp(hand.Pose.Orientation, orientation, 0.1f);
+        // position = glm::mix(hand.Pose.Position, position, 0.1f);
+
+        hand.Pose = {
+            .Orientation = orientation,
+            .Position = position,
+        };
+    }
+
+    for (auto &hand : m_Hands)
+    {
+        const XrActionStateGetInfo get_info
+        {
+            .type = XR_TYPE_ACTION_STATE_GET_INFO,
+            .action = m_ActionGrab,
+            .subactionPath = hand.Path,
+        };
+
+        if (auto res = xrGetActionStateFloat(m_Session, &get_info, &hand.GrabState))
+            return error("xrGetActionStateFloat => {}", res);
+    }
+
+    for (auto &hand : m_Hands)
+    {
+        hand.Haptic *= 0.5f;
+        if (hand.Haptic < 0.01f)
+            hand.Haptic = 0.0f;
+
+        const XrHapticActionInfo action_info
+        {
+            .type = XR_TYPE_HAPTIC_ACTION_INFO,
+            .action = m_ActionHaptic,
+            .subactionPath = hand.Path,
+        };
+
+        const XrHapticVibration haptic_vibration
+        {
+            .type = XR_TYPE_HAPTIC_VIBRATION,
+            .duration = XR_MIN_HAPTIC_DURATION,
+            .frequency = XR_FREQUENCY_UNSPECIFIED,
+            .amplitude = hand.Haptic,
+        };
+
+        if (auto res = xrApplyHapticFeedback(
+            m_Session,
+            &action_info,
+            reinterpret_cast<const XrHapticBaseHeader *>(&haptic_vibration)))
+            return error("xrApplyHapticFeedback => {}", res);
+    }
+
+    return ok();
+}
+
 core::result<> core::Application::RenderFrame()
 {
     const XrFrameWaitInfo frame_wait_info
@@ -266,7 +403,9 @@ core::result<> core::Application::RenderFrame()
 
     if (session_active && frame_state.shouldRender)
     {
-        if (auto res = UpdateModel())
+        PollActions(frame_state.predictedDisplayTime);
+
+        if (auto res = UpdateModels())
             return res;
         if (auto res = RenderThirdEye(frame_state.predictedDisplayTime))
             return res;
@@ -405,7 +544,7 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
             .commandBuffer = buffer,
         };
 
-        glm::mat4 view_mat;
+        glm::mat4 view_matrix;
         {
             const glm::quat orientation
             {
@@ -425,27 +564,22 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
             const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
             const auto translation = glm::translate(glm::mat4(1.0f), -position);
 
-            view_mat = rotation * translation;
+            view_matrix = rotation * translation;
         }
 
-        glm::mat4 proj_mat;
+        glm::mat4 projection_matrix;
         {
             auto l = NEAR * tanf(view.fov.angleLeft);
             auto r = NEAR * tanf(view.fov.angleRight);
             auto b = NEAR * tanf(view.fov.angleDown);
             auto t = NEAR * tanf(view.fov.angleUp);
 
-            proj_mat = glm::frustumRH_ZO(l, r, t, b, NEAR, FAR);
+            projection_matrix = glm::frustumRH_ZO(l, r, t, b, NEAR, FAR);
         }
 
-        const CameraData camera_data
-        {
-            .Screen = proj_mat * view_mat,
-            .Model = m_Model,
-            .Normal = m_Normal,
-        };
+        auto screen_matrix = projection_matrix * view_matrix;
 
-        if (auto res = RecordCommandBuffer(width, height, camera_data, buffer, framebuffers[image_index]))
+        if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffers[image_index]))
             return res;
     }
 
@@ -478,21 +612,39 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
     return ok();
 }
 
-core::result<> core::Application::UpdateModel()
+core::result<> core::Application::UpdateModels()
 {
     static auto begin = std::chrono::high_resolution_clock::now();
     const auto now = std::chrono::high_resolution_clock::now();
 
     const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
 
-    m_Model = { 1.0f };
-    m_Model = glm::translate(m_Model, glm::vec3(0.0f, 0.0f, 0.0f));
-    m_Model = glm::scale(m_Model, glm::vec3(0.1f));
-    m_Model = glm::rotate(m_Model, delta * glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    // m_Model = glm::rotate(m_Model, delta * glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 1.0f));
-    // m_Model = glm::translate(m_Model, glm::vec3(-0.5f, -0.5f, -0.5f));
+    // teapot
+    {
+        auto &matrix = m_ModelReferences[0].Instances[0].Model;
+        matrix = { 1.0f };
+        matrix = glm::translate(matrix, glm::vec3(0.0f, 0.0f, 0.0f));
+        matrix = glm::scale(matrix, glm::vec3(0.1f));
+        matrix = glm::rotate(matrix, delta * glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    }
 
-    m_Normal = glm::transpose(glm::inverse(m_Model));
+    // hands
+    for (uint32_t i = 0; i < m_Hands.size(); ++i)
+    {
+        auto &matrix = m_ModelReferences[1].Instances[i].Model;
+        auto &[orientation, position] = m_Hands[i].Pose;
+
+        const auto translation = glm::translate(glm::mat4(1.0f), position);
+        const auto rotation = glm::mat4_cast(orientation);
+        const auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+        const auto translation_local = glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, -0.5f, -0.5f));
+
+        matrix = translation * rotation * scale * translation_local;
+    }
+
+    for (auto &model : m_ModelReferences)
+        for (auto &instance : model.Instances)
+            instance.Normal = glm::transpose(glm::inverse(instance.Model));
 
     return ok();
 }
@@ -552,7 +704,7 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
     int width, height;
     m_Window.GetFramebufferSize(width, height);
 
-    glm::mat4 view_mat;
+    glm::mat4 view_matrix;
     {
         glm::quat orientation
         {
@@ -580,29 +732,24 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
         const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
         const auto translation = glm::translate(glm::mat4(1.0f), -position);
 
-        view_mat = rotation * translation;
+        view_matrix = rotation * translation;
     }
 
-    glm::mat4 proj_mat;
+    glm::mat4 projection_matrix;
     {
-        proj_mat = glm::perspectiveFovRH_ZO(
+        projection_matrix = glm::perspectiveFovRH_ZO(
             glm::radians(FOV),
             static_cast<float>(width),
             static_cast<float>(height),
             NEAR,
             FAR);
 
-        proj_mat[1][1] *= -1.0f;
+        projection_matrix[1][1] *= -1.0f;
     }
 
-    const CameraData camera_data
-    {
-        .Screen = proj_mat * view_mat,
-        .Model = m_Model,
-        .Normal = m_Normal,
-    };
+    auto screen_matrix = projection_matrix * view_matrix;
 
-    if (auto res = RecordCommandBuffer(width, height, camera_data, buffer, framebuffer))
+    if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffer))
         return res;
 
     {

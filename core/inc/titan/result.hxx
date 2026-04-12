@@ -22,7 +22,7 @@ namespace core
     };
 
     template<typename T>
-    concept result_type = is_result_t<T>::value;
+    concept result_type = is_result_t<std::decay_t<T>>::value;
 
     template<>
     class result<void>
@@ -31,16 +31,17 @@ namespace core
         friend class result;
 
     public:
-        using value_type = std::expected<void, std::string>;
+        using error_type = std::string;
+        using expected_type = std::expected<void, error_type>;
 
         result() = default;
 
-        result(value_type &&value)
+        result(expected_type &&value)
             : value(std::move(value))
         {
         }
 
-        result(const value_type &value)
+        result(const expected_type &value)
             : value(value)
         {
         }
@@ -105,6 +106,7 @@ namespace core
         constexpr auto and_then(F &&f)
         {
             using R = std::invoke_result_t<F>;
+            static_assert(result_type<R>);
 
             return R
             {
@@ -119,19 +121,28 @@ namespace core
         template<typename F>
         constexpr auto or_else(F &&f)
         {
-            using R = std::invoke_result_t<F>;
+            using R = std::conditional_t<
+                std::invocable<F>,
+                std::invoke_result<F>,
+                std::invoke_result<F, error_type &&>
+            >::type;
+
+            static_assert(result_type<R>);
 
             return R
             {
                 value.or_else(
-                    [&f]
+                    [&f]<typename E>(E &&error)
                     {
-                        return std::invoke(std::forward<F>(f)).value;
+                        if constexpr (std::invocable<F>)
+                            return std::invoke(std::forward<F>(f)).value;
+                        else
+                            return std::invoke(std::forward<F>(f), std::forward<E>(error)).value;
                     })
             };
         }
 
-        value_type value;
+        expected_type value;
     };
 
     template<typename T>
@@ -141,7 +152,9 @@ namespace core
         friend class result;
 
     public:
-        using value_type = std::expected<T, std::string>;
+        using value_type = T;
+        using error_type = std::string;
+        using expected_type = std::expected<value_type, error_type>;
 
         result() = default;
 
@@ -155,12 +168,12 @@ namespace core
         {
         }
 
-        result(value_type &&value)
+        result(expected_type &&value)
             : value(std::move(value))
         {
         }
 
-        result(const value_type &value)
+        result(const expected_type &value)
             : value(value)
         {
         }
@@ -255,21 +268,29 @@ namespace core
         template<typename F>
         constexpr auto or_else(F &&f)
         {
-            using R = std::invoke_result_t<F, T>;
+            using R = std::conditional_t<
+                std::invocable<F>,
+                std::invoke_result<F>,
+                std::invoke_result<F, error_type &&>
+            >::type;
+
             static_assert(result_type<R>);
 
             return R
             {
                 value.or_else(
-                    [&f]<typename V>(V &&v)
+                    [&f]<typename E>(E &&error)
                     {
-                        return std::invoke(std::forward<F>(f), std::forward<V>(v)).value;
+                        if constexpr (std::invocable<F>)
+                            return std::invoke(std::forward<F>(f)).value;
+                        else
+                            return std::invoke(std::forward<F>(f), std::forward<E>(error)).value;
                     })
             };
         }
 
     private:
-        value_type value;
+        expected_type value;
     };
 
     inline result<> ok()
@@ -289,27 +310,27 @@ namespace core
         return { std::unexpected(std::format(std::move(fmt), std::forward<A>(args)...)) };
     }
 
-    template<typename T>
-    auto operator>>(result<T> &&r, T &t)
+    template<result_type R>
+    auto operator>>(R &&r, typename R::value_type &t)
     {
-        auto f = [&t](T &&v) -> result<>
+        auto f = [&t]<typename T>(T &&v) -> result<>
         {
-            t = std::move(v);
+            t = std::forward<T>(v);
             return {};
         };
 
-        return std::move(r).and_then(f);
+        return std::forward<R>(r).and_then(f);
     }
 
-    template<typename T, typename F>
-    auto operator&(result<T> &&r, F &&f)
+    template<result_type R, typename F>
+    auto operator&(R &&r, F &&f)
     {
-        return std::move(r).and_then(std::forward<F>(f));
+        return std::forward<R>(r).and_then(std::forward<F>(f));
     }
 
-    template<typename T, typename F>
-    auto operator|(result<T> &&r, F &&f)
+    template<result_type R, typename F>
+    auto operator|(R &&r, F &&f)
     {
-        return std::move(r).or_else(std::forward<F>(f));
+        return std::forward<R>(r).or_else(std::forward<F>(f));
     }
 }

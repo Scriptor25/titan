@@ -1,6 +1,6 @@
 #version 450
 
-layout(push_constant) uniform CameraData {
+layout(push_constant) uniform ShaderData {
     mat4 screen_mat;
     mat4 model_mat;
     mat4 normal_mat;

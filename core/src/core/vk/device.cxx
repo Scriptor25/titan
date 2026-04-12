@@ -30,16 +30,32 @@ core::result<> core::Application::CreateDevice()
 
     auto physical_device_features = vk::GetPhysicalDeviceFeatures2(m_PhysicalDevice);
 
-    const VkPhysicalDeviceSynchronization2Features synchronization2_features
+    VkPhysicalDeviceSynchronization2Features synchronization2_features
     {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
         .synchronization2 = true,
     };
 
+    VkPhysicalDeviceMultiviewFeatures multiview_features
+    {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
+        .pNext = &synchronization2_features,
+        .multiview = true,
+        .multiviewGeometryShader = false,
+        .multiviewTessellationShader = false,
+    };
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures buffer_device_address_features
+    {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .pNext = &multiview_features,
+        .bufferDeviceAddress = true,
+    };
+
     const VkDeviceCreateInfo device_create_info
     {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &synchronization2_features,
+        .pNext = &buffer_device_address_features,
         .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
         .pQueueCreateInfos = queue_create_infos.data(),
         .enabledLayerCount = VK_DEVICE_LAYERS.size(),
@@ -58,8 +74,5 @@ core::result<> core::Application::CreateDevice()
         .vulkanCreateInfo = &device_create_info,
     };
 
-    return xr::CreateVulkanDeviceKHR(
-               m_XrInstance,
-               create_info)
-           >> m_Device;
+    return xr::CreateVulkanDeviceKHR(m_XrInstance, create_info) >> m_Device;
 }

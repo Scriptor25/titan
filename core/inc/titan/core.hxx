@@ -75,7 +75,7 @@ namespace core
         std::vector<XrCompositionLayerProjectionView> Views;
     };
 
-    struct CameraData
+    struct ShaderData
     {
         glm::mat4 Screen;
         glm::mat4 Model;
@@ -112,9 +112,9 @@ namespace core
         uint32_t Present{};
     };
 
-    struct Pose
+    struct ModelPose
     {
-        glm::quat Orientation{ 0.0f, 0.0f, 0.0f, 1.0f };
+        glm::quat Orientation{ 1.0f, 0.0f, 0.0f, 0.0f };
         glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
     };
 
@@ -147,6 +147,45 @@ namespace core
         VkSharingMode imageSharingMode;
         uint32_t queueFamilyIndexCount;
         const uint32_t *pQueueFamilyIndices;
+    };
+
+    struct HandState
+    {
+        XrPath Path{};
+        xr::ActionSpace Space;
+
+        XrActionStateFloat GrabState{ XR_TYPE_ACTION_STATE_FLOAT };
+        XrActionStatePose PoseState{ XR_TYPE_ACTION_STATE_POSE };
+
+        float Haptic{};
+
+        ModelPose Pose;
+    };
+
+    struct ModelMatrices
+    {
+        glm::mat4 Model{ 1.0f }, Normal{ 1.0f };
+    };
+
+    struct ModelReference
+    {
+        vk::DeviceMemory VertexMemory;
+        vk::Buffer VertexBuffer;
+
+        VkDeviceSize VertexBufferOffset;
+        VkDeviceSize VertexBufferSize;
+        VkDeviceSize VertexBufferStride;
+
+        vk::DeviceMemory IndexMemory;
+        vk::Buffer IndexBuffer;
+
+        VkDeviceSize IndexBufferOffset;
+        VkDeviceSize IndexBufferSize;
+        VkIndexType IndexType;
+
+        uint32_t IndexCount;
+
+        std::vector<ModelMatrices> Instances;
     };
 
     class Application
@@ -267,6 +306,20 @@ namespace core
         result<> CreateXrMessenger();
         result<> GetSystemId();
 
+        result<> CreateActionSet();
+
+        result<> CreateActions();
+        result<xr::Action> CreateAction(
+            const std::string &name,
+            const std::string &localized_name,
+            XrActionType type,
+            const std::vector<std::string> &sub_path_strings = {});
+
+        result<> CreateHands();
+
+        result<> SuggestBindings();
+        result<> RecordBindings();
+
         result<> CreateVkInstance();
         result<> CreateVkMessenger();
 
@@ -277,6 +330,13 @@ namespace core
         result<> GetDeviceQueues();
 
         result<> CreateSession();
+
+        result<> CreateActionSpaces();
+        result<xr::ActionSpace> CreateActionSpace(
+            XrAction action,
+            const std::optional<std::string> &sub_path_string = std::nullopt);
+
+        result<> AttachActionSet();
 
         result<> GetViewConfigurationType();
         result<> GetViewConfigurationViews();
@@ -289,10 +349,6 @@ namespace core
 
         result<VkSwapchainReference> CreateSwapchainReference(const VkSwapchainReferenceCreateInfo &create_info);
         result<XrSwapchainReference> CreateSwapchainReference(const XrSwapchainReferenceCreateInfo &create_info);
-
-        result<> CreateDescriptorSetLayouts();
-        result<> CreateDescriptorPool();
-        result<> AllocateDescriptorSets();
 
         result<> CreateRenderPass();
         result<> CreatePipelineCache();
@@ -308,23 +364,23 @@ namespace core
         result<> CreateSynchronization();
 
         result<> CreateBuffers();
-        result<> AllocateBufferMemory();
-        result<> FillVertexBuffer();
+        result<> FillBuffers();
 
         result<> RecordCommandBuffer(
             uint32_t width,
             uint32_t height,
-            const CameraData &camera_data,
+            const glm::mat4 &screen_matrix,
             vk::CommandBuffer &buffer,
             vk::Framebuffer &
             framebuffer);
 
         result<bool> PollEvents();
+        result<> PollActions(XrTime time);
 
         result<> RenderFrame();
         result<> RenderLayer(LayerInfo &reference);
 
-        result<> UpdateModel();
+        result<> UpdateModels();
 
         result<> RenderThirdEye(XrTime time);
 
@@ -337,9 +393,11 @@ namespace core
 
     private:
         ApplicationInfo m_Info;
+        std::vector<ModelData> m_ModelData;
 
-        obj::Mesh m_Mesh;
-        glm::mat4 m_Model{ 1.0f }, m_Normal{ 1.0f };
+        ModelPose m_HeadPose;
+
+        VkFormat m_ColorFormat{}, m_DepthFormat{};
 
         glfw::Instance m_GlfwInstance;
         glfw::Window m_Window;
@@ -352,6 +410,11 @@ namespace core
 
         XrSystemId m_SystemId{};
         XrViewConfigurationType m_ViewConfigurationType{};
+
+        xr::ActionSet m_ActionSet;
+        xr::Action m_ActionGrab, m_ActionHaptic, m_ActionPalmPose;
+
+        std::array<HandState, 2> m_Hands;
 
         vk::Instance m_VkInstance;
         vk::DebugUtilsMessengerEXT m_VkMessenger;
@@ -373,26 +436,17 @@ namespace core
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
         xr::ReferenceSpace m_ViewSpace, m_ReferenceSpace;
 
-        vk::DescriptorPool m_DescriptorPool;
-        std::vector<vk::DescriptorSetLayout> m_DescriptorSetLayouts;
-        std::vector<vk::DescriptorSet> m_DescriptorSets;
-
         vk::RenderPass m_RenderPass;
         vk::PipelineCache m_PipelineCache;
         vk::PipelineLayout m_PipelineLayout;
         vk::GraphicsPipeline m_Pipeline;
 
-        vk::DeviceMemory m_VertexMemory;
-        vk::Buffer m_VertexBuffer;
+        std::vector<ModelReference> m_ModelReferences;
 
         std::vector<XrSwapchainView> m_SwapchainViews;
         vk::Fence m_Fence;
 
         std::vector<VkFrameInfo> m_Frames;
         uint32_t m_FrameIndex{};
-
-        Pose m_HeadPose;
-
-        VkFormat m_ColorFormat{}, m_DepthFormat{};
     };
 }

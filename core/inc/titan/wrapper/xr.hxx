@@ -8,6 +8,58 @@
 namespace core
 {
     template<>
+    struct traits_t<XrAction>
+    {
+        using value_type = XrAction;
+
+        static constexpr auto create_name = "xrCreateAction";
+
+        static auto make_destroy_args(XrActionSet, const XrActionCreateInfo &)
+        {
+            return std::tuple{};
+        }
+
+        static auto create(
+            XrActionSet action_set,
+            const XrActionCreateInfo &create_info,
+            value_type &value)
+        {
+            return xrCreateAction(action_set, &create_info, &value);
+        }
+
+        static auto destroy(value_type value)
+        {
+            return xrDestroyAction(value);
+        }
+    };
+
+    template<>
+    struct traits_t<XrActionSet>
+    {
+        using value_type = XrActionSet;
+
+        static constexpr auto create_name = "xrCreateActionSet";
+
+        static auto make_destroy_args(XrInstance, const XrActionSetCreateInfo &)
+        {
+            return std::tuple{};
+        }
+
+        static auto create(
+            XrInstance instance,
+            const XrActionSetCreateInfo &create_info,
+            value_type &value)
+        {
+            return xrCreateActionSet(instance, &create_info, &value);
+        }
+
+        static auto destroy(value_type value)
+        {
+            return xrDestroyActionSet(value);
+        }
+    };
+
+    template<>
     struct traits_t<XrDebugUtilsMessengerEXT>
     {
         using value_type = XrDebugUtilsMessengerEXT;

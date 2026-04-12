@@ -4,7 +4,7 @@
 core::result<> core::Application::RecordCommandBuffer(
     const uint32_t width,
     const uint32_t height,
-    const CameraData &camera_data,
+    const glm::mat4 &screen_matrix,
     vk::CommandBuffer &buffer,
     vk::Framebuffer &framebuffer)
 {
@@ -78,50 +78,45 @@ core::result<> core::Application::RecordCommandBuffer(
     vkCmdSetViewportWithCount(buffer, 1, &viewport);
     vkCmdSetScissorWithCount(buffer, 1, &scissor);
 
-    const std::vector<VkBuffer> buffers
+    for (auto &model : m_ModelReferences)
     {
-        m_VertexBuffer,
-    };
-
-    const std::array offsets
-    {
-        0LU,
-    };
-
-    vkCmdBindVertexBuffers(buffer, 0, buffers.size(), buffers.data(), offsets.data());
-
-    if (!m_DescriptorSets.empty())
-    {
-        std::vector<VkDescriptorSet> descriptor_sets(m_DescriptorSets.size());
-        for (uint32_t i = 0; i < m_DescriptorSets.size(); ++i)
-            descriptor_sets[i] = m_DescriptorSets[i];
-
-        const VkBindDescriptorSetsInfo bind_descriptor_sets_info
+        const std::array<VkBuffer, 1> buffers
         {
-            .sType = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .layout = m_PipelineLayout,
-            .firstSet = 0,
-            .descriptorSetCount = static_cast<uint32_t>(descriptor_sets.size()),
-            .pDescriptorSets = descriptor_sets.data(),
+            model.VertexBuffer,
         };
 
-        vkCmdBindDescriptorSets2(buffer, &bind_descriptor_sets_info);
+        const std::array offsets
+        {
+            model.VertexBufferOffset,
+        };
+
+        vkCmdBindVertexBuffers(buffer, 0, buffers.size(), buffers.data(), offsets.data());
+        vkCmdBindIndexBuffer(buffer, model.IndexBuffer, model.IndexBufferOffset, model.IndexType);
+
+        for (auto &instance : model.Instances)
+        {
+            const ShaderData shader_data
+            {
+                .Screen = screen_matrix,
+                .Model = instance.Model,
+                .Normal = instance.Normal,
+            };
+
+            const VkPushConstantsInfo push_constants_info
+            {
+                .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
+                .layout = m_PipelineLayout,
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .offset = 0,
+                .size = sizeof(ShaderData),
+                .pValues = &shader_data,
+            };
+
+            vkCmdPushConstants2(buffer, &push_constants_info);
+
+            vkCmdDrawIndexed(buffer, model.IndexCount, 1, 0, 0, 0);
+        }
     }
-
-    const VkPushConstantsInfo push_constants_info
-    {
-        .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
-        .layout = m_PipelineLayout,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = sizeof(CameraData),
-        .pValues = &camera_data,
-    };
-
-    vkCmdPushConstants2(buffer, &push_constants_info);
-
-    vkCmdDraw(buffer, m_Mesh.Vertices.size(), 1, 0, 0);
 
     const VkSubpassEndInfo subpass_end_info
     {

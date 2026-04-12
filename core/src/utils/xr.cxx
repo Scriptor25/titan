@@ -127,3 +127,67 @@ core::result<> core::xr::EndFrame(XrSession session, const XrFrameEndInfo &frame
         return error("xrEndFrame => {}", res);
     return ok();
 }
+
+core::result<XrPath> core::xr::StringToPath(XrInstance instance, const std::string &str)
+{
+    XrPath path;
+    if (const auto res = xrStringToPath(instance, str.c_str(), &path))
+        return error<XrPath>("xrStringToPath => {}", res);
+    return path;
+}
+
+core::result<std::string> core::xr::PathToString(XrInstance instance, XrPath path)
+{
+    uint32_t capacity;
+    if (auto res = xrPathToString(instance, path, 0, &capacity, nullptr))
+        return error<std::string>("xrPathToString => {}", res);
+
+    std::vector<char> buffer(capacity);
+    if (auto res = xrPathToString(instance, path, buffer.size(), &capacity, buffer.data()))
+        return error<std::string>("xrPathToString => {}", res);
+
+    return std::string(buffer.begin(), buffer.end());
+}
+
+core::result<> core::xr::SuggestInteractionProfileBindings(
+    XrInstance instance,
+    const std::string &profile,
+    const std::vector<std::pair<XrAction, std::string>> &bindings)
+{
+    XrPath profile_path;
+    if (auto res = StringToPath(instance, profile) >> profile_path)
+        return res;
+
+    std::vector<XrActionSuggestedBinding> suggested_bindings(bindings.size());
+    for (uint32_t i = 0; i < bindings.size(); ++i)
+    {
+        XrPath binding;
+        if (auto res = StringToPath(instance, bindings[i].second) >> binding)
+            return res;
+
+        suggested_bindings[i] = {
+            .action = bindings[i].first,
+            .binding = binding,
+        };
+    }
+
+    const XrInteractionProfileSuggestedBinding profile_suggested_bindings
+    {
+        .type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING,
+        .interactionProfile = profile_path,
+        .countSuggestedBindings = static_cast<uint32_t>(suggested_bindings.size()),
+        .suggestedBindings = suggested_bindings.data(),
+    };
+
+    if (auto res = xrSuggestInteractionProfileBindings(instance, &profile_suggested_bindings))
+        return error("xrSuggestInteractionProfileBindings => {}", res);
+    return ok();
+}
+
+core::result<XrInteractionProfileState> core::xr::GetCurrentInteractionProfile(XrSession session, XrPath path)
+{
+    XrInteractionProfileState interaction_profile_state{ .type = XR_TYPE_INTERACTION_PROFILE_STATE };
+    if (auto res = xrGetCurrentInteractionProfile(session, path, &interaction_profile_state))
+        return error<XrInteractionProfileState>("xrGetCurrentInteractionProfile => {}", res);
+    return interaction_profile_state;
+}
