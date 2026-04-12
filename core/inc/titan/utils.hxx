@@ -93,6 +93,11 @@ namespace core::xr
         const XrVulkanGraphicsDeviceGetInfoKHR &get_info);
 
     result<XrSystemId> GetSystem(XrInstance instance, const XrSystemGetInfo &get_info);
+
+    result<XrFrameState> WaitFrame(XrSession session, const XrFrameWaitInfo &frame_wait_info);
+
+    result<> BeginFrame(XrSession session, const XrFrameBeginInfo &frame_begin_info);
+    result<> EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info);
 }
 
 namespace core::vk

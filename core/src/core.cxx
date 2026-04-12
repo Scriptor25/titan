@@ -1,8 +1,6 @@
 #include <titan/core.hxx>
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
-#include <titan/format/vk.hxx>
-#include <titan/format/xr.hxx>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -31,33 +29,34 @@ core::result<> core::Application::Initialize(const std::string_view exec, const 
 
 void core::Application::Terminate() const
 {
-    m_Window.Close();
+    if (m_Window)
+        m_Window.Close();
 }
 
 core::result<bool> core::Application::Spin()
 {
     glfw::PollEvents();
 
-    if (m_Window.ShouldClose())
-    {
-        if (auto res = OnStop())
-            return error<bool>(std::move(res));
-
-        if (auto res = vkDeviceWaitIdle(m_Device))
-            return error<bool>("vkDeviceWaitIdle => {}", res);
-
-        if (auto res = StorePipelineCache())
-            return error<bool>(std::move(res));
-
-        return false;
-    }
-
-    if (auto res = PollEvents())
-        return error<bool>(std::move(res));
+    if (auto res = PollEvents(); res || !*res)
+        return res;
     if (auto res = RenderFrame())
-        return error<bool>(std::move(res));
+        return res;
 
-    return true;
+    return !m_Window.ShouldClose();
+}
+
+core::result<> core::Application::CleanUp()
+{
+    if (auto res = OnStop())
+        return res;
+
+    if (auto res = vkDeviceWaitIdle(m_Device))
+        return error("vkDeviceWaitIdle => {}", res);
+
+    if (auto res = StorePipelineCache())
+        return res;
+
+    return ok();
 }
 
 core::result<> core::Application::InitializeGraphics()
@@ -97,13 +96,9 @@ core::result<> core::Application::InitializeGraphics()
            & WRAP(FillVertexBuffer);
 }
 
-core::result<> core::Application::PollEvents()
+core::result<bool> core::Application::PollEvents()
 {
-    XrEventDataBuffer event_data
-    {
-        .type = XR_TYPE_EVENT_DATA_BUFFER,
-        .varying = {},
-    };
+    XrEventDataBuffer event_data{ .type = XR_TYPE_EVENT_DATA_BUFFER };
 
     while (xrPollEvent(m_XrInstance, &event_data) == XR_SUCCESS)
     {
@@ -121,7 +116,7 @@ core::result<> core::Application::PollEvents()
             const auto instance_loss_pending = reinterpret_cast<XrEventDataInstanceLossPending *>(&event_data);
             info("XrEventDataInstanceLossPending {{ lossTime={} }}", instance_loss_pending->lossTime);
 
-            return error("XrEventDataInstanceLossPending {{ lossTime={} }}", instance_loss_pending->lossTime);
+            return false;
         }
 
         case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
@@ -189,7 +184,7 @@ core::result<> core::Application::PollEvents()
                 };
 
                 if (auto res = xrBeginSession(m_Session, &session_begin_info))
-                    return error("xrBeginSession => {}", res);
+                    return error<bool>("xrBeginSession => {}", res);
 
                 break;
             }
@@ -197,23 +192,25 @@ core::result<> core::Application::PollEvents()
             case XR_SESSION_STATE_STOPPING:
             {
                 if (auto res = xrEndSession(m_Session))
-                    return error("xrEndSession => {}", res);
+                    return error<bool>("xrEndSession => {}", res);
 
-                return error(
+                info(
                     "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
                     static_cast<void *>(session_state_changed->session),
                     session_state_changed->state,
                     session_state_changed->time);
+                return false;
             }
 
             case XR_SESSION_STATE_LOSS_PENDING:
             case XR_SESSION_STATE_EXITING:
             {
-                return error(
+                info(
                     "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
                     static_cast<void *>(session_state_changed->session),
                     session_state_changed->state,
                     session_state_changed->time);
+                return false;
             }
 
             default:
@@ -230,19 +227,19 @@ core::result<> core::Application::PollEvents()
         event_data.type = XR_TYPE_EVENT_DATA_BUFFER;
     }
 
-    return ok();
+    return true;
 }
 
 core::result<> core::Application::RenderFrame()
 {
-    const XrFrameWaitInfo wait_info
+    const XrFrameWaitInfo frame_wait_info
     {
         .type = XR_TYPE_FRAME_WAIT_INFO,
     };
 
-    XrFrameState frame_state{ .type = XR_TYPE_FRAME_STATE };
-    if (auto res = xrWaitFrame(m_Session, &wait_info, &frame_state))
-        return error("xrWaitFrame => {}", res);
+    XrFrameState frame_state;
+    if (auto res = xr::WaitFrame(m_Session, frame_wait_info) >> frame_state)
+        return res;
 
     if (auto res = PreFrame())
         return res;
@@ -252,8 +249,8 @@ core::result<> core::Application::RenderFrame()
         .type = XR_TYPE_FRAME_BEGIN_INFO,
     };
 
-    if (auto res = xrBeginFrame(m_Session, &frame_begin_info))
-        return error("xrBeginFrame => {}", res);
+    if (auto res = xr::BeginFrame(m_Session, frame_begin_info))
+        return res;
 
     if (auto res = OnFrame())
         return res;
@@ -288,8 +285,8 @@ core::result<> core::Application::RenderFrame()
         .layers = layer_info.Layers.data(),
     };
 
-    if (auto res = xrEndFrame(m_Session, &frame_end_info))
-        return error("xrEndFrame => {}", res);
+    if (auto res = xr::EndFrame(m_Session, frame_end_info))
+        return res;
 
     return PostFrame();
 }
@@ -312,7 +309,7 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
     };
 
     std::vector<XrView> views;
-    if (auto res = xr::LocateViews(*m_Session, view_locate_info, view_state) >> views)
+    if (auto res = xr::LocateViews(m_Session, view_locate_info, view_state) >> views)
         return res;
 
     projection_views = {
@@ -326,9 +323,9 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
         { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO },
     };
 
-    const std::array fences
+    const std::vector<VkFence> fences
     {
-        *m_Fence,
+        m_Fence,
     };
 
     if (auto res = vkWaitForFences(
@@ -369,8 +366,8 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
             view_configuration_view,
             color,
             depth,
-            buffer,
-            framebuffers
+            framebuffers,
+            buffer
         ] = m_SwapchainViews[view_index];
 
         uint32_t image_index;
@@ -506,14 +503,14 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
         available,
         finished,
         fence,
-        buffer,
-        framebuffer
+        framebuffer,
+        buffer
     ] = m_Frames[m_FrameIndex];
     m_FrameIndex = (m_FrameIndex + 1) % m_Frames.size();
 
-    const std::array fences
+    const std::vector<VkFence> fences
     {
-        *fence,
+        fence,
     };
 
     if (auto res = vkWaitForFences(
@@ -657,22 +654,22 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
     }
 
     {
-        const std::array wait_semaphores
+        const std::vector<VkSemaphore> wait_semaphores
         {
-            *finished,
+            finished,
         };
 
-        const std::array swapchains
+        const std::vector<VkSwapchainKHR> swapchains
         {
-            *m_WindowSwapchainView.Color.Swapchain,
+            m_WindowSwapchainView.Color.Swapchain,
         };
 
         const VkPresentInfoKHR present_info
         {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = wait_semaphores.size(),
+            .waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size()),
             .pWaitSemaphores = wait_semaphores.data(),
-            .swapchainCount = swapchains.size(),
+            .swapchainCount = static_cast<uint32_t>(swapchains.size()),
             .pSwapchains = swapchains.data(),
             .pImageIndices = &image_index,
         };

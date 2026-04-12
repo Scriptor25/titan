@@ -25,7 +25,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
         };
 
         if (auto res = xr::Swapchain::create(m_Session, swapchain_create_info) >> reference.Swapchain)
-            return error<XrSwapchainReference>(std::move(res));
+            return res;
 
         auto set_images = [&](const std::vector<XrSwapchainImageVulkan2KHR> &images)
         {
@@ -39,7 +39,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
                            reference.Swapchain,
                            { .type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN2_KHR })
                        & set_images)
-            return error<XrSwapchainReference>(std::move(res));
+            return res;
     }
     else
     {
@@ -73,7 +73,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
             };
 
             if (auto res = vk::Image::create(m_Device, image_create_info) >> image)
-                return error<XrSwapchainReference>(std::move(res));
+                return res;
 
             const VkImageMemoryRequirementsInfo2 memory_requirements_info
             {
@@ -95,7 +95,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
                                memory_requirements.memoryTypeBits,
                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                            >> memory_type_index)
-                return error<XrSwapchainReference>(std::move(res));
+                return res;
 
             const VkMemoryAllocateInfo allocate_info
             {
@@ -105,7 +105,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
             };
 
             if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory)
-                return error<XrSwapchainReference>(std::move(res));
+                return res;
 
             const VkBindImageMemoryInfo bind_info
             {
@@ -116,7 +116,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
             };
 
             if (auto res = vk::BindImageMemory2(m_Device, bind_info))
-                return error<XrSwapchainReference>(std::move(res));
+                return res;
         }
     }
 
@@ -146,7 +146,7 @@ core::result<core::XrSwapchainReference> core::Application::CreateSwapchainRefer
         };
 
         if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i])
-            return error<XrSwapchainReference>(std::move(res));
+            return res;
     }
 
     return reference;

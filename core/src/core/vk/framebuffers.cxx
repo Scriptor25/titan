@@ -6,8 +6,8 @@ core::result<> core::Application::CreateFramebuffers()
              view,
              color,
              depth,
-             buffer,
-             framebuffers
+             framebuffers,
+             buffer
          ] : m_SwapchainViews)
     {
         framebuffers.resize(color.Views.size());
@@ -16,17 +16,17 @@ core::result<> core::Application::CreateFramebuffers()
         {
             auto &framebuffer = framebuffers[i];
 
-            const std::array attachments
+            const std::vector<VkImageView> attachments
             {
-                *color.Views[i],
-                *depth.Views[i],
+                color.Views[i],
+                depth.Views[i],
             };
 
             const VkFramebufferCreateInfo create_info
             {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = m_RenderPass,
-                .attachmentCount = attachments.size(),
+                .attachmentCount = static_cast<uint32_t>(attachments.size()),
                 .pAttachments = attachments.data(),
                 .width = view.recommendedImageRectWidth,
                 .height = view.recommendedImageRectHeight,
@@ -52,17 +52,17 @@ core::result<> core::Application::CreateFramebuffers()
         {
             auto &framebuffer = m_Frames[i].Framebuffer;
 
-            const std::array attachments
+            const std::vector<VkImageView> attachments
             {
-                *color.Views[i],
-                *depth.Views[i],
+                color.Views[i],
+                depth.Views[i],
             };
 
             const VkFramebufferCreateInfo create_info
             {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = m_RenderPass,
-                .attachmentCount = attachments.size(),
+                .attachmentCount = static_cast<uint32_t>(attachments.size()),
                 .pAttachments = attachments.data(),
                 .width = width,
                 .height = height,

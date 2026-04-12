@@ -27,6 +27,9 @@ namespace core
     template<>
     class result<void>
     {
+        template<typename>
+        friend class result;
+
     public:
         using value_type = std::expected<void, std::string>;
 
@@ -47,8 +50,17 @@ namespace core
         {
         }
 
-        result(const result &other)
-            : value(other.value)
+        result(const result &other) = default;
+
+        template<result_type R>
+        result(R &&other) noexcept
+            : value(std::unexpected(std::forward<R>(other).value.error()))
+        {
+        }
+
+        template<result_type R>
+        result(const R &other)
+            : value(std::unexpected(other.value.error()))
         {
         }
 
@@ -58,15 +70,35 @@ namespace core
             return *this;
         }
 
-        result &operator=(const result &other)
+        result &operator=(const result &other) = default;
+
+        template<result_type R>
+        result &operator=(R &&other) noexcept
         {
-            value = other.value;
+            value = std::unexpected(std::forward<R>(other).value.error());
+            return *this;
+        }
+
+        template<result_type R>
+        result &operator=(const R &other)
+        {
+            value = std::unexpected(other.value.error());
             return *this;
         }
 
         explicit operator bool() const
         {
             return !value;
+        }
+
+        std::string &error()
+        {
+            return value.error();
+        }
+
+        [[nodiscard]] const std::string &error() const
+        {
+            return value.error();
         }
 
         template<typename F>
@@ -105,6 +137,9 @@ namespace core
     template<typename T>
     class result
     {
+        template<typename>
+        friend class result;
+
     public:
         using value_type = std::expected<T, std::string>;
 
@@ -135,8 +170,17 @@ namespace core
         {
         }
 
-        result(const result &other)
-            : value(other.value)
+        result(const result &other) = default;
+
+        template<result_type R>
+        result(R &&other) noexcept
+            : value(std::unexpected(std::forward<R>(other).value.error()))
+        {
+        }
+
+        template<result_type R>
+        result(const R &other)
+            : value(std::unexpected(other.value.error()))
         {
         }
 
@@ -146,15 +190,50 @@ namespace core
             return *this;
         }
 
-        result &operator=(const result &other)
+        result &operator=(const result &other) = default;
+
+        template<result_type R>
+        result &operator=(R &&other) noexcept
         {
-            value = other.value;
+            value = std::unexpected(std::forward<R>(other).value.error());
+            return *this;
+        }
+
+        template<result_type R>
+        result &operator=(const R &other)
+        {
+            value = std::unexpected(other.value.error());
             return *this;
         }
 
         explicit operator bool() const
         {
             return !value;
+        }
+
+        bool operator!() const
+        {
+            return !!value;
+        }
+
+        T &operator*()
+        {
+            return *value;
+        }
+
+        const T &operator*() const
+        {
+            return *value;
+        }
+
+        std::string &error()
+        {
+            return value.error();
+        }
+
+        [[nodiscard]] const std::string &error() const
+        {
+            return value.error();
         }
 
         template<typename F>
@@ -189,6 +268,7 @@ namespace core
             };
         }
 
+    private:
         value_type value;
     };
 
@@ -207,12 +287,6 @@ namespace core
     result<T> error(std::format_string<A...> &&fmt, A &&... args)
     {
         return { std::unexpected(std::format(std::move(fmt), std::forward<A>(args)...)) };
-    }
-
-    template<typename T, typename O>
-    result<T> error(result<O> other)
-    {
-        return { std::unexpected(std::move(other.value).error()) };
     }
 
     template<typename T>

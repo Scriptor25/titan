@@ -11,7 +11,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
 
     if (create_info.useSwapchain)
     {
-        auto set_images = [this, &reference](const std::vector<VkImage> &images)
+        auto set_images = [&reference](const std::vector<VkImage> &images)
         {
             reference.Images.resize(images.size());
             for (uint32_t i = 0; i < images.size(); ++i)
@@ -39,10 +39,10 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
         };
 
         if (auto res = vk::SwapchainKHR::create(m_Device, swapchain_create_info) >> reference.Swapchain)
-            return error<VkSwapchainReference>(std::move(res));
+            return res;
 
         if (auto res = vk::GetSwapchainImagesKHR(m_Device, reference.Swapchain) & set_images)
-            return error<VkSwapchainReference>(std::move(res));
+            return res;
     }
     else
     {
@@ -76,7 +76,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
             };
 
             if (auto res = vk::Image::create(m_Device, image_create_info) >> image)
-                return error<VkSwapchainReference>(std::move(res));
+                return res;
 
             const VkImageMemoryRequirementsInfo2 memory_requirements_info
             {
@@ -98,7 +98,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
                                memory_requirements.memoryTypeBits,
                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                            >> memory_type_index)
-                return error<VkSwapchainReference>(std::move(res));
+                return res;
 
             const VkMemoryAllocateInfo allocate_info
             {
@@ -108,7 +108,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
             };
 
             if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory)
-                return error<VkSwapchainReference>(std::move(res));
+                return res;
 
             const VkBindImageMemoryInfo bind_info
             {
@@ -119,7 +119,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
             };
 
             if (auto res = vk::BindImageMemory2(m_Device, bind_info))
-                return error<VkSwapchainReference>(std::move(res));
+                return res;
         }
     }
 
@@ -149,7 +149,7 @@ core::result<core::VkSwapchainReference> core::Application::CreateSwapchainRefer
         };
 
         if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i])
-            return error<VkSwapchainReference>(std::move(res));
+            return res;
     }
 
     return reference;

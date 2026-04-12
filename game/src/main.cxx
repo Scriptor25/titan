@@ -24,6 +24,7 @@ public:
     using Application::Initialize;
     using Application::Terminate;
     using Application::Spin;
+    using Application::CleanUp;
 
 protected:
     core::result<> OnStart() override
@@ -82,9 +83,12 @@ int main(const int argc, const char *const *argv)
                    core::result<bool> e;
                    do
                        e = game.Spin();
-                   while (!e && *e.value);
+                   while (!e && *e);
                    return e;
                };
+
+    if (auto cleanup_res = game.CleanUp())
+        std::cerr << "during cleanup phase: " << cleanup_res.error() << std::endl;
 
     if (!res)
     {
@@ -92,7 +96,7 @@ int main(const int argc, const char *const *argv)
         return 0;
     }
 
-    std::cerr << res.value.error() << std::endl;
+    std::cerr << res.error() << std::endl;
 
     game_ptr = nullptr;
     return 1;

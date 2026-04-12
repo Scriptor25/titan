@@ -78,9 +78,9 @@ core::result<> core::Application::RecordCommandBuffer(
     vkCmdSetViewportWithCount(buffer, 1, &viewport);
     vkCmdSetScissorWithCount(buffer, 1, &scissor);
 
-    const std::array buffers
+    const std::vector<VkBuffer> buffers
     {
-        *m_VertexBuffer,
+        m_VertexBuffer,
     };
 
     const std::array offsets

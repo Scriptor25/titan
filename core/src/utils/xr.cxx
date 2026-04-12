@@ -105,3 +105,25 @@ core::result<XrSystemId> core::xr::GetSystem(XrInstance instance, const XrSystem
         return error<XrSystemId>("xrGetSystem => {}", res);
     return system_id;
 }
+
+core::result<XrFrameState> core::xr::WaitFrame(XrSession session, const XrFrameWaitInfo &frame_wait_info)
+{
+    XrFrameState frame_state{ .type = XR_TYPE_FRAME_STATE };
+    if (auto res = xrWaitFrame(session, &frame_wait_info, &frame_state))
+        return error<XrFrameState>("xrWaitFrame => {}", res);
+    return frame_state;
+}
+
+core::result<> core::xr::BeginFrame(XrSession session, const XrFrameBeginInfo &frame_begin_info)
+{
+    if (auto res = xrBeginFrame(session, &frame_begin_info))
+        return error("xrBeginFrame => {}", res);
+    return ok();
+}
+
+core::result<> core::xr::EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info)
+{
+    if (auto res = xrEndFrame(session, &frame_end_info))
+        return error("xrEndFrame => {}", res);
+    return ok();
+}

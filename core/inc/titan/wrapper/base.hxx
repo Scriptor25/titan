@@ -17,7 +17,10 @@ namespace core
         using args_type = std::tuple<Args...>;
     };
 
-    template<typename T, typename... Tags>
+    template<typename T>
+    concept wrappable = std::convertible_to<T, bool>;
+
+    template<wrappable T, typename... Tags>
     class wrapper_t
     {
     public:
@@ -76,11 +79,6 @@ namespace core
         }
 
         operator T() const
-        {
-            return value;
-        }
-
-        T operator *() const
         {
             return value;
         }

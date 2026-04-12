@@ -34,8 +34,8 @@ namespace core
         XrSwapchainReference Color;
         XrSwapchainReference Depth;
 
-        vk::CommandBuffer Buffer;
         std::vector<vk::Framebuffer> Framebuffers;
+        vk::CommandBuffer Buffer;
     };
 
     struct VkSwapchainReference
@@ -63,8 +63,8 @@ namespace core
         vk::Semaphore Finished;
         vk::Fence Fence;
 
-        vk::CommandBuffer Buffer;
         vk::Framebuffer Framebuffer;
+        vk::CommandBuffer Buffer;
     };
 
     struct LayerInfo
@@ -256,6 +256,7 @@ namespace core
         void Terminate() const;
 
         result<bool> Spin();
+        result<> CleanUp();
 
     private:
         result<> InitializeWindow();
@@ -318,7 +319,7 @@ namespace core
             vk::Framebuffer &
             framebuffer);
 
-        result<> PollEvents();
+        result<bool> PollEvents();
 
         result<> RenderFrame();
         result<> RenderLayer(LayerInfo &reference);
@@ -365,14 +366,9 @@ namespace core
 
         vk::SurfaceKHR m_WindowSurface;
         VkSwapchainView m_WindowSwapchainView;
-        std::vector<VkFrameInfo> m_Frames;
-        uint32_t m_FrameIndex{};
 
         XrSessionState m_SessionState{};
         xr::Session m_Session;
-
-        std::vector<XrSwapchainView> m_SwapchainViews;
-        vk::Fence m_Fence;
 
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
         xr::ReferenceSpace m_ViewSpace, m_ReferenceSpace;
@@ -388,6 +384,12 @@ namespace core
 
         vk::DeviceMemory m_VertexMemory;
         vk::Buffer m_VertexBuffer;
+
+        std::vector<XrSwapchainView> m_SwapchainViews;
+        vk::Fence m_Fence;
+
+        std::vector<VkFrameInfo> m_Frames;
+        uint32_t m_FrameIndex{};
 
         Pose m_HeadPose;
 
