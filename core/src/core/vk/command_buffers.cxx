@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::AllocateCommandBuffers()
+titan::result<> titan::Application::AllocateCommandBuffers()
 {
     return ok()
            & [&]

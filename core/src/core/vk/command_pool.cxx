@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::CreateCommandPools()
+titan::result<> titan::Application::CreateCommandPools()
 {
     return ok()
            & [&]

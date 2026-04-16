@@ -5,7 +5,7 @@
 #include <titan/format/xr.hxx>
 #include <titan/wrapper/base.hxx>
 
-namespace core
+namespace titan
 {
     template<>
     struct traits_t<XrAction>

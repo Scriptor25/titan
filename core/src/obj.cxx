@@ -17,7 +17,7 @@ static std::vector<std::string> split(const std::string &line, const char delim)
     return result;
 }
 
-core::MeshData core::obj::Open(std::istream &stream)
+titan::MeshData titan::obj::Open(std::istream &stream)
 {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
@@ -130,7 +130,7 @@ core::MeshData core::obj::Open(std::istream &stream)
     return mesh;
 }
 
-core::MeshData core::obj::Open(const std::filesystem::path &path)
+titan::MeshData titan::obj::Open(const std::filesystem::path &path)
 {
     std::ifstream stream(path);
     if (!stream)

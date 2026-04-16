@@ -5,12 +5,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-core::Application::Application(ApplicationInfo info)
+titan::Application::Application(ApplicationInfo info)
     : m_Info(std::move(info))
 {
 }
 
-core::result<> core::Application::Initialize(const std::string_view exec, const std::vector<std::string_view> &args)
+titan::result<> titan::Application::Initialize(const std::string_view exec, const std::vector<std::string_view> &args)
 {
     (void) exec;
     (void) args;
@@ -36,13 +36,13 @@ core::result<> core::Application::Initialize(const std::string_view exec, const 
     return OnStart();
 }
 
-void core::Application::Terminate() const
+void titan::Application::Terminate() const
 {
     if (m_Window)
         m_Window.Close();
 }
 
-core::result<bool> core::Application::Spin()
+titan::result<bool> titan::Application::Spin()
 {
     glfw::PollEvents();
 
@@ -54,7 +54,7 @@ core::result<bool> core::Application::Spin()
     return !m_Window.ShouldClose();
 }
 
-core::result<> core::Application::CleanUp()
+titan::result<> titan::Application::CleanUp()
 {
     if (auto res = OnStop())
         return res;
@@ -68,7 +68,7 @@ core::result<> core::Application::CleanUp()
     return ok();
 }
 
-core::result<> core::Application::InitializeGraphics()
+titan::result<> titan::Application::InitializeGraphics()
 {
     return ok()
            & WRAP(CreateXrInstance)
@@ -107,7 +107,7 @@ core::result<> core::Application::InitializeGraphics()
            & WRAP(FillBuffers);
 }
 
-core::result<bool> core::Application::PollEvents()
+titan::result<bool> titan::Application::PollEvents()
 {
     XrEventDataBuffer event_data{ .type = XR_TYPE_EVENT_DATA_BUFFER };
 
@@ -242,7 +242,7 @@ core::result<bool> core::Application::PollEvents()
     return true;
 }
 
-core::result<> core::Application::PollActions(const XrTime time)
+titan::result<> titan::Application::PollActions(const XrTime time)
 {
     const std::array active_action_sets
     {
@@ -367,7 +367,7 @@ core::result<> core::Application::PollActions(const XrTime time)
     return ok();
 }
 
-core::result<> core::Application::RenderFrame()
+titan::result<> titan::Application::RenderFrame()
 {
     const XrFrameWaitInfo frame_wait_info
     {
@@ -430,7 +430,7 @@ core::result<> core::Application::RenderFrame()
     return PostFrame();
 }
 
-core::result<> core::Application::RenderLayer(LayerInfo &reference)
+titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
 {
     auto &projection_views = reference.Views;
 
@@ -612,7 +612,7 @@ core::result<> core::Application::RenderLayer(LayerInfo &reference)
     return ok();
 }
 
-core::result<> core::Application::UpdateModels()
+titan::result<> titan::Application::UpdateModels()
 {
     static auto begin = std::chrono::high_resolution_clock::now();
     const auto now = std::chrono::high_resolution_clock::now();
@@ -649,7 +649,7 @@ core::result<> core::Application::UpdateModels()
     return ok();
 }
 
-core::result<> core::Application::RenderThirdEye(const XrTime time)
+titan::result<> titan::Application::RenderThirdEye(const XrTime time)
 {
     auto &[
         available,
@@ -828,27 +828,27 @@ core::result<> core::Application::RenderThirdEye(const XrTime time)
     return ok();
 }
 
-core::result<> core::Application::OnStart()
+titan::result<> titan::Application::OnStart()
 {
     return ok();
 }
 
-core::result<> core::Application::PreFrame()
+titan::result<> titan::Application::PreFrame()
 {
     return ok();
 }
 
-core::result<> core::Application::OnFrame()
+titan::result<> titan::Application::OnFrame()
 {
     return ok();
 }
 
-core::result<> core::Application::PostFrame()
+titan::result<> titan::Application::PostFrame()
 {
     return ok();
 }
 
-core::result<> core::Application::OnStop()
+titan::result<> titan::Application::OnStop()
 {
     return ok();
 }

@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::CreatePipeline()
+titan::result<> titan::Application::CreatePipeline()
 {
     vk::ShaderModule shader_module_vertex, shader_module_fragment;
 

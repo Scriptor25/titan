@@ -3,7 +3,7 @@
 
 #include <cstring>
 
-core::result<> core::Application::FillBuffers()
+titan::result<> titan::Application::FillBuffers()
 {
     for (uint32_t i = 0; i < m_ModelData.size(); ++i)
     {

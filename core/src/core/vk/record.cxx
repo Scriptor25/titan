@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-core::result<> core::Application::RecordCommandBuffer(
+titan::result<> titan::Application::RecordCommandBuffer(
     const uint32_t width,
     const uint32_t height,
     const glm::mat4 &screen_matrix,

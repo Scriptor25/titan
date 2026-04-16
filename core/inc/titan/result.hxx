@@ -6,7 +6,7 @@
 
 #define WRAP(FN) ([&]{ return (FN)(); })
 
-namespace core
+namespace titan
 {
     template<typename T = void>
     class result;

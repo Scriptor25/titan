@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::CreatePipelineLayout()
+titan::result<> titan::Application::CreatePipelineLayout()
 {
     const std::array push_constant_ranges
     {

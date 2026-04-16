@@ -3,7 +3,7 @@
 #include <titan/api.hxx>
 #include <titan/result.hxx>
 
-namespace core::glfw
+namespace titan::glfw
 {
     class Window;
     class Monitor;

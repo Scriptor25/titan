@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::CreateFramebuffers()
+titan::result<> titan::Application::CreateFramebuffers()
 {
     for (auto &[
              view,

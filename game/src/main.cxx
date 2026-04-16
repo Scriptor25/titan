@@ -4,7 +4,7 @@
 #include <iostream>
 #include <map>
 
-class Game final : core::Application
+class Game final : titan::Application
 {
 public:
     Game()
@@ -27,29 +27,29 @@ public:
     using Application::CleanUp;
 
 protected:
-    core::result<> OnStart() override
+    titan::result<> OnStart() override
     {
-        return core::ok();
+        return titan::ok();
     }
 
-    core::result<> PreFrame() override
+    titan::result<> PreFrame() override
     {
-        return core::ok();
+        return titan::ok();
     }
 
-    core::result<> OnFrame() override
+    titan::result<> OnFrame() override
     {
-        return core::ok();
+        return titan::ok();
     }
 
-    core::result<> PostFrame() override
+    titan::result<> PostFrame() override
     {
-        return core::ok();
+        return titan::ok();
     }
 
-    core::result<> OnStop() override
+    titan::result<> OnStop() override
     {
-        return core::ok();
+        return titan::ok();
     }
 };
 
@@ -80,7 +80,7 @@ int main(const int argc, const char *const *argv)
     auto res = game.Initialize(*argv, { argv + 1, argv + argc })
                & [&]
                {
-                   core::result<bool> e;
+                   titan::result<bool> e;
                    do
                        e = game.Spin();
                    while (!e && *e);

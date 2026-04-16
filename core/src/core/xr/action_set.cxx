@@ -5,7 +5,7 @@
 #include <iostream>
 #include <titan/log.hxx>
 
-core::result<> core::Application::CreateActionSet()
+titan::result<> titan::Application::CreateActionSet()
 {
     const XrActionSetCreateInfo create_info
     {
@@ -18,7 +18,7 @@ core::result<> core::Application::CreateActionSet()
     return xr::ActionSet::create(m_XrInstance, create_info) >> m_ActionSet;
 }
 
-core::result<> core::Application::CreateActions()
+titan::result<> titan::Application::CreateActions()
 {
     return ok()
            & [&]
@@ -47,7 +47,7 @@ core::result<> core::Application::CreateActions()
            };
 }
 
-core::result<core::xr::Action> core::Application::CreateAction(
+titan::result<titan::xr::Action> titan::Application::CreateAction(
     const std::string &name,
     const std::string &localized_name,
     const XrActionType type,
@@ -80,7 +80,7 @@ core::result<core::xr::Action> core::Application::CreateAction(
     return xr::Action::create(m_ActionSet, create_info);
 }
 
-core::result<> core::Application::CreateHands()
+titan::result<> titan::Application::CreateHands()
 {
     return ok()
            & [&]
@@ -93,7 +93,7 @@ core::result<> core::Application::CreateHands()
            };
 }
 
-core::result<> core::Application::SuggestBindings()
+titan::result<> titan::Application::SuggestBindings()
 {
     return ok()
            & [&]
@@ -126,7 +126,7 @@ core::result<> core::Application::SuggestBindings()
            };
 }
 
-core::result<> core::Application::RecordBindings()
+titan::result<> titan::Application::RecordBindings()
 {
     if (!m_Session)
         return ok();
@@ -162,7 +162,7 @@ core::result<> core::Application::RecordBindings()
            };
 }
 
-core::result<> core::Application::CreateActionSpaces()
+titan::result<> titan::Application::CreateActionSpaces()
 {
     return ok()
            & [&]
@@ -175,7 +175,7 @@ core::result<> core::Application::CreateActionSpaces()
            };
 }
 
-core::result<core::xr::ActionSpace> core::Application::CreateActionSpace(
+titan::result<titan::xr::ActionSpace> titan::Application::CreateActionSpace(
     XrAction action,
     const std::optional<std::string> &sub_path_string)
 {
@@ -198,7 +198,7 @@ core::result<core::xr::ActionSpace> core::Application::CreateActionSpace(
     return xr::ActionSpace::create(m_Session, create_info);
 }
 
-core::result<> core::Application::AttachActionSet()
+titan::result<> titan::Application::AttachActionSet()
 {
     const std::vector<XrActionSet> action_sets
     {

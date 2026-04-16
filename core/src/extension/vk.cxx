@@ -6,7 +6,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugUtilsMessengerEXT(
     const VkAllocationCallbacks *pAllocator,
     VkDebugUtilsMessengerEXT *pMessenger)
 {
-    static const auto pfn = core::vk::GetInstanceProcAddr<PFN_vkCreateDebugUtilsMessengerEXT>(
+    static const auto pfn = titan::vk::GetInstanceProcAddr<PFN_vkCreateDebugUtilsMessengerEXT>(
         instance,
         "vkCreateDebugUtilsMessengerEXT");
 
@@ -20,7 +20,7 @@ VKAPI_ATTR void VKAPI_CALL vkDestroyDebugUtilsMessengerEXT(
     VkDebugUtilsMessengerEXT messenger,
     const VkAllocationCallbacks *pAllocator)
 {
-    static const auto pfn = core::vk::GetInstanceProcAddr<PFN_vkDestroyDebugUtilsMessengerEXT>(
+    static const auto pfn = titan::vk::GetInstanceProcAddr<PFN_vkDestroyDebugUtilsMessengerEXT>(
         instance,
         "vkDestroyDebugUtilsMessengerEXT");
 

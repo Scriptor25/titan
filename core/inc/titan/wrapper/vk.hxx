@@ -6,7 +6,7 @@
 
 #include <vector>
 
-namespace core
+namespace titan
 {
     template<>
     struct traits_t<VkBuffer>

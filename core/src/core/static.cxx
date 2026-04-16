@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-void core::Application::GetInstanceExtensions(std::vector<const char *> &dst)
+void titan::Application::GetInstanceExtensions(std::vector<const char *> &dst)
 {
     dst.insert(dst.end(), VK_INSTANCE_EXTENSIONS.begin(), VK_INSTANCE_EXTENSIONS.end());
 
@@ -12,12 +12,12 @@ void core::Application::GetInstanceExtensions(std::vector<const char *> &dst)
     dst.insert(dst.end(), glfw_extensions, glfw_extensions + glfw_extension_count);
 }
 
-void core::Application::GetDeviceExtensions(std::vector<const char *> &dst)
+void titan::Application::GetDeviceExtensions(std::vector<const char *> &dst)
 {
     dst.insert(dst.end(), VK_DEVICE_EXTENSIONS.begin(), VK_DEVICE_EXTENSIONS.end());
 }
 
-core::result<> core::Application::FindFormats(
+titan::result<> titan::Application::FindFormats(
     VkPhysicalDevice physical_device,
     const std::vector<VkFormat> &formats,
     const std::vector<FormatReference> &references)
@@ -75,7 +75,7 @@ core::result<> core::Application::FindFormats(
     return error("failed to find formats for references {}.", missing);
 }
 
-core::result<uint32_t> core::Application::FindMemoryType(
+titan::result<uint32_t> titan::Application::FindMemoryType(
     VkPhysicalDevice physical_device,
     const uint32_t type_filter,
     const VkMemoryPropertyFlags type_flags)
@@ -96,7 +96,7 @@ core::result<uint32_t> core::Application::FindMemoryType(
     return error<uint32_t>("failed to find any suitable memory type.");
 }
 
-std::vector<char> core::Application::LoadBinary(const std::filesystem::path &path)
+std::vector<char> titan::Application::LoadBinary(const std::filesystem::path &path)
 {
     std::ifstream stream(path, std::ios::binary | std::ios::ate);
     if (!stream)
@@ -111,7 +111,7 @@ std::vector<char> core::Application::LoadBinary(const std::filesystem::path &pat
     return binary;
 }
 
-void core::Application::StoreBinary(const std::filesystem::path &path, const std::vector<char> &data)
+void titan::Application::StoreBinary(const std::filesystem::path &path, const std::vector<char> &data)
 {
     std::ofstream stream(path, std::ios::binary);
     if (!stream)

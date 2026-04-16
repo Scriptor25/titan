@@ -14,7 +14,7 @@
 #include <string_view>
 #include <vector>
 
-namespace core
+namespace titan
 {
     struct XrSwapchainReference
     {

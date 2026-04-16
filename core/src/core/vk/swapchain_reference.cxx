@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-core::result<core::VkSwapchainReference> core::Application::CreateSwapchainReference(
+titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainReference(
     const VkSwapchainReferenceCreateInfo &create_info)
 {
     VkSwapchainReference reference

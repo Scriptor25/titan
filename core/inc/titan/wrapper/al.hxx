@@ -3,7 +3,7 @@
 #include <titan/api.hxx>
 #include <titan/result.hxx>
 
-namespace core::al
+namespace titan::al
 {
     class Device
     {

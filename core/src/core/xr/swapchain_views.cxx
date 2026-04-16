@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::CreateSwapchainViews()
+titan::result<> titan::Application::CreateSwapchainViews()
 {
     VkSharingMode image_sharing_mode;
     std::vector<uint32_t> queue_family_indices;

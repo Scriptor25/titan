@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::GetFormats()
+titan::result<> titan::Application::GetFormats()
 {
     std::vector<VkFormat> formats;
     formats.insert(formats.end(), VK_COLOR_FORMATS.begin(), VK_COLOR_FORMATS.end());

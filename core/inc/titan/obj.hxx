@@ -4,7 +4,7 @@
 
 #include <filesystem>
 
-namespace core::obj
+namespace titan::obj
 {
     MeshData Open(std::istream &stream);
     MeshData Open(const std::filesystem::path &path);

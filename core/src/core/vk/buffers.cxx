@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-core::result<> core::Application::CreateBuffers()
+titan::result<> titan::Application::CreateBuffers()
 {
     m_ModelReferences.resize(m_ModelData.size());
     for (uint32_t i = 0; i < m_ModelData.size(); ++i)

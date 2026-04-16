@@ -3,7 +3,7 @@
 #include <format>
 #include <iostream>
 
-namespace core
+namespace titan
 {
     template<typename... A>
     void info(std::format_string<A...> &&format, A &&... args)

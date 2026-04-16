@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace core
+namespace titan
 {
     struct VertexData
     {
@@ -22,7 +22,7 @@ namespace core
     struct ModelData
     {
         MeshData Mesh;
-        uint32_t InstanceCount;
+        uint32_t InstanceCount{};
         /* MaterialData Material; */
         /* TransformData Transform; */
     };

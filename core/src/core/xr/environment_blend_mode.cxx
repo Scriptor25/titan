@@ -2,7 +2,7 @@
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
 
-core::result<> core::Application::GetEnvironmentBlendMode()
+titan::result<> titan::Application::GetEnvironmentBlendMode()
 {
     return xr::EnumerateEnvironmentBlendModes(m_XrInstance, m_SystemId, m_ViewConfigurationType)
            & [&](std::vector<XrEnvironmentBlendMode> &&value)

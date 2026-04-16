@@ -2,12 +2,12 @@
 
 #include <iostream>
 
-void core::Application::GlfwDebugCallback(const int code, const char *description)
+void titan::Application::GlfwDebugCallback(const int code, const char *description)
 {
     std::cerr << std::format("[GLFW:{}] {}", code, description) << std::endl;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL core::Application::VkDebugCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL titan::Application::VkDebugCallback(
     const VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     const VkDebugUtilsMessageTypeFlagsEXT message_type,
     const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
@@ -28,7 +28,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL core::Application::VkDebugCallback(
     return VK_FALSE;
 }
 
-XRAPI_ATTR XrBool32 XRAPI_CALL core::Application::XrDebugCallback(
+XRAPI_ATTR XrBool32 XRAPI_CALL titan::Application::XrDebugCallback(
     const XrDebugUtilsMessageSeverityFlagsEXT message_severity,
     const XrDebugUtilsMessageTypeFlagsEXT message_types,
     const XrDebugUtilsMessengerCallbackDataEXT *callback_data,

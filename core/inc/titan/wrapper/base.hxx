@@ -2,7 +2,7 @@
 
 #include <titan/result.hxx>
 
-namespace core
+namespace titan
 {
     template<typename T, typename... Tags>
     struct traits_t;

@@ -20,7 +20,7 @@ static VkPresentModeKHR select_present_mode(const std::vector<VkPresentModeKHR> 
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-static VkExtent2D select_extent(const VkSurfaceCapabilitiesKHR &capabilities, const core::glfw::Window &window)
+static VkExtent2D select_extent(const VkSurfaceCapabilitiesKHR &capabilities, const titan::glfw::Window &window)
 {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()
         && capabilities.currentExtent.height != std::numeric_limits<uint32_t>::max())
@@ -47,7 +47,7 @@ static VkExtent2D select_extent(const VkSurfaceCapabilitiesKHR &capabilities, co
     return extent;
 }
 
-core::result<> core::Application::CreateWindowSwapchainView()
+titan::result<> titan::Application::CreateWindowSwapchainView()
 {
     const VkPhysicalDeviceSurfaceInfo2KHR surface_info
     {

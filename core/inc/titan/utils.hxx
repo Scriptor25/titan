@@ -7,7 +7,7 @@
 
 #include <vector>
 
-namespace core::xr
+namespace titan::xr
 {
     template<typename P>
     P GetInstanceProcAddr(XrInstance instance, const char *name)
@@ -110,7 +110,7 @@ namespace core::xr
     result<XrInteractionProfileState> GetCurrentInteractionProfile(XrSession session, XrPath path);
 }
 
-namespace core::vk
+namespace titan::vk
 {
     template<typename P>
     P GetInstanceProcAddr(VkInstance instance, const char *name)

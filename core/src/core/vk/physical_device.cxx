@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-core::result<> core::Application::GetPhysicalDevice()
+titan::result<> titan::Application::GetPhysicalDevice()
 {
     return ok()
            & [&]

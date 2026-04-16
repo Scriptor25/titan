@@ -5,7 +5,7 @@ XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
     const XrDebugUtilsMessengerCreateInfoEXT *createInfo,
     XrDebugUtilsMessengerEXT *messenger)
 {
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrCreateDebugUtilsMessengerEXT>(
+    static const auto pfn = titan::xr::GetInstanceProcAddr<PFN_xrCreateDebugUtilsMessengerEXT>(
         instance,
         "xrCreateDebugUtilsMessengerEXT");
 
@@ -18,7 +18,7 @@ XRAPI_ATTR XrResult XRAPI_CALL xrDestroyDebugUtilsMessengerEXT(
     XrInstance instance,
     XrDebugUtilsMessengerEXT messenger)
 {
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrDestroyDebugUtilsMessengerEXT>(
+    static const auto pfn = titan::xr::GetInstanceProcAddr<PFN_xrDestroyDebugUtilsMessengerEXT>(
         instance,
         "xrDestroyDebugUtilsMessengerEXT");
 
@@ -33,7 +33,7 @@ XRAPI_ATTR XrResult XRAPI_CALL xrCreateVulkanInstanceKHR(
     VkInstance *vulkanInstance,
     VkResult *vulkanResult)
 {
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrCreateVulkanInstanceKHR>(
+    static const auto pfn = titan::xr::GetInstanceProcAddr<PFN_xrCreateVulkanInstanceKHR>(
         instance,
         "xrCreateVulkanInstanceKHR");
 
@@ -48,7 +48,7 @@ XRAPI_ATTR XrResult XRAPI_CALL xrCreateVulkanDeviceKHR(
     VkDevice *vulkanDevice,
     VkResult *vulkanResult)
 {
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrCreateVulkanDeviceKHR>(
+    static const auto pfn = titan::xr::GetInstanceProcAddr<PFN_xrCreateVulkanDeviceKHR>(
         instance,
         "xrCreateVulkanDeviceKHR");
 
@@ -62,7 +62,7 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanGraphicsDevice2KHR(
     const XrVulkanGraphicsDeviceGetInfoKHR *getInfo,
     VkPhysicalDevice *vulkanPhysicalDevice)
 {
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanGraphicsDevice2KHR>(
+    static const auto pfn = titan::xr::GetInstanceProcAddr<PFN_xrGetVulkanGraphicsDevice2KHR>(
         instance,
         "xrGetVulkanGraphicsDevice2KHR");
 
@@ -76,7 +76,7 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetVulkanGraphicsRequirements2KHR(
     XrSystemId systemId,
     XrGraphicsRequirementsVulkanKHR *graphicsRequirements)
 {
-    static const auto pfn = core::xr::GetInstanceProcAddr<PFN_xrGetVulkanGraphicsRequirements2KHR>(
+    static const auto pfn = titan::xr::GetInstanceProcAddr<PFN_xrGetVulkanGraphicsRequirements2KHR>(
         instance,
         "xrGetVulkanGraphicsRequirements2KHR");
 

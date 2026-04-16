@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::InitializeAudio()
+titan::result<> titan::Application::InitializeAudio()
 {
     return ok()
            & [&]

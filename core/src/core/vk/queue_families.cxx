@@ -3,7 +3,7 @@
 
 #include <set>
 
-core::result<> core::Application::GetQueueFamilyIndices()
+titan::result<> titan::Application::GetQueueFamilyIndices()
 {
     std::optional<uint32_t> index_default, index_graphics, index_compute, index_transfer, index_present;
 

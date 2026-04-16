@@ -1,6 +1,6 @@
 #include <titan/utils.hxx>
 
-core::result<std::vector<XrViewConfigurationType>> core::xr::EnumerateViewConfigurationTypes(
+titan::result<std::vector<XrViewConfigurationType>> titan::xr::EnumerateViewConfigurationTypes(
     XrInstance instance,
     XrSystemId system_id)
 {
@@ -11,7 +11,7 @@ core::result<std::vector<XrViewConfigurationType>> core::xr::EnumerateViewConfig
         system_id);
 }
 
-core::result<std::vector<XrViewConfigurationView>> core::xr::EnumerateViewConfigurationViews(
+titan::result<std::vector<XrViewConfigurationView>> titan::xr::EnumerateViewConfigurationViews(
     XrInstance instance,
     XrSystemId system_id,
     XrViewConfigurationType view_configuration_type)
@@ -24,7 +24,7 @@ core::result<std::vector<XrViewConfigurationView>> core::xr::EnumerateViewConfig
         view_configuration_type);
 }
 
-core::result<std::vector<XrEnvironmentBlendMode>> core::xr::EnumerateEnvironmentBlendModes(
+titan::result<std::vector<XrEnvironmentBlendMode>> titan::xr::EnumerateEnvironmentBlendModes(
     XrInstance instance,
     XrSystemId system_id,
     XrViewConfigurationType view_configuration_type)
@@ -37,7 +37,7 @@ core::result<std::vector<XrEnvironmentBlendMode>> core::xr::EnumerateEnvironment
         view_configuration_type);
 }
 
-core::result<std::vector<XrView>> core::xr::LocateViews(
+titan::result<std::vector<XrView>> titan::xr::LocateViews(
     XrSession session,
     const XrViewLocateInfo &view_locate_info,
     XrViewState &view_state)
@@ -50,7 +50,7 @@ core::result<std::vector<XrView>> core::xr::LocateViews(
         &view_state);
 }
 
-core::result<XrGraphicsRequirementsVulkanKHR> core::xr::GetVulkanGraphicsRequirements2KHR(
+titan::result<XrGraphicsRequirementsVulkanKHR> titan::xr::GetVulkanGraphicsRequirements2KHR(
     XrInstance instance,
     XrSystemId system_id)
 {
@@ -60,7 +60,7 @@ core::result<XrGraphicsRequirementsVulkanKHR> core::xr::GetVulkanGraphicsRequire
     return graphics_requirements;
 }
 
-core::result<core::vk::Instance> core::xr::CreateVulkanInstanceKHR(
+titan::result<titan::vk::Instance> titan::xr::CreateVulkanInstanceKHR(
     XrInstance instance,
     const XrVulkanInstanceCreateInfoKHR &create_info)
 {
@@ -73,7 +73,7 @@ core::result<core::vk::Instance> core::xr::CreateVulkanInstanceKHR(
     return vk::Instance::wrap({}, vulkan_instance);
 }
 
-core::result<core::vk::Device> core::xr::CreateVulkanDeviceKHR(
+titan::result<titan::vk::Device> titan::xr::CreateVulkanDeviceKHR(
     XrInstance instance,
     const XrVulkanDeviceCreateInfoKHR &create_info)
 {
@@ -86,7 +86,7 @@ core::result<core::vk::Device> core::xr::CreateVulkanDeviceKHR(
     return vk::Device::wrap({}, vulkan_device);
 }
 
-core::result<VkPhysicalDevice_T *> core::xr::GetVulkanGraphicsDevice2KHR(
+titan::result<VkPhysicalDevice_T *> titan::xr::GetVulkanGraphicsDevice2KHR(
     XrInstance instance,
     const XrVulkanGraphicsDeviceGetInfoKHR &get_info)
 {
@@ -98,7 +98,7 @@ core::result<VkPhysicalDevice_T *> core::xr::GetVulkanGraphicsDevice2KHR(
     return vulkan_physical_device;
 }
 
-core::result<XrSystemId> core::xr::GetSystem(XrInstance instance, const XrSystemGetInfo &get_info)
+titan::result<XrSystemId> titan::xr::GetSystem(XrInstance instance, const XrSystemGetInfo &get_info)
 {
     XrSystemId system_id;
     if (auto res = xrGetSystem(instance, &get_info, &system_id))
@@ -106,7 +106,7 @@ core::result<XrSystemId> core::xr::GetSystem(XrInstance instance, const XrSystem
     return system_id;
 }
 
-core::result<XrFrameState> core::xr::WaitFrame(XrSession session, const XrFrameWaitInfo &frame_wait_info)
+titan::result<XrFrameState> titan::xr::WaitFrame(XrSession session, const XrFrameWaitInfo &frame_wait_info)
 {
     XrFrameState frame_state{ .type = XR_TYPE_FRAME_STATE };
     if (auto res = xrWaitFrame(session, &frame_wait_info, &frame_state))
@@ -114,21 +114,21 @@ core::result<XrFrameState> core::xr::WaitFrame(XrSession session, const XrFrameW
     return frame_state;
 }
 
-core::result<> core::xr::BeginFrame(XrSession session, const XrFrameBeginInfo &frame_begin_info)
+titan::result<> titan::xr::BeginFrame(XrSession session, const XrFrameBeginInfo &frame_begin_info)
 {
     if (auto res = xrBeginFrame(session, &frame_begin_info))
         return error("xrBeginFrame => {}", res);
     return ok();
 }
 
-core::result<> core::xr::EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info)
+titan::result<> titan::xr::EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info)
 {
     if (auto res = xrEndFrame(session, &frame_end_info))
         return error("xrEndFrame => {}", res);
     return ok();
 }
 
-core::result<XrPath> core::xr::StringToPath(XrInstance instance, const std::string &str)
+titan::result<XrPath> titan::xr::StringToPath(XrInstance instance, const std::string &str)
 {
     XrPath path;
     if (const auto res = xrStringToPath(instance, str.c_str(), &path))
@@ -136,7 +136,7 @@ core::result<XrPath> core::xr::StringToPath(XrInstance instance, const std::stri
     return path;
 }
 
-core::result<std::string> core::xr::PathToString(XrInstance instance, XrPath path)
+titan::result<std::string> titan::xr::PathToString(XrInstance instance, XrPath path)
 {
     uint32_t capacity;
     if (auto res = xrPathToString(instance, path, 0, &capacity, nullptr))
@@ -149,7 +149,7 @@ core::result<std::string> core::xr::PathToString(XrInstance instance, XrPath pat
     return std::string(buffer.begin(), buffer.end());
 }
 
-core::result<> core::xr::SuggestInteractionProfileBindings(
+titan::result<> titan::xr::SuggestInteractionProfileBindings(
     XrInstance instance,
     const std::string &profile,
     const std::vector<std::pair<XrAction, std::string>> &bindings)
@@ -184,7 +184,7 @@ core::result<> core::xr::SuggestInteractionProfileBindings(
     return ok();
 }
 
-core::result<XrInteractionProfileState> core::xr::GetCurrentInteractionProfile(XrSession session, XrPath path)
+titan::result<XrInteractionProfileState> titan::xr::GetCurrentInteractionProfile(XrSession session, XrPath path)
 {
     XrInteractionProfileState interaction_profile_state{ .type = XR_TYPE_INTERACTION_PROFILE_STATE };
     if (auto res = xrGetCurrentInteractionProfile(session, path, &interaction_profile_state))

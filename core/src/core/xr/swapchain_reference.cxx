@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-core::result<core::XrSwapchainReference> core::Application::CreateSwapchainReference(
+titan::result<titan::XrSwapchainReference> titan::Application::CreateSwapchainReference(
     const XrSwapchainReferenceCreateInfo &create_info)
 {
     XrSwapchainReference reference

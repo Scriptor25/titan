@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-core::result<> core::Application::GetViewConfigurationType()
+titan::result<> titan::Application::GetViewConfigurationType()
 {
     return xr::EnumerateViewConfigurationTypes(m_XrInstance, m_SystemId)
            & [&](std::vector<XrViewConfigurationType> &&values)

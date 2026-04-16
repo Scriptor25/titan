@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-core::result<> core::Application::CreateSynchronization()
+titan::result<> titan::Application::CreateSynchronization()
 {
     const VkSemaphoreCreateInfo semaphore_create_info
     {
