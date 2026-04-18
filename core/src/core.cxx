@@ -59,6 +59,9 @@ titan::result<> titan::Application::CleanUp()
     if (auto res = OnStop())
         return res;
 
+    if (!m_Device)
+        return ok();
+
     if (auto res = vkDeviceWaitIdle(m_Device))
         return error("vkDeviceWaitIdle => {}", res);
 

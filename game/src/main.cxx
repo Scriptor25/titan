@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/ecs.hxx>
 
 #include <csignal>
 #include <iostream>
@@ -69,8 +70,43 @@ static void signal_handler(const int signal)
     std::cerr << "exit on signal " << signal_map.at(signal) << std::endl;
 }
 
+template<>
+struct titan::component_traits_t<std::string>
+{
+    static constexpr auto id = 0;
+};
+
+template<>
+struct titan::component_traits_t<uint32_t>
+{
+    static constexpr auto id = 1;
+};
+
 int main(const int argc, const char *const *argv)
 {
+    {
+        titan::ECS ecs;
+        auto hello = ecs.Create<std::string>("Hello");
+        auto world = ecs.Create<std::string>("World");
+        auto deadbeef = ecs.Create<std::string, uint32_t>("!", 0xDEADBEEFU);
+
+        (void) hello;
+        (void) world;
+        (void) deadbeef;
+
+        ecs.Add<uint32_t>(world, 0xBADF00DU);
+
+        auto result = ecs.Query<uint32_t>();
+
+        std::apply(
+            [](auto &&values)
+            {
+                for (auto &&value : values)
+                    std::cerr << std::hex << value << std::endl;
+            },
+            result);
+    }
+
     Game game;
     game_ptr = &game;
 
