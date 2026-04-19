@@ -1,9 +1,8 @@
 #pragma once
 
-#include <algorithm>
-#include <ranges>
 #include <titan/result.hxx>
 
+#include <ranges>
 #include <tuple>
 #include <vector>
 
@@ -11,389 +10,404 @@ namespace titan
 {
     using EntityID = size_t;
     using ComponentID = size_t;
-    using component_mask_t = size_t;
+    using ComponentMask = __uint128_t;
 
-    template<typename T>
-    struct component_traits_t;
+    size_t GetComponentIndex(ComponentID id);
+    ComponentID GetComponentID(size_t index);
 
     template<typename... C>
-    constexpr component_mask_t get_component_mask()
+    ComponentMask GetComponentMask()
     {
-        return (0ull | ... | (1ull << component_traits_t<C>::id));
+        return (0ull | ... | (1ull << GetComponentIndex(C::id)));
     }
 
-    template<typename T>
-    struct converter_t
+    template<bool C, typename T>
+    class TypeView
     {
-        struct iterator
+        using element_type = std::conditional_t<C, const T, T>;
+        using value_type = std::conditional_t<C, const std::vector<uint8_t>, std::vector<uint8_t>>;
+
+        struct Iterator
         {
-            bool operator!=(const iterator &it) const
+            bool operator!=(const Iterator &other) const
             {
-                return offset != it.offset;
+                return offset != other.offset;
             }
 
-            T &operator*() const
+            element_type &operator*() const
             {
-                return *reinterpret_cast<T *>(&data[offset]);
+                return reinterpret_cast<element_type &>(buffer[offset]);
             }
 
-            iterator &operator++()
+            Iterator &operator++()
             {
                 offset += stride;
                 return *this;
             }
 
             size_t stride;
-            std::vector<uint8_t> &data;
+            value_type &buffer;
             size_t offset;
         };
 
-        iterator begin()
-        {
-            return { stride, data, 0 };
-        }
-
-        iterator end()
-        {
-            return { stride, data, data.size() };
-        }
-
-        size_t stride;
-        std::vector<uint8_t> &data;
-    };
-
-    template<typename T>
-    struct const_converter_t
-    {
-        struct const_iterator
-        {
-            bool operator!=(const const_iterator &it) const
-            {
-                return stride != it.stride || &data != &it.data || offset != it.offset;
-            }
-
-            const T &operator*() const
-            {
-                return *reinterpret_cast<const T *>(&data[offset]);
-            }
-
-            const_iterator &operator++()
-            {
-                offset += stride;
-                return *this;
-            }
-
-            size_t stride;
-            const std::vector<uint8_t> &data;
-            size_t offset;
-        };
-
-        const_iterator begin() const
-        {
-            return { stride, data, 0 };
-        }
-
-        const_iterator end() const
-        {
-            return { stride, data, data.size() };
-        }
-
-        size_t stride;
-        const std::vector<uint8_t> &data;
-    };
-
-    class component_storage_t
-    {
     public:
-        component_storage_t()
-            : m_Stride()
+        TypeView(const size_t stride, value_type &buffer)
+            : m_Stride(stride),
+              m_Buffer(buffer)
         {
         }
 
-        explicit component_storage_t(const size_t stride)
-            : m_Stride(stride)
+        Iterator begin() const
         {
+            return { m_Stride, m_Buffer, 0ull };
         }
 
-        [[nodiscard]] size_t stride() const
+        Iterator end() const
         {
-            return m_Stride;
-        }
-
-        void allocate(const size_t count = 1)
-        {
-            m_Data.resize(m_Data.size() + count * m_Stride);
-        }
-
-        void release()
-        {
-            m_Data.resize(m_Data.size() - m_Stride);
-        }
-
-        void push_back(uint8_t *data, const size_t size)
-        {
-            if (size % m_Stride)
-                throw std::runtime_error("data size is not a multiple of storage stride");
-
-            allocate(size / m_Stride);
-            std::move(data, data + size, m_Data.end() - m_Stride);
-        }
-
-        void push_back(std::vector<uint8_t> &&data)
-        {
-            if (data.size() % m_Stride)
-                throw std::runtime_error("data size is not a multiple of storage stride");
-
-            allocate(data.size() / m_Stride);
-            std::ranges::move(std::forward<decltype(data)>(data), m_Data.end() - m_Stride);
-        }
-
-        void set(size_t index, uint8_t *data, const size_t size)
-        {
-            if (size % m_Stride)
-                throw std::runtime_error("data size is not a multiple of storage stride");
-
-            std::move(data, data + size, m_Data.begin() + index * m_Stride);
-        }
-
-        void erase(const size_t index)
-        {
-            const auto offset = index * m_Stride;
-            m_Data.erase(m_Data.begin() + offset, m_Data.begin() + offset + m_Stride);
-        }
-
-        uint8_t *get(const size_t index)
-        {
-            return &m_Data[index * m_Stride];
-        }
-
-        template<typename T>
-            requires std::is_trivially_copyable_v<T>
-        converter_t<T> cast()
-        {
-            return { m_Stride, m_Data };
-        }
-
-        template<typename T>
-            requires std::is_trivially_copyable_v<T>
-        const_converter_t<T> cast() const
-        {
-            return { m_Stride, m_Data };
-        }
-
-    private:
-        size_t m_Stride;
-        std::vector<uint8_t> m_Data;
-    };
-
-    class archetype_t
-    {
-    public:
-        archetype_t()
-            : m_Mask()
-        {
-        }
-
-        archetype_t(const component_mask_t mask, const std::unordered_map<ComponentID, size_t> &strides)
-            : m_Mask(mask)
-        {
-            for (auto &[id, stride] : strides)
-                m_Storage[id] = component_storage_t(stride);
-        }
-
-        [[nodiscard]] component_mask_t mask() const
-        {
-            return m_Mask;
-        }
-
-        std::unordered_map<ComponentID, size_t> strides() const
-        {
-            std::unordered_map<ComponentID, size_t> strides;
-            for (auto &[id, storage] : m_Storage)
-                strides[id] = storage.stride();
-            return strides;
-        }
-
-        [[nodiscard]] bool matches(const component_mask_t mask) const
-        {
-            return (mask & m_Mask) == mask;
+            return { m_Stride, m_Buffer, m_Buffer.size() };
         }
 
         [[nodiscard]] size_t size() const
         {
-            return m_Index.size();
+            return m_Buffer.size() / m_Stride;
         }
 
-        const component_storage_t &get_column(const ComponentID id) const
+        element_type &operator[](const size_t index) const
         {
-            return m_Storage.at(id);
+            return reinterpret_cast<element_type &>(m_Buffer[index * m_Stride]);
         }
 
-        void get(const EntityID entity, const ComponentID id, uint8_t * &data, size_t &size)
+        void push_back(T &&value)
         {
-            auto &storage = m_Storage.at(id);
-            data = storage.get(m_Index.at(entity));
-            size = storage.stride();
+            m_Buffer.resize(m_Buffer.size() + m_Stride);
+
+            auto &p = reinterpret_cast<element_type &>(m_Buffer[m_Buffer.size() - m_Stride]);
+            std::construct_at(&p, std::forward<T>(value));
         }
 
-        void set(const EntityID entity, const ComponentID id, uint8_t *data, const size_t size)
+    private:
+        size_t m_Stride;
+        value_type &m_Buffer;
+    };
+
+    class ComponentStorage
+    {
+    public:
+        ComponentStorage();
+        explicit ComponentStorage(size_t stride);
+
+        ComponentStorage(const ComponentStorage &) = delete;
+        ComponentStorage &operator=(const ComponentStorage &) = delete;
+
+        ComponentStorage(ComponentStorage &&other) noexcept;
+        ComponentStorage &operator=(ComponentStorage &&other) noexcept;
+
+        [[nodiscard]] size_t GetStride() const;
+
+        void Allocate(size_t count = 1ull);
+
+        template<typename T>
+        void Allocate(T &&value)
         {
-            auto &storage = m_Storage.at(id);
-            storage.set(m_Index.at(entity), data, size);
+            Cast<T>().push_back(std::forward<T>(value));
         }
 
-        void allocate(const EntityID entity)
+        void Release(size_t count = 1ull);
+
+        void Get(size_t index, void * &data, size_t &size);
+        void Get(size_t index, const void * &data, size_t &size) const;
+
+        template<typename T>
+        T &Get(const size_t index)
+        {
+            return Cast<T>()[index];
+        }
+
+        template<typename T>
+        const T &Get(const size_t index) const
+        {
+            return Cast<T>()[index];
+        }
+
+        void Set(size_t index, void *data, size_t size);
+
+        template<typename T>
+        void Set(const size_t index, T &&value)
+        {
+            auto &p = Cast<T>()[index];
+            std::construct_at(&p, std::forward<T>(value));
+        }
+
+        void Erase(size_t index);
+
+        template<typename T>
+        TypeView<false, T> Cast()
+        {
+            if (sizeof(T) != m_Stride)
+                throw std::runtime_error("size != stride");
+
+            return { m_Stride, m_Buffer };
+        }
+
+        template<typename T>
+        TypeView<true, T> Cast() const
+        {
+            if (sizeof(T) != m_Stride)
+                throw std::runtime_error("size != stride");
+
+            return { m_Stride, m_Buffer };
+        }
+
+    private:
+        size_t m_Stride;
+        std::vector<uint8_t> m_Buffer;
+    };
+
+    class Archetype
+    {
+    public:
+        Archetype();
+        Archetype(ComponentMask mask, const std::unordered_map<ComponentID, size_t> &strides);
+
+        Archetype(const Archetype &) = delete;
+        Archetype &operator=(const Archetype &) = delete;
+
+        Archetype(Archetype &&other) noexcept;
+        Archetype &operator=(Archetype &&other) noexcept;
+
+        [[nodiscard]] ComponentMask GetMask() const;
+        [[nodiscard]] size_t GetCount() const;
+
+        [[nodiscard]] std::unordered_map<ComponentID, size_t> GetStrides() const;
+
+        [[nodiscard]] bool Matches(ComponentMask mask) const;
+
+        ComponentStorage &GetColumn(ComponentID id);
+        const ComponentStorage &GetColumn(ComponentID id) const;
+
+        template<typename C>
+        auto GetColumn()
+        {
+            return GetColumn(C::id).template Cast<C>();
+        }
+
+        template<typename C>
+        auto GetColumn() const
+        {
+            return GetColumn(C::id).template Cast<C>();
+        }
+
+        void Get(EntityID entity, ComponentID id, void * &data, size_t &size);
+        void Get(EntityID entity, ComponentID id, const void * &data, size_t &size) const;
+
+        template<typename C>
+        C &Get(const EntityID entity, const ComponentID id)
+        {
+            return m_Storage.at(id).Get<C>(m_Index.at(entity));
+        }
+
+        template<typename C>
+        const C &Get(const EntityID entity, const ComponentID id) const
+        {
+            return m_Storage.at(id).Get<C>(m_Index.at(entity));
+        }
+
+        void Set(EntityID entity, ComponentID id, void *data, size_t size);
+
+        template<typename C>
+        void Set(const EntityID entity, const ComponentID id, C &&value)
+        {
+            m_Storage.at(id).Set<C>(m_Index.at(entity), std::forward<C>(value));
+        }
+
+        void Allocate(EntityID entity);
+
+        template<typename... C>
+        void Allocate(const EntityID entity, C &&... components)
         {
             const auto index = m_Entities.size();
 
             m_Entities.push_back(entity);
             m_Index[entity] = index;
 
-            for (auto &storage : m_Storage | std::views::values)
-                storage.allocate();
-        }
-
-        void release(const EntityID entity)
-        {
-            const auto index = m_Index.at(entity);
-            const auto last = m_Entities.size() - 1;
-
-            if (index != last)
+            for (auto &[id, storage] : m_Storage)
             {
-                auto last_entity = m_Entities[last];
-
-                std::swap(m_Entities[index], m_Entities[last]);
-
-                m_Index[last_entity] = index;
-
-                for (auto &storage : m_Storage | std::views::values)
+                if (([&] -> bool
                 {
-                    const auto a = storage.get(index);
-                    const auto b = storage.get(last);
+                    if (C::id != id)
+                        return false;
 
-                    std::swap_ranges(a, a + storage.stride(), b);
-                }
+                    storage.Allocate(std::forward<C>(components));
+                    return true;
+                }() || ...))
+                    continue;
+
+                storage.Allocate();
             }
-
-            m_Entities.pop_back();
-            m_Index.erase(entity);
-
-            for (auto &storage : m_Storage | std::views::values)
-                storage.release();
         }
+
+        void Release(EntityID entity);
 
     private:
-        component_mask_t m_Mask;
+        ComponentMask m_Mask;
 
         std::vector<EntityID> m_Entities;
         std::unordered_map<EntityID, size_t> m_Index;
 
-        std::unordered_map<ComponentID, component_storage_t> m_Storage;
+        std::unordered_map<ComponentID, ComponentStorage> m_Storage;
     };
 
     template<typename... C>
-    using QueryResult = std::tuple<std::vector<C>...>;
+    class QueryResult
+    {
+        using value_type = std::tuple<std::vector<C *>...>;
+
+        struct Iterator
+        {
+            template<size_t ... I>
+            std::tuple<C &...> extract(std::index_sequence<I...>) const
+            {
+                return { *std::get<I>(data)[offset]... };
+            }
+
+            bool operator!=(const Iterator &other) const
+            {
+                return offset != other.offset;
+            }
+
+            std::tuple<C &...> operator*() const
+            {
+                return extract(std::index_sequence_for<C...>());
+            }
+
+            Iterator &operator++()
+            {
+                ++offset;
+                return *this;
+            }
+
+            const value_type &data;
+            size_t offset;
+        };
+
+    public:
+        QueryResult(const size_t count, value_type data)
+            : m_Count(count),
+              m_Data(std::move(data))
+        {
+        }
+
+        Iterator begin() const
+        {
+            return { m_Data, 0ull };
+        }
+
+        Iterator end() const
+        {
+            return { m_Data, m_Count };
+        }
+
+    private:
+        size_t m_Count;
+        value_type m_Data;
+    };
 
     class ECS
     {
     public:
         template<typename... C>
-        archetype_t &GetArchetype()
+        Archetype &GetArchetype()
         {
-            constexpr auto mask = get_component_mask<C...>();
+            const auto mask = GetComponentMask<C...>();
 
             if (const auto it = m_Archetypes.find(mask); it != m_Archetypes.end())
                 return it->second;
 
-            std::unordered_map<ComponentID, size_t> strides;
-            ([&]
-            {
-                using traits = component_traits_t<C>;
-                strides[traits::id] = sizeof(C);
-            }(), ...);
-
-            return m_Archetypes[mask] = archetype_t(mask, strides);
+            return m_Archetypes[mask] = { mask, { { C::id, sizeof(C) }... } };
         }
 
-        archetype_t &GetArchetype(const component_mask_t mask, const std::unordered_map<ComponentID, size_t> &strides)
-        {
-            if (const auto it = m_Archetypes.find(mask); it != m_Archetypes.end())
-                return it->second;
-
-            return m_Archetypes[mask] = archetype_t(mask, strides);
-        }
+        Archetype &GetArchetype(ComponentMask mask, const std::unordered_map<ComponentID, size_t> &strides);
 
         template<typename... C>
         QueryResult<C...> Query()
         {
-            constexpr auto mask = get_component_mask<C...>();
+            const auto mask = GetComponentMask<C...>();
 
-            QueryResult<C...> result;
+            size_t count{};
+            std::tuple<std::vector<C *>...> result;
 
             for (auto &archetype : m_Archetypes | std::views::values)
             {
-                if (!archetype.matches(mask))
+                if (!archetype.Matches(mask))
                     continue;
 
-                ([&]
+                count += archetype.GetCount();
+
+                auto extract = [&]<size_t ... I>(std::index_sequence<I...>)
                 {
-                    using traits = component_traits_t<C>;
+                    ([&]
+                    {
+                        auto &dst = std::get<I>(result);
+                        auto &src = archetype.GetColumn(C::id);
 
-                    auto &dst = std::get<std::vector<C>>(result);
-                    auto &src = archetype.get_column(traits::id);
+                        for (auto cast = src.template Cast<C>(); auto &component : cast)
+                            dst.push_back(&component);
+                    }(), ...);
+                };
 
-                    for (auto &component : src.template cast<C>())
-                        dst.push_back(component);
-                }(), ...);
+                extract(std::index_sequence_for<C...>());
             }
 
-            return result;
+            return { count, std::move(result) };
         }
 
         template<typename... C>
-        EntityID Create(C... components)
+        EntityID Create(C &&... components)
         {
             auto &archetype = GetArchetype<C...>();
             auto entity = m_Entities.size();
 
             m_Entities[entity] = &archetype;
 
-            archetype.allocate(entity);
-            ([&]
-            {
-                using traits = component_traits_t<C>;
-                archetype.set(entity, traits::id, reinterpret_cast<uint8_t *>(&components), sizeof(C));
-            }(), ...);
+            archetype.Allocate(entity, std::forward<C>(components)...);
 
             return entity;
         }
 
-        template<typename C>
-        void Add(EntityID entity, C component)
+        void Destroy(const EntityID entity)
         {
-            using traits = component_traits_t<C>;
+            auto &archetype = *m_Entities.at(entity);
 
-            auto &src = *m_Entities[entity];
+            archetype.Release(entity);
+            m_Entities.erase(entity);
+        }
 
-            auto strides = src.strides();
-            strides[traits::id] = sizeof(C);
+        template<typename C>
+        void Add(EntityID entity, C &&component)
+        {
+            auto &src = *m_Entities.at(entity);
 
-            auto &dst = GetArchetype(src.mask() | 1ull << traits::id, strides);
+            auto strides = src.GetStrides();
+            strides[C::id] = sizeof(C);
 
-            dst.allocate(entity);
-            dst.set(entity, traits::id, reinterpret_cast<uint8_t *>(&component), sizeof(C));
+            auto &dst = GetArchetype(src.GetMask() | GetComponentMask<C>(), strides);
 
-            auto mask = src.mask();
-            for (ComponentID sid{}; mask; ++sid, mask >>= 1)
+            dst.Allocate(entity, std::forward<C>(component));
+
+            auto mask = src.GetMask();
+            for (size_t index{}; mask; ++index, mask >>= 1)
                 if (mask & 1)
                 {
-                    uint8_t *data;
+                    const auto id = GetComponentID(index);
+
+                    void *data;
                     size_t size;
-                    src.get(entity, sid, data, size);
-                    dst.set(entity, sid, data, size);
+
+                    src.Get(entity, id, data, size);
+                    dst.Set(entity, id, data, size);
                 }
 
-            src.release(entity);
+            src.Release(entity);
 
             m_Entities[entity] = &dst;
         }
@@ -401,32 +415,35 @@ namespace titan
         template<typename C>
         void Remove(EntityID entity)
         {
-            using traits = component_traits_t<C>;
+            auto &src = *m_Entities.at(entity);
 
-            auto &src = *m_Entities[entity];
+            auto strides = src.GetStrides();
+            strides.erase(C::id);
 
-            auto strides = src.strides();
-            strides.erase(traits::id);
+            auto &dst = GetArchetype(src.GetMask() & ~GetComponentMask<C>());
 
-            auto &dst = GetArchetype(src.mask() & ~(1ull << traits::id));
+            dst.Allocate(entity);
 
-            dst.allocate(entity);
-
-            auto mask = dst.mask();
-            for (ComponentID sid{}; mask; ++sid, mask >>= 1)
+            auto mask = dst.GetMask();
+            for (size_t index{}; mask; ++index, mask >>= 1)
                 if (mask & 1)
                 {
-                    uint8_t *data;
+                    const auto id = GetComponentID(index);
+
+                    void *data;
                     size_t size;
-                    src.get(entity, sid, data, size);
-                    dst.set(entity, sid, data, size);
+
+                    src.Get(entity, id, data, size);
+                    dst.Set(entity, id, data, size);
                 }
 
-            src.release(entity);
+            src.Release(entity);
+
+            m_Entities[entity] = &dst;
         }
 
     private:
-        std::unordered_map<component_mask_t, archetype_t> m_Archetypes;
-        std::unordered_map<EntityID, archetype_t *> m_Entities;
+        std::unordered_map<ComponentMask, Archetype> m_Archetypes;
+        std::unordered_map<EntityID, Archetype *> m_Entities;
     };
 }

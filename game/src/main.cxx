@@ -1,5 +1,6 @@
 #include <titan/core.hxx>
 #include <titan/ecs.hxx>
+#include <titan/hash.hxx>
 
 #include <csignal>
 #include <iostream>
@@ -70,41 +71,47 @@ static void signal_handler(const int signal)
     std::cerr << "exit on signal " << signal_map.at(signal) << std::endl;
 }
 
-template<>
-struct titan::component_traits_t<std::string>
+struct NumberComponent
 {
-    static constexpr auto id = 0;
+    static constexpr auto id = "NumberComponent"_hash64;
+
+    uint32_t value;
 };
 
-template<>
-struct titan::component_traits_t<uint32_t>
+struct StringComponent
 {
-    static constexpr auto id = 1;
+    static constexpr auto id = "StringComponent"_hash64;
+
+    std::string value;
 };
 
 int main(const int argc, const char *const *argv)
 {
     {
         titan::ECS ecs;
-        auto hello = ecs.Create<std::string>("Hello");
-        auto world = ecs.Create<std::string>("World");
-        auto deadbeef = ecs.Create<std::string, uint32_t>("!", 0xDEADBEEFU);
+        const auto a = ecs.Create(StringComponent{ "Hello" });
+        const auto b = ecs.Create(StringComponent{ "World" });
+        const auto c = ecs.Create(StringComponent{ "!" }, NumberComponent{ 0xDEADBEEFu });
 
-        (void) hello;
-        (void) world;
-        (void) deadbeef;
+        (void) a;
+        (void) b;
+        (void) c;
 
-        ecs.Add<uint32_t>(world, 0xBADF00DU);
+        ecs.Add(b, NumberComponent{ 0xBADF00Du });
 
-        auto result = ecs.Query<uint32_t>();
+        const auto column = ecs.GetArchetype<StringComponent>().GetColumn<StringComponent>();
 
-        std::apply(
-            [](auto &&values)
-            {
-                for (auto &&value : values)
-                    std::cerr << std::hex << value << std::endl;
-            },
-            result);
+        (void) column;
+
+        for (auto [string, number, same_string] : ecs.Query<StringComponent, NumberComponent, StringComponent>())
+            std::cerr
+                    << string.value
+                    << " ( == "
+                    << same_string.value
+                    << "): "
+                    << std::hex
+                    << number.value
+                    << std::endl;
     }
 
     Game game;
