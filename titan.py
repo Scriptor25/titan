@@ -8,32 +8,33 @@ class TypeViewSynthetic:
     def __init__(self, val: lldb.SBValue, _):
         self.val = val
 
-        self.stride: lldb.SBValue
         self.buffer: lldb.SBValue
 
         self.buffer_impl: lldb.SBValue
         self.buffer_impl_start: lldb.SBValue
         self.buffer_impl_finish: lldb.SBValue
 
+        self.base_type: lldb.SBType
+
         self.stride_value: int
         self.count_value: int
 
-        self.base_type: lldb.SBType
-
     def update(self) -> bool:
-        self.stride = self.val.GetChildMemberWithName("m_Stride")
         self.buffer = self.val.GetChildMemberWithName("m_Buffer")
 
         self.buffer_impl = self.buffer.GetChildMemberWithName("_M_impl")
         self.buffer_impl_start = self.buffer_impl.GetChildMemberWithName("_M_start")
         self.buffer_impl_finish = self.buffer_impl.GetChildMemberWithName("_M_finish")
 
-        self.stride_value = self.stride.GetValueAsUnsigned()
-
-        self.count_value = (self.buffer_impl_finish.GetValueAsUnsigned() - self.buffer_impl_start.GetValueAsUnsigned()) // self.stride_value if self.stride_value else 0
-
         val_type: lldb.SBType = self.val.GetType()
         self.base_type = val_type.GetTemplateArgumentType(1)
+
+        self.stride_value = self.base_type.GetByteSize()
+        self.count_value = (self.buffer_impl_finish.GetValueAsUnsigned() - self.buffer_impl_start.GetValueAsUnsigned()) // self.stride_value if self.stride_value else 0
+
+        print(self.base_type)
+        print(self.stride_value)
+        print(self.count_value)
 
         return True
 
@@ -53,5 +54,5 @@ class TypeViewSynthetic:
         return self.val.CreateValueFromAddress(f"[{index}]", address, self.base_type)
 
 def __lldb_init_module(debugger: lldb.SBDebugger, _):
-    debugger.HandleCommand("type summary add -x '^titan::TypeView<.*>$' -F titan.TypeViewSummary")
-    debugger.HandleCommand("type synthetic add -x '^titan::TypeView<.*>$' --python-class titan.TypeViewSynthetic")
+    debugger.HandleCommand("type summary add -x '^titan::detail::TypeView<.*>$' -F titan.TypeViewSummary")
+    debugger.HandleCommand("type synthetic add -x '^titan::detail::TypeView<.*>$' --python-class titan.TypeViewSynthetic")

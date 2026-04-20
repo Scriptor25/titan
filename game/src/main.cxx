@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
-#include <titan/ecs.hxx>
 #include <titan/hash.hxx>
+#include <titan/system/entity.hxx>
 
 #include <csignal>
 #include <iostream>
@@ -88,22 +88,25 @@ struct StringComponent
 int main(const int argc, const char *const *argv)
 {
     {
-        titan::ECS ecs;
-        const auto a = ecs.Create(StringComponent{ "Hello" });
-        const auto b = ecs.Create(StringComponent{ "World" });
-        const auto c = ecs.Create(StringComponent{ "!" }, NumberComponent{ 0xDEADBEEFu });
+        titan::EntitySystem sys;
+        const auto a = sys.Create(StringComponent{ "Hello" });
+        const auto b = sys.Create(StringComponent{ "World" });
+        const auto c = sys.Create(StringComponent{ "!" }, NumberComponent{ 0xDEADBEEFu });
 
         (void) a;
         (void) b;
         (void) c;
 
-        ecs.Add(b, NumberComponent{ 0xBADF00Du });
+        sys.Add(b, NumberComponent{ 0xBADF00Du });
 
-        const auto column = ecs.GetArchetype<StringComponent>().GetColumn<StringComponent>();
+        auto &arc = sys.GetArchetype<StringComponent>();
+        auto &column = arc.GetColumn(StringComponent::id);
+        auto view = column.Cast<StringComponent>();
 
-        (void) column;
+        for (auto &entry : view)
+            std::cerr << entry.value << std::endl;
 
-        for (auto [string, number, same_string] : ecs.Query<StringComponent, NumberComponent, StringComponent>())
+        for (auto [string, number, same_string] : sys.Query<StringComponent, NumberComponent, StringComponent>())
             std::cerr
                     << string.value
                     << " ( == "
