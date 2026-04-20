@@ -8,50 +8,62 @@ class TypeViewSynthetic:
     def __init__(self, val: lldb.SBValue, _):
         self.val = val
 
-        self.buffer: lldb.SBValue
-
-        self.buffer_impl: lldb.SBValue
-        self.buffer_impl_start: lldb.SBValue
-        self.buffer_impl_finish: lldb.SBValue
-
-        self.base_type: lldb.SBType
-
-        self.stride_value: int
-        self.count_value: int
-
     def update(self) -> bool:
-        self.buffer = self.val.GetChildMemberWithName("m_Buffer")
+        self.chunks = self.val.GetChildMemberWithName("m_Chunks")
 
-        self.buffer_impl = self.buffer.GetChildMemberWithName("_M_impl")
-        self.buffer_impl_start = self.buffer_impl.GetChildMemberWithName("_M_start")
-        self.buffer_impl_finish = self.buffer_impl.GetChildMemberWithName("_M_finish")
+        impl = self.chunks.GetChildMemberWithName("_M_impl")
+        start = impl.GetChildMemberWithName("_M_start")
+        finish = impl.GetChildMemberWithName("_M_finish")
 
-        val_type: lldb.SBType = self.val.GetType()
-        self.base_type = val_type.GetTemplateArgumentType(1)
+        chunk_type = start.GetType().GetPointeeType()
+        chunk_size = chunk_type.GetByteSize()
 
-        self.stride_value = self.base_type.GetByteSize()
-        self.count_value = (self.buffer_impl_finish.GetValueAsUnsigned() - self.buffer_impl_start.GetValueAsUnsigned()) // self.stride_value if self.stride_value else 0
+        self.chunk_count = (finish.GetValueAsUnsigned() - start.GetValueAsUnsigned()) // chunk_size
 
-        print(self.base_type)
-        print(self.stride_value)
-        print(self.count_value)
+        self.base_type = self.val.GetType().GetTemplateArgumentType(1)
+
+        self.stride = self.base_type.GetByteSize()
+        self.count = 0
+
+        print(self.chunk_count)
+
+        self.chunk_meta = {}
+
+        for i in range(0, self.chunk_count):
+            address = start.GetValueAsUnsigned() + i * chunk_size
+            chunk = self.val.CreateValueFromAddress("chunk", address, chunk_type)
+
+            data = chunk.GetChildMemberWithName("data")
+            count = chunk.GetChildMemberWithName("count")
+
+            data_value = data.GetValueAsAddress()
+            count_value = count.GetValueAsUnsigned()
+
+            self.chunk_meta[i] = (data_value, count_value)
+            self.count += count_value
 
         return True
 
     def has_children(self) -> bool:
         return True
 
-    def num_children(self, max) -> int:
-        return self.count_value
+    def num_children(self) -> int:
+        return self.count
 
     def get_child_at_index(self, index: int) -> lldb.SBValue | None:
-        if index < 0 or index >= self.count_value:
+        if index < 0 or index >= self.count:
             return None
         
-        offset = index * self.stride_value
-        address = self.buffer_impl_start.GetValueAsUnsigned() + offset
+        chunk_index = index // 64
+        local_index = index % 64
+
+        (data, count) = self.chunk_meta[chunk_index]
+
+        address = data + local_index * self.stride
 
         return self.val.CreateValueFromAddress(f"[{index}]", address, self.base_type)
+        
+        return None
 
 def __lldb_init_module(debugger: lldb.SBDebugger, _):
     debugger.HandleCommand("type summary add -x '^titan::detail::TypeView<.*>$' -F titan.TypeViewSummary")

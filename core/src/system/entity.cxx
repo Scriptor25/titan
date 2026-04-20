@@ -31,16 +31,36 @@ titan::detail::ComponentStorage::ComponentStorage(const ComponentInfo *component
 {
 }
 
+titan::detail::ComponentStorage::~ComponentStorage()
+{
+    for (const auto &chunk : m_Chunks)
+    {
+        if (m_Component->destroy)
+        {
+            const auto base = static_cast<uint8_t *>(chunk.data);
+            for (size_t index{}; index < chunk.count; ++index)
+            {
+                const auto ptr = base + index * m_Component->stride;
+                m_Component->destroy(ptr);
+            }
+        }
+
+        ReleaseChunk(chunk);
+    }
+
+    m_Chunks.clear();
+}
+
 titan::detail::ComponentStorage::ComponentStorage(ComponentStorage &&other) noexcept
     : m_Component(other.m_Component),
-      m_Buffer(std::move(other.m_Buffer))
+      m_Chunks(std::move(other.m_Chunks))
 {
 }
 
 titan::detail::ComponentStorage &titan::detail::ComponentStorage::operator=(ComponentStorage &&other) noexcept
 {
     std::swap(m_Component, other.m_Component);
-    std::swap(m_Buffer, other.m_Buffer);
+    std::swap(m_Chunks, other.m_Chunks);
 
     return *this;
 }
@@ -50,62 +70,100 @@ const titan::detail::ComponentInfo *titan::detail::ComponentStorage::GetComponen
     return m_Component;
 }
 
-void *titan::detail::ComponentStorage::Allocate(const size_t count)
+void titan::detail::ComponentStorage::Allocate()
 {
-    const auto begin = m_Buffer.size();
-    m_Buffer.resize(m_Buffer.size() + count * m_Component->size);
+    EnsureCapacity();
 
-    for (auto offset = begin; offset < m_Buffer.size(); offset += m_Component->size)
-        m_Component->create(m_Buffer.data() + offset);
+    auto &[data, count] = m_Chunks.back();
 
-    return m_Buffer.data() + begin;
+    if (m_Component->create)
+        m_Component->create(static_cast<uint8_t *>(data) + count * m_Component->stride);
+
+    ++count;
 }
 
-void titan::detail::ComponentStorage::Release(const size_t count)
+void titan::detail::ComponentStorage::Release()
 {
-    const auto begin = m_Buffer.size() - count * m_Component->size;
-    for (auto offset = begin; offset < m_Buffer.size(); offset += m_Component->size)
-        m_Component->destroy(m_Buffer.data() + offset);
+    auto &chunk = m_Chunks.back();
 
-    m_Buffer.resize(begin);
+    const auto index = chunk.count - 1;
+    const auto offset = index * m_Component->stride;
+
+    if (m_Component->destroy)
+        m_Component->destroy(static_cast<uint8_t *>(chunk.data) + offset);
+
+    --chunk.count;
+
+    if (!chunk.count)
+    {
+        ReleaseChunk(chunk);
+        m_Chunks.pop_back();
+    }
+}
+
+void *titan::detail::ComponentStorage::Point(const size_t index)
+{
+    const auto chunk_index = index / Chunk::capacity;
+    const auto local_index = index % Chunk::capacity;
+
+    auto &[data, count] = m_Chunks[chunk_index];
+    if (local_index >= count)
+        throw std::runtime_error("index out of bounds");
+
+    return static_cast<uint8_t *>(data) + local_index * m_Component->stride;
+}
+
+const void *titan::detail::ComponentStorage::Point(const size_t index) const
+{
+    const auto chunk_index = index / Chunk::capacity;
+    const auto local_index = index % Chunk::capacity;
+
+    auto &[data, count] = m_Chunks[chunk_index];
+    if (local_index >= count)
+        throw std::runtime_error("index out of bounds");
+
+    return static_cast<uint8_t *>(data) + local_index * m_Component->stride;
 }
 
 void titan::detail::ComponentStorage::Get(const size_t index, void *&data)
 {
-    data = &m_Buffer[index * m_Component->size];
+    data = Point(index);
 }
 
 void titan::detail::ComponentStorage::Get(const size_t index, const void *&data) const
 {
-    data = &m_Buffer[index * m_Component->size];
+    data = Point(index);
 }
 
 void titan::detail::ComponentStorage::Set(const size_t index, void *data)
 {
-    const auto offset = index * m_Component->size;
+    const auto dst = Point(index);
 
-    if (offset >= m_Buffer.size())
-        throw std::runtime_error("offset >= buffer size");
-
-    m_Component->move(m_Buffer.data() + offset, data);
+    if (m_Component->move)
+        m_Component->move(dst, data);
+    else
+        throw std::runtime_error("component::move");
 }
 
 void titan::detail::ComponentStorage::Set(const size_t index, const void *data)
 {
-    const auto offset = index * m_Component->size;
+    const auto dst = Point(index);
 
-    if (offset >= m_Buffer.size())
-        throw std::runtime_error("offset >= buffer size");
-
-    m_Component->copy(m_Buffer.data() + offset, data);
+    if (m_Component->copy)
+        m_Component->copy(dst, data);
+    else
+        throw std::runtime_error("component::copy");
 }
 
-void titan::detail::ComponentStorage::Erase(const size_t index)
+void titan::detail::ComponentStorage::Swap(const size_t a, const size_t b)
 {
-    const auto offset = index * m_Component->size;
-    m_Component->destroy(m_Buffer.data() + offset);
+    const auto ptr_a = Point(a);
+    const auto ptr_b = Point(b);
 
-    m_Buffer.erase(m_Buffer.begin() + offset, m_Buffer.begin() + offset + m_Component->size);
+    if (m_Component->swap)
+        m_Component->swap(ptr_a, ptr_b);
+    else
+        throw std::runtime_error("component::swap");
 }
 
 titan::detail::Archetype::Archetype()
@@ -221,12 +279,17 @@ void titan::detail::Archetype::Release(const EntityID entity)
 
         for (auto &storage : m_Storage | std::views::values)
         {
+            const auto component = storage.GetComponent();
+
             void *a_data, *b_data;
 
             storage.Get(index, a_data);
             storage.Get(last, b_data);
 
-            storage.GetComponent()->swap(a_data, b_data);
+            if (component->swap)
+                component->swap(a_data, b_data);
+            else
+                throw std::runtime_error("component::swap");
         }
     }
 

@@ -1,10 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <ranges>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace titan
@@ -18,6 +21,7 @@ namespace titan
         {
             size_t size;
             size_t alignment;
+            size_t stride;
 
             void (*create)(void *dst);
             void (*destroy)(void *ptr);
@@ -29,32 +33,99 @@ namespace titan
         template<typename T>
         ComponentInfo GetComponentInfo()
         {
-            return {
-                sizeof(T),
-                alignof(T),
+            ComponentInfo component{};
 
-                [](void *dst)
+            component.size = sizeof(T);
+            component.alignment = alignof(T);
+            component.stride = (sizeof(T) + alignof(T) - 1) & ~(alignof(T) - 1);
+
+            if constexpr (!std::is_trivially_default_constructible_v<T>)
+            {
+                component.create =
+                        [](void *dst)
+                        {
+                            new(dst) T();
+                        };
+            }
+
+            if constexpr (!std::is_trivially_destructible_v<T>)
+            {
+                component.destroy =
+                        [](void *ptr)
+                        {
+                            static_cast<T *>(ptr)->~T();
+                        };
+            }
+
+            if constexpr (std::is_move_constructible_v<T>)
+            {
+                if constexpr (std::is_trivially_move_constructible_v<T>)
                 {
-                    new(dst) T();
-                },
-                [](void *ptr)
-                {
-                    static_cast<T *>(ptr)->~T();
-                },
-                [](void *dst, void *src)
-                {
-                    new(dst) T(std::move(*static_cast<T *>(src)));
-                    static_cast<T *>(src)->~T();
-                },
-                [](void *dst, const void *src)
-                {
-                    new(dst) T(*static_cast<const T *>(src));
-                },
-                [](void *a, void *b)
-                {
-                    std::swap(*static_cast<T *>(a), *static_cast<T *>(b));
+                    component.move =
+                            [](void *dst, void *src)
+                            {
+                                memcpy(dst, src, sizeof(T));
+                            };
                 }
-            };
+                else
+                {
+                    component.move =
+                            [](void *dst, void *src)
+                            {
+                                new(dst) T(std::move(*static_cast<T *>(src)));
+
+                                if constexpr (!std::is_trivially_destructible_v<T>)
+                                {
+                                    static_cast<T *>(src)->~T();
+                                }
+                            };
+                }
+            }
+
+            if constexpr (std::is_copy_constructible_v<T>)
+            {
+                if constexpr (std::is_trivially_copy_constructible_v<T>)
+                {
+                    component.copy =
+                            [](void *dst, const void *src)
+                            {
+                                memcpy(dst, src, sizeof(T));
+                            };
+                }
+                else
+                {
+                    component.copy =
+                            [](void *dst, const void *src)
+                            {
+                                new(dst) T(*static_cast<const T *>(src));
+                            };
+                }
+            }
+
+            if constexpr (std::is_move_constructible_v<T> && std::is_move_assignable_v<T>)
+            {
+                if constexpr (std::is_trivially_move_constructible_v<T> && std::is_trivially_destructible_v<T>)
+                {
+                    component.swap =
+                            [](void *a, void *b)
+                            {
+                                alignas(T) uint8_t t[sizeof(T)];
+                                memcpy(t, a, sizeof(T));
+                                memcpy(a, b, sizeof(T));
+                                memcpy(b, t, sizeof(T));
+                            };
+                }
+                else
+                {
+                    component.swap =
+                            [](void *a, void *b)
+                            {
+                                std::swap<T>(*static_cast<T *>(a), *static_cast<T *>(b));
+                            };
+                }
+            }
+
+            return component;
         }
 
         class ComponentRegistry
@@ -85,70 +156,93 @@ namespace titan
             return (0ull | ... | (1ull << GetComponentIndex(C::id)));
         }
 
+        struct Chunk
+        {
+            static constexpr auto capacity = 64ull;
+
+            void *data;
+            size_t count;
+        };
+
         template<bool C, typename T>
         class TypeView
         {
-            static constexpr auto stride = sizeof(T);
+        public:
+            static constexpr auto stride = (sizeof(T) + alignof(T) - 1) & ~(alignof(T) - 1);
 
             using element_type = std::conditional_t<C, const T, T>;
-            using value_type = std::conditional_t<C, const std::vector<uint8_t>, std::vector<uint8_t>>;
+            using byte_type = std::conditional_t<C, const uint8_t, uint8_t>;
 
+        private:
             struct Iterator
             {
                 bool operator!=(const Iterator &other) const
                 {
-                    return offset != other.offset;
+                    return chunk_index != other.chunk_index || local_index != other.local_index;
                 }
 
                 element_type &operator*() const
                 {
-                    return reinterpret_cast<element_type &>(buffer[offset]);
+                    return *reinterpret_cast<element_type *>(
+                        static_cast<byte_type *>(chunks[chunk_index].data) + local_index * stride);
                 }
 
                 Iterator &operator++()
                 {
-                    offset += stride;
+                    if (++local_index >= chunks[chunk_index].count)
+                    {
+                        ++chunk_index;
+                        local_index = {};
+                    }
+
                     return *this;
                 }
 
-                value_type &buffer;
-                size_t offset;
+                const std::vector<Chunk> &chunks;
+                size_t chunk_index, local_index;
             };
 
         public:
-            TypeView(value_type &buffer)
-                : m_Buffer(buffer)
+            TypeView(const std::vector<Chunk> &chunks)
+                : m_Chunks(chunks)
             {
             }
 
             Iterator begin() const
             {
-                return { m_Buffer, 0ull };
+                return { m_Chunks, 0ull, 0ull };
             }
 
             Iterator end() const
             {
-                return { m_Buffer, m_Buffer.size() };
+                return { m_Chunks, m_Chunks.size(), 0ull };
             }
 
             [[nodiscard]] size_t size() const
             {
-                return m_Buffer.size() / stride;
+                if (m_Chunks.empty())
+                    return {};
+                return (m_Chunks.size() - 1) * Chunk::capacity + m_Chunks.back().count;
             }
 
             element_type &operator[](size_t index) const
             {
-                return reinterpret_cast<element_type &>(m_Buffer[index * stride]);
+                const auto chunk_index = index / Chunk::capacity;
+                const auto local_index = index % Chunk::capacity;
+
+                return *reinterpret_cast<element_type *>(
+                    static_cast<byte_type *>(m_Chunks[chunk_index].data) + local_index * stride);
             }
 
         private:
-            value_type &m_Buffer;
+            const std::vector<Chunk> &m_Chunks;
         };
 
         class ComponentStorage
         {
         public:
             explicit ComponentStorage(const ComponentInfo *component = {});
+            ~ComponentStorage();
 
             ComponentStorage(const ComponentStorage &) = delete;
             ComponentStorage &operator=(const ComponentStorage &) = delete;
@@ -158,15 +252,11 @@ namespace titan
 
             [[nodiscard]] const ComponentInfo *GetComponent() const;
 
-            void *Allocate(size_t count = 1ull);
+            void Allocate();
+            void Release();
 
-            template<typename T>
-            void Allocate(T &&value)
-            {
-                *static_cast<T *>(Allocate()) = std::forward<T>(value);
-            }
-
-            void Release(size_t count = 1ull);
+            void *Point(size_t index);
+            [[nodiscard]] const void *Point(size_t index) const;
 
             void Get(size_t index, void * &data);
             void Get(size_t index, const void * &data) const;
@@ -177,24 +267,36 @@ namespace titan
             template<typename T>
             T &At(size_t index)
             {
-                return Cast<T>()[index];
+                if (sizeof(T) != m_Component->size)
+                    throw std::runtime_error("type size != component size");
+                if (alignof(T) != m_Component->alignment)
+                    throw std::runtime_error("type alignment != component alignment");
+
+                return *static_cast<T *>(Point(index));
             }
 
             template<typename T>
             const T &At(size_t index) const
             {
-                return Cast<T>()[index];
+                if (sizeof(T) != m_Component->size)
+                    throw std::runtime_error("type size != component size");
+                if (alignof(T) != m_Component->alignment)
+                    throw std::runtime_error("type alignment != component alignment");
+
+                return *static_cast<const T *>(Point(index));
             }
 
-            void Erase(size_t index);
+            void Swap(size_t a, size_t b);
 
             template<typename T>
             TypeView<false, T> Cast()
             {
                 if (sizeof(T) != m_Component->size)
                     throw std::runtime_error("type size != component size");
+                if (alignof(T) != m_Component->alignment)
+                    throw std::runtime_error("type alignment != component alignment");
 
-                return { m_Buffer };
+                return { m_Chunks };
             }
 
             template<typename T>
@@ -202,14 +304,42 @@ namespace titan
             {
                 if (sizeof(T) != m_Component->size)
                     throw std::runtime_error("type size != component size");
+                if (alignof(T) != m_Component->alignment)
+                    throw std::runtime_error("type alignment != component alignment");
 
-                return { m_Buffer };
+                return { m_Chunks };
+            }
+
+        protected:
+            [[nodiscard]] Chunk AllocateChunk() const
+            {
+                return
+                {
+                    .data = ::operator new(
+                        Chunk::capacity * m_Component->stride,
+                        static_cast<std::align_val_t>(m_Component->alignment)),
+                    .count = 0,
+                };
+            }
+
+            void ReleaseChunk(const Chunk chunk) const
+            {
+                operator delete(
+                    chunk.data,
+                    Chunk::capacity * m_Component->stride,
+                    static_cast<std::align_val_t>(m_Component->alignment));
+            }
+
+            void EnsureCapacity()
+            {
+                if (m_Chunks.empty() || m_Chunks.back().count == Chunk::capacity)
+                    m_Chunks.push_back(AllocateChunk());
             }
 
         private:
             const ComponentInfo *m_Component;
 
-            std::vector<uint8_t> m_Buffer;
+            std::vector<Chunk> m_Chunks;
         };
 
         class Archetype
@@ -274,20 +404,10 @@ namespace titan
                 m_Entities.push_back(entity);
                 m_Index[entity] = index;
 
-                for (auto &[id, storage] : m_Storage)
-                {
-                    if (([&] -> bool
-                    {
-                        if (C::id != id)
-                            return false;
-
-                        storage.Allocate(std::forward<C>(components));
-                        return true;
-                    }() || ...))
-                        continue;
-
+                for (auto &storage : m_Storage | std::views::values)
                     storage.Allocate();
-                }
+
+                ((m_Storage.at(C::id).template At<C>(index) = std::forward<C>(components)), ...);
             }
 
             void Release(EntityID entity);

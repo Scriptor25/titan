@@ -75,12 +75,54 @@ struct NumberComponent
 {
     static constexpr auto id = "NumberComponent"_hash64;
 
-    uint32_t value;
+    NumberComponent() = default;
+
+    NumberComponent(const uint32_t value)
+        : value(value)
+    {
+    }
+
+    NumberComponent(const NumberComponent &) = delete;
+    NumberComponent &operator=(const NumberComponent &) = delete;
+
+    NumberComponent(NumberComponent &&other) noexcept
+        : value(other.value)
+    {
+    }
+
+    NumberComponent &operator=(NumberComponent &&other) noexcept
+    {
+        std::swap(value, other.value);
+        return *this;
+    }
+
+    uint32_t value{};
 };
 
 struct StringComponent
 {
     static constexpr auto id = "StringComponent"_hash64;
+
+    StringComponent() = default;
+
+    StringComponent(std::string value)
+        : value(std::move(value))
+    {
+    }
+
+    StringComponent(const StringComponent &) = delete;
+    StringComponent &operator=(const StringComponent &) = delete;
+
+    StringComponent(StringComponent &&other) noexcept
+        : value(std::move(other.value))
+    {
+    }
+
+    StringComponent &operator=(StringComponent &&other) noexcept
+    {
+        std::swap(value, other.value);
+        return *this;
+    }
 
     std::string value;
 };
@@ -91,19 +133,24 @@ int main(const int argc, const char *const *argv)
         titan::EntitySystem sys;
         const auto a = sys.Create(StringComponent{ "Hello" });
         const auto b = sys.Create(StringComponent{ "World" });
-        const auto c = sys.Create(StringComponent{ "!" }, NumberComponent{ 0xDEADBEEFu });
+        const auto c = sys.Create(StringComponent{ "This is a test" }, NumberComponent{ 0xDEADBEEFu });
 
         (void) a;
         (void) b;
         (void) c;
 
+        for (auto [string] : sys.Query<StringComponent>())
+            std::cerr << string.value << std::endl;
+
         sys.Add(b, NumberComponent{ 0xBADF00Du });
 
-        auto &arc = sys.GetArchetype<StringComponent>();
-        auto &column = arc.GetColumn(StringComponent::id);
-        auto view = column.Cast<StringComponent>();
+        for (auto [string] : sys.Query<StringComponent>())
+            std::cerr << string.value << std::endl;
 
-        for (auto &entry : view)
+        auto &arc = sys.GetArchetype<StringComponent, NumberComponent>();
+        auto col = arc.GetColumn<StringComponent>();
+
+        for (auto &entry : col)
             std::cerr << entry.value << std::endl;
 
         for (auto [string, number, same_string] : sys.Query<StringComponent, NumberComponent, StringComponent>())
