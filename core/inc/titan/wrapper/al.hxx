@@ -8,7 +8,7 @@ namespace titan::al
     class Device
     {
     public:
-        static result<Device> Open(const ALCchar *device_name = {});
+        static toolkit::result<Device> Open(const ALCchar *device_name = {});
 
         Device() = default;
         ~Device();
@@ -31,7 +31,7 @@ namespace titan::al
     class Context
     {
     public:
-        static result<Context> Create(const Device &device, const ALCint *attr_list = {});
+        static toolkit::result<Context> Create(const Device &device, const ALCint *attr_list = {});
 
         Context() = default;
         ~Context();

@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::InitializeWindow()
+toolkit::result<> titan::Application::InitializeWindow()
 {
     return ok()
            & [&]

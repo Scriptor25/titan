@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateSynchronization()
+toolkit::result<> titan::Application::CreateSynchronization()
 {
     const VkSemaphoreCreateInfo semaphore_create_info
     {
@@ -13,22 +13,22 @@ titan::result<> titan::Application::CreateSynchronization()
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
 
-    if (auto res = vk::Fence::create(m_Device, fence_create_info) >> m_Fence)
+    if (auto res = vk::Fence::create(m_Device, fence_create_info) >> m_Fence; !res)
         return res;
 
     for (auto &[
              available,
              finished,
              fence,
-             buffer,
-             framebuffer
+             framebuffer,
+             buffer
          ] : m_Frames)
     {
-        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> available)
+        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> available; !res)
             return res;
-        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> finished)
+        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> finished; !res)
             return res;
-        if (auto res = vk::Fence::create(m_Device, fence_create_info) >> fence)
+        if (auto res = vk::Fence::create(m_Device, fence_create_info) >> fence; !res)
             return res;
     }
 

@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateSwapchainViews()
+toolkit::result<> titan::Application::CreateSwapchainViews()
 {
     VkSharingMode image_sharing_mode;
     std::vector<uint32_t> queue_family_indices;
@@ -40,7 +40,7 @@ titan::result<> titan::Application::CreateSwapchainViews()
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             };
 
-            if (auto res = CreateSwapchainReference(create_info) >> color)
+            if (auto res = CreateSwapchainReference(create_info) >> color; !res)
                 return res;
         }
 
@@ -61,7 +61,7 @@ titan::result<> titan::Application::CreateSwapchainViews()
                 .pQueueFamilyIndices = queue_family_indices.data(),
             };
 
-            if (auto res = CreateSwapchainReference(create_info) >> depth)
+            if (auto res = CreateSwapchainReference(create_info) >> depth; !res)
                 return res;
         }
     }

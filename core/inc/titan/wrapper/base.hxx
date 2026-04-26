@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <titan/result.hxx>
 
 namespace titan
@@ -18,7 +19,7 @@ namespace titan
     };
 
     template<typename T>
-    concept wrappable = std::convertible_to<T, bool>;
+    concept wrappable = std::convertible_to<T, bool> && std::default_initializable<T>;
 
     template<wrappable T, typename... Tags>
     class wrapper_t
@@ -85,7 +86,7 @@ namespace titan
 
         explicit operator bool() const
         {
-            return !!value;
+            return static_cast<bool>(value);
         }
 
         bool operator!() const
@@ -104,24 +105,24 @@ namespace titan
         }
 
         template<typename... Args>
-        static result<wrapper_t> create(Args &&... args)
+        static toolkit::result<wrapper_t> create(Args &&... args)
         {
             value_type value;
             if constexpr (std::is_void_v<create_result_type>)
                 traits::create(std::forward<Args>(args)..., value);
             else if (auto res = traits::create(std::forward<Args>(args)..., value))
-                return error<wrapper_t>("{} => {}", traits::create_name, res);
+                return toolkit::make_error("{} => {}", traits::create_name, res);
             return wrapper_t(traits::make_destroy_args(std::forward<Args>(args)...), value);
         }
 
         template<typename... Args>
-        static result<collection_type> create_collection(Args &&... args)
+        static toolkit::result<collection_type> create_collection(Args &&... args)
         {
             std::vector<value_type> values;
             if constexpr (std::is_void_v<create_result_type>)
                 traits::create_collection(std::forward<Args>(args)..., values);
             else if (auto res = traits::create_collection(std::forward<Args>(args)..., values))
-                return error<collection_type>("{} => {}", traits::create_name, res);
+                return toolkit::make_error("{} => {}", traits::create_name, res);
 
             collection_type wrappers(values.size());
             for (size_t i = 0; i < values.size(); ++i)
@@ -136,12 +137,30 @@ namespace titan
                 return;
 
             if (args.has_value())
-                std::apply(
-                    [this]<typename... Args>(Args &&... unpacked)
+            {
+                if constexpr (std::is_void_v<destroy_result_type>)
+                {
+                    std::apply(
+                        [this]<typename... Args>(Args &&... unpacked)
+                        {
+                            return traits::destroy(std::forward<Args>(unpacked)..., value);
+                        },
+                        args.value());
+                }
+                else
+                {
+                    if (auto res = std::apply(
+                        [this]<typename... Args>(Args &&... unpacked)
+                        {
+                            return traits::destroy(std::forward<Args>(unpacked)..., value);
+                        },
+                        args.value()))
                     {
-                        return traits::destroy(std::forward<Args>(unpacked)..., value);
-                    },
-                    args.value());
+                        std::cerr << std::format("{} => {}", traits::destroy_name, res) << std::endl;
+                        __builtin_debugtrap();
+                    }
+                }
+            }
 
             value = {};
         }

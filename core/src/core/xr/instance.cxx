@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-titan::result<> titan::Application::CreateXrInstance()
+toolkit::result<> titan::Application::CreateXrInstance()
 {
     XrApplicationInfo application_info
     {

@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateSession()
+toolkit::result<> titan::Application::CreateSession()
 {
     const XrGraphicsBindingVulkan2KHR graphics_binding_vulkan
     {

@@ -29,27 +29,27 @@ public:
     using Application::CleanUp;
 
 protected:
-    titan::result<> OnStart() override
+    toolkit::result<> OnStart() override
     {
         return titan::ok();
     }
 
-    titan::result<> PreFrame() override
+    toolkit::result<> PreFrame() override
     {
         return titan::ok();
     }
 
-    titan::result<> OnFrame() override
+    toolkit::result<> OnFrame() override
     {
         return titan::ok();
     }
 
-    titan::result<> PostFrame() override
+    toolkit::result<> PostFrame() override
     {
         return titan::ok();
     }
 
-    titan::result<> OnStop() override
+    toolkit::result<> OnStop() override
     {
         return titan::ok();
     }
@@ -73,7 +73,8 @@ static void signal_handler(const int signal)
 
 struct NumberComponent
 {
-    static constexpr auto id = "NumberComponent"_hash64;
+    static constexpr auto name = "NumberComponent";
+    static constexpr auto id = titan::hash64(name);
 
     NumberComponent() = default;
 
@@ -101,7 +102,8 @@ struct NumberComponent
 
 struct StringComponent
 {
-    static constexpr auto id = "StringComponent"_hash64;
+    static constexpr auto name = "StringComponent";
+    static constexpr auto id = titan::hash64(name);
 
     StringComponent() = default;
 
@@ -129,41 +131,6 @@ struct StringComponent
 
 int main(const int argc, const char *const *argv)
 {
-    {
-        titan::EntitySystem sys;
-        const auto a = sys.Create(StringComponent{ "Hello" });
-        const auto b = sys.Create(StringComponent{ "World" });
-        const auto c = sys.Create(StringComponent{ "This is a test" }, NumberComponent{ 0xDEADBEEFu });
-
-        (void) a;
-        (void) b;
-        (void) c;
-
-        for (auto [string] : sys.Query<StringComponent>())
-            std::cerr << string.value << std::endl;
-
-        sys.Add(b, NumberComponent{ 0xBADF00Du });
-
-        for (auto [string] : sys.Query<StringComponent>())
-            std::cerr << string.value << std::endl;
-
-        auto &arc = sys.GetArchetype<StringComponent, NumberComponent>();
-        auto col = arc.GetColumn<StringComponent>();
-
-        for (auto &entry : col)
-            std::cerr << entry.value << std::endl;
-
-        for (auto [string, number, same_string] : sys.Query<StringComponent, NumberComponent, StringComponent>())
-            std::cerr
-                    << string.value
-                    << " ( == "
-                    << same_string.value
-                    << "): "
-                    << std::hex
-                    << number.value
-                    << std::endl;
-    }
-
     Game game;
     game_ptr = &game;
 
@@ -173,17 +140,17 @@ int main(const int argc, const char *const *argv)
     auto res = game.Initialize(*argv, { argv + 1, argv + argc })
                & [&]
                {
-                   titan::result<bool> e;
+                   toolkit::result<bool> e;
                    do
                        e = game.Spin();
-                   while (!e && *e);
+                   while (e && *e);
                    return e;
                };
 
-    if (auto cleanup_res = game.CleanUp())
+    if (auto cleanup_res = game.CleanUp(); !cleanup_res)
         std::cerr << "during cleanup phase: " << cleanup_res.error() << std::endl;
 
-    if (!res)
+    if (res)
     {
         game_ptr = nullptr;
         return 0;

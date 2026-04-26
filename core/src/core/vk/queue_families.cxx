@@ -1,9 +1,10 @@
 #include <titan/core.hxx>
+#include <titan/format.hxx>
 #include <titan/utils.hxx>
 
 #include <set>
 
-titan::result<> titan::Application::GetQueueFamilyIndices()
+toolkit::result<> titan::Application::GetQueueFamilyIndices()
 {
     std::optional<uint32_t> index_default, index_graphics, index_compute, index_transfer, index_present;
 
@@ -99,5 +100,5 @@ titan::result<> titan::Application::GetQueueFamilyIndices()
         return ok();
     }
 
-    return error("failed to find any suitable queue family for {}.", missing);
+    return toolkit::make_error("failed to find any suitable queue family for {}.", missing);
 }

@@ -44,9 +44,9 @@ namespace titan
 
         return mix64(h ^ str.size());
     }
-}
 
-constexpr uint64_t operator""_hash64(const char *str, size_t len)
-{
-    return titan::hash64({ str, len });
+    constexpr uint64_t operator""_hash64(const char *str, size_t len)
+    {
+        return hash64({ str, len });
+    }
 }

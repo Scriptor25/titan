@@ -1,8 +1,14 @@
 import lldb
 
-def TypeViewSummary(val: lldb.SBValue, _):
-    size_value = val.GetNumChildren()
-    return f"size={size_value}"
+def join_args(*args) -> str:
+    return ", ".join(str(arg) for arg in args)
+
+def call(val: lldb.SBValue, label: str, name: str, *args) -> lldb.SBValue:
+    return val.CreateValueFromExpression(label, f"(({val.GetTypeName()} *){val.GetAddress().GetLoadAddress(val.GetTarget())})->{name}({join_args(*args)})")
+
+def TypeViewSummary(val: lldb.SBValue, _) -> str:
+    size = val.GetNumChildren()
+    return f"size={size}"
 
 class TypeViewSynthetic:
     def __init__(self, val: lldb.SBValue, _):
@@ -24,8 +30,6 @@ class TypeViewSynthetic:
 
         self.stride = self.base_type.GetByteSize()
         self.count = 0
-
-        print(self.chunk_count)
 
         self.chunk_meta = {}
 
@@ -62,9 +66,73 @@ class TypeViewSynthetic:
         address = data + local_index * self.stride
 
         return self.val.CreateValueFromAddress(f"[{index}]", address, self.base_type)
-        
+
+def ArchetypeSummary(val: lldb.SBValue, _) -> str:
+    size = val.GetNumChildren()
+    return f"size={size}"
+
+class ArchetypeSynthetic:
+    def __init__(self, val: lldb.SBValue, _):
+        self.val = val
+
+    def update(self) -> bool:
+        count_value = call(self.val, "count", "size")
+        self.count = count_value.GetValueAsUnsigned()
+        return True
+
+    def has_children(self) -> bool:
+        return True
+
+    def num_children(self) -> int:
+        return self.count
+
+    def get_child_at_index(self, index: int) -> lldb.SBValue | None:
+        if index < 0 or index >= self.count:
+            return None
+        return call(self.val, f"[{index}]", "entry", index)
+
+def ArchetypeEntrySummary(val: lldb.SBValue, _) -> str:
+    return val\
+        .GetNonSyntheticValue()\
+        .GetChildMemberWithName("info")\
+        .GetChildMemberWithName("name")\
+        .GetSummary()\
+        .strip('"')
+
+class ArchetypeEntrySynthetic:
+    def __init__(self, val: lldb.SBValue, _):
+        self.val = val
+
+    def update(self) -> bool:
+        info_value = self.val.GetChildMemberWithName("info")
+        name_value = info_value.GetChildMemberWithName("name")
+        name = name_value.GetSummary().strip('"')
+
+        pointer_value = self.val.GetChildMemberWithName("pointer")
+        pointer = pointer_value.GetValueAsAddress()
+
+        self.value = self.val.CreateValueFromExpression("value", f"(const {name} *){pointer}")
+        return True
+
+    def num_children(self) -> int:
+        return 1
+
+    def get_child_index(self, name: str) -> int:
+        if name == "value":
+            return 0
+        return -1
+
+    def get_child_at_index(self, index: int) -> lldb.SBValue | None:
+        if index == 0:
+            return self.value
         return None
 
 def __lldb_init_module(debugger: lldb.SBDebugger, _):
-    debugger.HandleCommand("type summary add -x '^titan::detail::TypeView<.*>$' -F titan.TypeViewSummary")
     debugger.HandleCommand("type synthetic add -x '^titan::detail::TypeView<.*>$' --python-class titan.TypeViewSynthetic")
+    debugger.HandleCommand("type summary add -x '^titan::detail::TypeView<.*>$' -F titan.TypeViewSummary")
+
+    debugger.HandleCommand("type synthetic add titan::detail::Archetype --python-class titan.ArchetypeSynthetic")
+    debugger.HandleCommand("type summary add titan::detail::Archetype -F titan.ArchetypeSummary")
+
+    debugger.HandleCommand("type synthetic add titan::detail::Archetype::ComponentEntry --python-class titan.ArchetypeEntrySynthetic")
+    debugger.HandleCommand("type summary add titan::detail::Archetype::ComponentEntry -F titan.ArchetypeEntrySummary")

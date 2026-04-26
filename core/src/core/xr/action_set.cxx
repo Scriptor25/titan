@@ -5,7 +5,7 @@
 #include <iostream>
 #include <titan/log.hxx>
 
-titan::result<> titan::Application::CreateActionSet()
+toolkit::result<> titan::Application::CreateActionSet()
 {
     const XrActionSetCreateInfo create_info
     {
@@ -18,7 +18,7 @@ titan::result<> titan::Application::CreateActionSet()
     return xr::ActionSet::create(m_XrInstance, create_info) >> m_ActionSet;
 }
 
-titan::result<> titan::Application::CreateActions()
+toolkit::result<> titan::Application::CreateActions()
 {
     return ok()
            & [&]
@@ -47,7 +47,7 @@ titan::result<> titan::Application::CreateActions()
            };
 }
 
-titan::result<titan::xr::Action> titan::Application::CreateAction(
+toolkit::result<titan::xr::Action> titan::Application::CreateAction(
     const std::string &name,
     const std::string &localized_name,
     const XrActionType type,
@@ -56,7 +56,7 @@ titan::result<titan::xr::Action> titan::Application::CreateAction(
     std::vector<XrPath> sub_paths(sub_path_strings.size());
     for (uint32_t i = 0; i < sub_path_strings.size(); ++i)
     {
-        if (auto res = xr::StringToPath(m_XrInstance, sub_path_strings[i]) >> sub_paths[i])
+        if (auto res = xr::StringToPath(m_XrInstance, sub_path_strings[i]) >> sub_paths[i]; !res)
             return res;
     }
 
@@ -80,7 +80,7 @@ titan::result<titan::xr::Action> titan::Application::CreateAction(
     return xr::Action::create(m_ActionSet, create_info);
 }
 
-titan::result<> titan::Application::CreateHands()
+toolkit::result<> titan::Application::CreateHands()
 {
     return ok()
            & [&]
@@ -93,7 +93,7 @@ titan::result<> titan::Application::CreateHands()
            };
 }
 
-titan::result<> titan::Application::SuggestBindings()
+toolkit::result<> titan::Application::SuggestBindings()
 {
     return ok()
            & [&]
@@ -110,7 +110,7 @@ titan::result<> titan::Application::SuggestBindings()
                        { m_ActionHaptic, "/user/hand/right/output/haptic" },
                    });
            }
-           | [&]
+           | [&](auto &&)
            {
                return xr::SuggestInteractionProfileBindings(
                    m_XrInstance,
@@ -126,7 +126,7 @@ titan::result<> titan::Application::SuggestBindings()
            };
 }
 
-titan::result<> titan::Application::RecordBindings()
+toolkit::result<> titan::Application::RecordBindings()
 {
     if (!m_Session)
         return ok();
@@ -136,13 +136,13 @@ titan::result<> titan::Application::RecordBindings()
            {
                return xr::GetCurrentInteractionProfile(m_Session, m_Hands[0].Path);
            }
-           & [&](XrInteractionProfileState &&state)
+           & [&](XrInteractionProfileState &&state) -> toolkit::result<XrInteractionProfileState>
            {
                if (state.interactionProfile)
                {
                    std::string str;
-                   if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str)
-                       return result<XrInteractionProfileState>(std::move(res));
+                   if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str; !res)
+                       return res;
                    info("/user/hand/left => ", str);
                }
 
@@ -153,7 +153,7 @@ titan::result<> titan::Application::RecordBindings()
                if (state.interactionProfile)
                {
                    std::string str;
-                   if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str)
+                   if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str; !res)
                        return res;
                    info("/user/hand/left => ", str);
                }
@@ -162,7 +162,7 @@ titan::result<> titan::Application::RecordBindings()
            };
 }
 
-titan::result<> titan::Application::CreateActionSpaces()
+toolkit::result<> titan::Application::CreateActionSpaces()
 {
     return ok()
            & [&]
@@ -175,13 +175,13 @@ titan::result<> titan::Application::CreateActionSpaces()
            };
 }
 
-titan::result<titan::xr::ActionSpace> titan::Application::CreateActionSpace(
+toolkit::result<titan::xr::ActionSpace> titan::Application::CreateActionSpace(
     XrAction action,
     const std::optional<std::string> &sub_path_string)
 {
     XrPath sub_path{};
     if (sub_path_string)
-        if (auto res = xr::StringToPath(m_XrInstance, *sub_path_string) >> sub_path)
+        if (auto res = xr::StringToPath(m_XrInstance, *sub_path_string) >> sub_path; !res)
             return res;
 
     const XrActionSpaceCreateInfo create_info
@@ -198,7 +198,7 @@ titan::result<titan::xr::ActionSpace> titan::Application::CreateActionSpace(
     return xr::ActionSpace::create(m_Session, create_info);
 }
 
-titan::result<> titan::Application::AttachActionSet()
+toolkit::result<> titan::Application::AttachActionSet()
 {
     const std::vector<XrActionSet> action_sets
     {
@@ -213,6 +213,6 @@ titan::result<> titan::Application::AttachActionSet()
     };
 
     if (auto res = xrAttachSessionActionSets(m_Session, &attach_info))
-        return error("xrAttachSessionActionSets => {}", res);
+        return toolkit::make_error("xrAttachSessionActionSets => {}", res);
     return ok();
 }

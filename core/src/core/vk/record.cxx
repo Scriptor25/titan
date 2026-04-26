@@ -1,14 +1,14 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<> titan::Application::RecordCommandBuffer(
+toolkit::result<> titan::Application::RecordCommandBuffer(
     const uint32_t width,
     const uint32_t height,
     const glm::mat4 &screen_matrix,
     vk::CommandBuffer &buffer,
     vk::Framebuffer &framebuffer)
 {
-    if (auto res = vk::ResetCommandBuffer(buffer, 0))
+    if (auto res = vk::ResetCommandBuffer(buffer, 0); !res)
         return res;
 
     const VkCommandBufferBeginInfo command_buffer_begin_info
@@ -16,7 +16,7 @@ titan::result<> titan::Application::RecordCommandBuffer(
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
 
-    if (auto res = vk::BeginCommandBuffer(buffer, command_buffer_begin_info))
+    if (auto res = vk::BeginCommandBuffer(buffer, command_buffer_begin_info); !res)
         return res;
 
     const VkViewport viewport

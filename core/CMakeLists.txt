@@ -11,4 +11,4 @@ find_package(glm CONFIG REQUIRED)
 
 add_library(core ${SRC})
 target_include_directories(core PUBLIC inc)
-target_link_libraries(core PUBLIC glfw Vulkan::Vulkan OpenAL::OpenAL OpenXR::openxr_loader glm::glm)
+target_link_libraries(core PUBLIC toolkit::core glfw Vulkan::Vulkan OpenAL::OpenAL OpenXR::openxr_loader glm::glm)

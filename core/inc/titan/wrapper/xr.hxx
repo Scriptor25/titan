@@ -13,6 +13,7 @@ namespace titan
         using value_type = XrAction;
 
         static constexpr auto create_name = "xrCreateAction";
+        static constexpr auto destroy_name = "xrDestroyAction";
 
         static auto make_destroy_args(XrActionSet, const XrActionCreateInfo &)
         {
@@ -39,6 +40,7 @@ namespace titan
         using value_type = XrActionSet;
 
         static constexpr auto create_name = "xrCreateActionSet";
+        static constexpr auto destroy_name = "xrDestroyActionSet";
 
         static auto make_destroy_args(XrInstance, const XrActionSetCreateInfo &)
         {
@@ -65,6 +67,7 @@ namespace titan
         using value_type = XrDebugUtilsMessengerEXT;
 
         static constexpr auto create_name = "xrCreateDebugUtilsMessengerEXT";
+        static constexpr auto destroy_name = "xrDestroyDebugUtilsMessengerEXT";
 
         static auto make_destroy_args(
             XrInstance instance,
@@ -95,6 +98,7 @@ namespace titan
         using value_type = XrInstance;
 
         static constexpr auto create_name = "xrCreateInstance";
+        static constexpr auto destroy_name = "xrDestroyInstance";
 
         static auto make_destroy_args(const XrInstanceCreateInfo &)
         {
@@ -120,6 +124,7 @@ namespace titan
         using value_type = XrSession;
 
         static constexpr auto create_name = "xrCreateSession";
+        static constexpr auto destroy_name = "xrDestroySession";
 
         static auto make_destroy_args(
             XrInstance,
@@ -148,6 +153,7 @@ namespace titan
         using value_type = XrSpace;
 
         static constexpr auto create_name = "xrCreateActionSpace";
+        static constexpr auto destroy_name = "xrDestroySpace<ActionSpace>";
 
         static auto make_destroy_args(
             XrSession,
@@ -176,6 +182,7 @@ namespace titan
         using value_type = XrSpace;
 
         static constexpr auto create_name = "xrCreateReferenceSpace";
+        static constexpr auto destroy_name = "xrDestroySpace<ReferenceSpace>";
 
         static auto make_destroy_args(
             XrSession,
@@ -204,6 +211,7 @@ namespace titan
         using value_type = XrSwapchain;
 
         static constexpr auto create_name = "xrCreateSwapchain";
+        static constexpr auto destroy_name = "xrDestroySwapchain";
 
         static auto make_destroy_args(
             XrSession,

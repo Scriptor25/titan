@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreatePipeline()
+toolkit::result<> titan::Application::CreatePipeline()
 {
     vk::ShaderModule shader_module_vertex, shader_module_fragment;
 
@@ -21,9 +21,10 @@ titan::result<> titan::Application::CreatePipeline()
         .pCode = reinterpret_cast<const uint32_t *>(shader_module_fragment_binary.data()),
     };
 
-    if (auto res = vk::ShaderModule::create(m_Device, shader_module_vertex_create_info) >> shader_module_vertex)
+    if (auto res = vk::ShaderModule::create(m_Device, shader_module_vertex_create_info) >> shader_module_vertex; !res)
         return res;
-    if (auto res = vk::ShaderModule::create(m_Device, shader_module_fragment_create_info) >> shader_module_fragment)
+    if (auto res = vk::ShaderModule::create(m_Device, shader_module_fragment_create_info) >> shader_module_fragment; !
+        res)
         return res;
 
     const std::array stage_create_info

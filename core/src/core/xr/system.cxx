@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<> titan::Application::GetSystemId()
+toolkit::result<> titan::Application::GetSystemId()
 {
     const XrSystemGetInfo get_info
     {

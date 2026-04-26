@@ -11,7 +11,7 @@ namespace titan::glfw
     class Monitor
     {
     public:
-        static result<Monitor> GetPrimary();
+        static toolkit::result<Monitor> GetPrimary();
 
         Monitor() = default;
         ~Monitor();
@@ -36,20 +36,20 @@ namespace titan::glfw
     class Window
     {
     public:
-        static result<Window> Create(
+        static toolkit::result<Window> Create(
             int width,
             int height,
             const char *title,
             const Monitor &monitor,
             const Window &share);
 
-        static result<Window> Create(
+        static toolkit::result<Window> Create(
             int width,
             int height,
             const char *title,
             const Monitor &monitor);
 
-        static result<Window> Create(
+        static toolkit::result<Window> Create(
             int width,
             int height,
             const char *title);
@@ -87,7 +87,7 @@ namespace titan::glfw
         explicit Instance(bool initialized);
 
     public:
-        static result<Instance> Create();
+        static toolkit::result<Instance> Create();
 
         Instance() = default;
         ~Instance();

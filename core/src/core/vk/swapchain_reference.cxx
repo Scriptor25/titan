@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainReference(
+toolkit::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainReference(
     const VkSwapchainReferenceCreateInfo &create_info)
 {
     VkSwapchainReference reference
@@ -38,10 +38,10 @@ titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainRe
             .clipped = true,
         };
 
-        if (auto res = vk::SwapchainKHR::create(m_Device, swapchain_create_info) >> reference.Swapchain)
+        if (auto res = vk::SwapchainKHR::create(m_Device, swapchain_create_info) >> reference.Swapchain; !res)
             return res;
 
-        if (auto res = vk::GetSwapchainImagesKHR(m_Device, reference.Swapchain) & set_images)
+        if (auto res = vk::GetSwapchainImagesKHR(m_Device, reference.Swapchain) & set_images; !res)
             return res;
     }
     else
@@ -75,7 +75,7 @@ titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainRe
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             };
 
-            if (auto res = vk::Image::create(m_Device, image_create_info) >> image)
+            if (auto res = vk::Image::create(m_Device, image_create_info) >> image; !res)
                 return res;
 
             const VkImageMemoryRequirementsInfo2 memory_requirements_info
@@ -97,7 +97,7 @@ titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainRe
                                m_PhysicalDevice,
                                memory_requirements.memoryTypeBits,
                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-                           >> memory_type_index)
+                           >> memory_type_index; !res)
                 return res;
 
             const VkMemoryAllocateInfo allocate_info
@@ -107,7 +107,7 @@ titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainRe
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory)
+            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory; !res)
                 return res;
 
             const VkBindImageMemoryInfo bind_info
@@ -118,7 +118,7 @@ titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainRe
                 .memoryOffset = 0,
             };
 
-            if (auto res = vk::BindImageMemory2(m_Device, bind_info))
+            if (auto res = vk::BindImageMemory2(m_Device, bind_info); !res)
                 return res;
         }
     }
@@ -148,7 +148,7 @@ titan::result<titan::VkSwapchainReference> titan::Application::CreateSwapchainRe
             },
         };
 
-        if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i])
+        if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i]; !res)
             return res;
     }
 

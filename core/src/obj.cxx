@@ -112,7 +112,10 @@ titan::MeshData titan::obj::Open(std::istream &stream)
                 }
             }
 
-            mesh.Vertices.append_range(std::move(vertices));
+            mesh.Vertices.insert(
+                mesh.Vertices.end(),
+                std::make_move_iterator(vertices.begin()),
+                std::make_move_iterator(vertices.end()));
 
             for (uint32_t i = 1; i < count - 1; ++i)
             {

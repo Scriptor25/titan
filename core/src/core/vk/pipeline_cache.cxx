@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<> titan::Application::CreatePipelineCache()
+toolkit::result<> titan::Application::CreatePipelineCache()
 {
     auto data = LoadBinary("pipeline-cache");
 
@@ -15,7 +15,7 @@ titan::result<> titan::Application::CreatePipelineCache()
     return vk::PipelineCache::create(m_Device, create_info) >> m_PipelineCache;
 }
 
-titan::result<> titan::Application::StorePipelineCache()
+toolkit::result<> titan::Application::StorePipelineCache()
 {
     return vk::GetPipelineCacheData(m_Device, m_PipelineCache)
            & [&](std::vector<char> &&data)

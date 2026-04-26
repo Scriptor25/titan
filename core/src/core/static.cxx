@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/format.hxx>
 
 #include <fstream>
 
@@ -17,7 +18,7 @@ void titan::Application::GetDeviceExtensions(std::vector<const char *> &dst)
     dst.insert(dst.end(), VK_DEVICE_EXTENSIONS.begin(), VK_DEVICE_EXTENSIONS.end());
 }
 
-titan::result<> titan::Application::FindFormats(
+toolkit::result<> titan::Application::FindFormats(
     VkPhysicalDevice physical_device,
     const std::vector<VkFormat> &formats,
     const std::vector<FormatReference> &references)
@@ -72,10 +73,10 @@ titan::result<> titan::Application::FindFormats(
         if (!reference.Format)
             missing.push_back(reference.Name);
 
-    return error("failed to find formats for references {}.", missing);
+    return toolkit::make_error("failed to find formats for references {}.", missing);
 }
 
-titan::result<uint32_t> titan::Application::FindMemoryType(
+toolkit::result<uint32_t> titan::Application::FindMemoryType(
     VkPhysicalDevice physical_device,
     const uint32_t type_filter,
     const VkMemoryPropertyFlags type_flags)
@@ -93,7 +94,7 @@ titan::result<uint32_t> titan::Application::FindMemoryType(
             return i;
     }
 
-    return error<uint32_t>("failed to find any suitable memory type.");
+    return toolkit::make_error("failed to find any suitable memory type.");
 }
 
 std::vector<char> titan::Application::LoadBinary(const std::filesystem::path &path)

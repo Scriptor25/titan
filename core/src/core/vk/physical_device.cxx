@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<> titan::Application::GetPhysicalDevice()
+toolkit::result<> titan::Application::GetPhysicalDevice()
 {
     return ok()
            & [&]
@@ -15,14 +15,14 @@ titan::result<> titan::Application::GetPhysicalDevice()
 
                return xr::GetVulkanGraphicsDevice2KHR(m_XrInstance, get_info) >> m_PhysicalDevice;
            }
-           & [&]
+           & [&]() -> toolkit::result<>
            {
                const auto properties = vk::GetPhysicalDeviceProperties2(m_PhysicalDevice).properties;
 
                if (sizeof(ShaderData) <= properties.limits.maxPushConstantsSize)
                    return ok();
 
-               return error(
+               return toolkit::make_error(
                    "shader data struct size is greater than physical device max push constants size ({} > {}).",
                    sizeof(ShaderData),
                    properties.limits.maxPushConstantsSize);

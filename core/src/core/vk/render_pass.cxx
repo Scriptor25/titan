@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateRenderPass()
+toolkit::result<> titan::Application::CreateRenderPass()
 {
     const std::array attachments
     {

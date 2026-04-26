@@ -268,12 +268,12 @@ namespace titan
         static void GetInstanceExtensions(std::vector<const char *> &dst);
         static void GetDeviceExtensions(std::vector<const char *> &dst);
 
-        static result<> FindFormats(
+        static toolkit::result<> FindFormats(
             VkPhysicalDevice physical_device,
             const std::vector<VkFormat> &formats,
             const std::vector<FormatReference> &references);
 
-        static result<uint32_t> FindMemoryType(
+        static toolkit::result<uint32_t> FindMemoryType(
             VkPhysicalDevice physical_device,
             uint32_t type_filter,
             VkMemoryPropertyFlags type_flags);
@@ -288,85 +288,87 @@ namespace titan
         Application(const Application &) = delete;
         Application &operator=(const Application &) = delete;
 
-        result<> Initialize(
+        toolkit::result<> Initialize(
             std::string_view exec,
             const std::vector<std::string_view> &args);
 
         void Terminate() const;
 
-        result<bool> Spin();
-        result<> CleanUp();
+        toolkit::result<bool> Spin();
+        toolkit::result<> CleanUp();
 
     private:
-        result<> InitializeWindow();
-        result<> InitializeAudio();
-        result<> InitializeGraphics();
+        toolkit::result<> InitializeWindow();
+        toolkit::result<> InitializeAudio();
+        toolkit::result<> InitializeGraphics();
 
-        result<> CreateXrInstance();
-        result<> CreateXrMessenger();
-        result<> GetSystemId();
+        toolkit::result<> CreateXrInstance();
+        toolkit::result<> CreateXrMessenger();
+        toolkit::result<> GetSystemId();
 
-        result<> CreateActionSet();
+        toolkit::result<> CreateActionSet();
 
-        result<> CreateActions();
-        result<xr::Action> CreateAction(
+        toolkit::result<> CreateActions();
+        toolkit::result<xr::Action> CreateAction(
             const std::string &name,
             const std::string &localized_name,
             XrActionType type,
             const std::vector<std::string> &sub_path_strings = {});
 
-        result<> CreateHands();
+        toolkit::result<> CreateHands();
 
-        result<> SuggestBindings();
-        result<> RecordBindings();
+        toolkit::result<> SuggestBindings();
+        toolkit::result<> RecordBindings();
 
-        result<> CreateVkInstance();
-        result<> CreateVkMessenger();
+        toolkit::result<> CreateVkInstance();
+        toolkit::result<> CreateVkMessenger();
 
-        result<> GetPhysicalDevice();
-        result<> GetFormats();
-        result<> GetQueueFamilyIndices();
-        result<> CreateDevice();
-        result<> GetDeviceQueues();
+        toolkit::result<> GetPhysicalDevice();
+        toolkit::result<> GetFormats();
+        toolkit::result<> GetQueueFamilyIndices();
+        toolkit::result<> CreateDevice();
+        toolkit::result<> GetDeviceQueues();
 
-        result<> CreateSession();
+        toolkit::result<> CreateSession();
 
-        result<> CreateActionSpaces();
-        result<xr::ActionSpace> CreateActionSpace(
+        toolkit::result<> CreateActionSpaces();
+        toolkit::result<xr::ActionSpace> CreateActionSpace(
             XrAction action,
             const std::optional<std::string> &sub_path_string = std::nullopt);
 
-        result<> AttachActionSet();
+        toolkit::result<> AttachActionSet();
 
-        result<> GetViewConfigurationType();
-        result<> GetViewConfigurationViews();
-        result<> CreateSwapchainViews();
-        result<> GetEnvironmentBlendMode();
-        result<> CreateReferenceSpace();
+        toolkit::result<> GetViewConfigurationType();
+        toolkit::result<> GetViewConfigurationViews();
+        toolkit::result<> CreateSwapchainViews();
+        toolkit::result<> GetEnvironmentBlendMode();
+        toolkit::result<> CreateReferenceSpace();
 
-        result<> CreateWindowSurface();
-        result<> CreateWindowSwapchainView();
+        toolkit::result<> CreateWindowSurface();
+        toolkit::result<> CreateWindowSwapchainView();
 
-        result<VkSwapchainReference> CreateSwapchainReference(const VkSwapchainReferenceCreateInfo &create_info);
-        result<XrSwapchainReference> CreateSwapchainReference(const XrSwapchainReferenceCreateInfo &create_info);
+        toolkit::result<VkSwapchainReference> CreateSwapchainReference(
+            const VkSwapchainReferenceCreateInfo &create_info);
+        toolkit::result<XrSwapchainReference> CreateSwapchainReference(
+            const XrSwapchainReferenceCreateInfo &create_info);
 
-        result<> CreateRenderPass();
-        result<> CreatePipelineCache();
-        result<> StorePipelineCache();
-        result<> CreatePipelineLayout();
-        result<> CreatePipeline();
+        toolkit::result<> CreateRenderPass();
+        toolkit::result<> CreatePipelineCache();
+        toolkit::result<> StorePipelineCache();
+        toolkit::result<> CreatePipelineLayout();
+        toolkit::result<> CreatePipeline();
 
-        result<> CreateFramebuffers();
+        toolkit::result<> CreateFramebuffers();
 
-        result<> CreateCommandPools();
-        result<> AllocateCommandBuffers();
+        toolkit::result<> CreateCommandPools();
+        toolkit::result<> AllocateCommandBuffers();
 
-        result<> CreateSynchronization();
+        toolkit::result<> CreateSynchronization();
 
-        result<> CreateBuffers();
-        result<> FillBuffers();
+        toolkit::result<> CreateBuffers();
+        toolkit::result<> FillBuffers();
 
-        result<> RecordCommandBuffer(
+        toolkit::result<> RecordCommandBuffer(
             uint32_t width,
             uint32_t height,
             const glm::mat4 &screen_matrix,
@@ -374,22 +376,22 @@ namespace titan
             vk::Framebuffer &
             framebuffer);
 
-        result<bool> PollEvents();
-        result<> PollActions(XrTime time);
+        toolkit::result<bool> PollEvents();
+        toolkit::result<> PollActions(XrTime time);
 
-        result<> RenderFrame();
-        result<> RenderLayer(LayerInfo &reference);
+        toolkit::result<> RenderFrame();
+        toolkit::result<> RenderLayer(LayerInfo &reference);
 
-        result<> UpdateModels();
+        toolkit::result<> UpdateModels();
 
-        result<> RenderThirdEye(XrTime time);
+        toolkit::result<> RenderThirdEye(XrTime time);
 
     protected:
-        virtual result<> OnStart();
-        virtual result<> PreFrame();
-        virtual result<> OnFrame();
-        virtual result<> PostFrame();
-        virtual result<> OnStop();
+        virtual toolkit::result<> OnStart();
+        virtual toolkit::result<> PreFrame();
+        virtual toolkit::result<> OnFrame();
+        virtual toolkit::result<> PostFrame();
+        virtual toolkit::result<> OnStop();
 
     private:
         ApplicationInfo m_Info;
@@ -414,8 +416,6 @@ namespace titan
         xr::ActionSet m_ActionSet;
         xr::Action m_ActionGrab, m_ActionHaptic, m_ActionPalmPose;
 
-        std::array<HandState, 2> m_Hands;
-
         vk::Instance m_VkInstance;
         vk::DebugUtilsMessengerEXT m_VkMessenger;
 
@@ -435,6 +435,8 @@ namespace titan
 
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
         xr::ReferenceSpace m_ViewSpace, m_ReferenceSpace;
+
+        std::array<HandState, 2> m_Hands;
 
         vk::RenderPass m_RenderPass;
         vk::PipelineCache m_PipelineCache;

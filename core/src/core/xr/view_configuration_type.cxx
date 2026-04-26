@@ -1,10 +1,10 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<> titan::Application::GetViewConfigurationType()
+toolkit::result<> titan::Application::GetViewConfigurationType()
 {
     return xr::EnumerateViewConfigurationTypes(m_XrInstance, m_SystemId)
-           & [&](std::vector<XrViewConfigurationType> &&values)
+           & [&](std::vector<XrViewConfigurationType> &&values) -> toolkit::result<>
            {
                m_ViewConfigurationType = {};
 
@@ -17,7 +17,7 @@ titan::result<> titan::Application::GetViewConfigurationType()
                        }
 
                if (!m_ViewConfigurationType)
-                   return error("failed to find any suitable view configuration type.");
+                   return toolkit::make_error("failed to find any suitable view configuration type.");
 
                return ok();
            };

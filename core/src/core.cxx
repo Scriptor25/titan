@@ -10,7 +10,7 @@ titan::Application::Application(ApplicationInfo info)
 {
 }
 
-titan::result<> titan::Application::Initialize(const std::string_view exec, const std::vector<std::string_view> &args)
+toolkit::result<> titan::Application::Initialize(const std::string_view exec, const std::vector<std::string_view> &args)
 {
     (void) exec;
     (void) args;
@@ -26,11 +26,11 @@ titan::result<> titan::Application::Initialize(const std::string_view exec, cons
         },
     };
 
-    if (auto res = InitializeWindow())
+    if (auto res = InitializeWindow(); !res)
         return res;
-    if (auto res = InitializeAudio())
+    if (auto res = InitializeAudio(); !res)
         return res;
-    if (auto res = InitializeGraphics())
+    if (auto res = InitializeGraphics(); !res)
         return res;
 
     return OnStart();
@@ -42,36 +42,36 @@ void titan::Application::Terminate() const
         m_Window.Close();
 }
 
-titan::result<bool> titan::Application::Spin()
+toolkit::result<bool> titan::Application::Spin()
 {
     glfw::PollEvents();
 
-    if (auto res = PollEvents(); res || !*res)
+    if (auto res = PollEvents(); !res || !*res)
         return res;
-    if (auto res = RenderFrame())
+    if (auto res = RenderFrame(); !res)
         return res;
 
     return !m_Window.ShouldClose();
 }
 
-titan::result<> titan::Application::CleanUp()
+toolkit::result<> titan::Application::CleanUp()
 {
-    if (auto res = OnStop())
+    if (auto res = OnStop(); !res)
         return res;
 
     if (!m_Device)
         return ok();
 
     if (auto res = vkDeviceWaitIdle(m_Device))
-        return error("vkDeviceWaitIdle => {}", res);
+        return toolkit::make_error("vkDeviceWaitIdle => {}", res);
 
-    if (auto res = StorePipelineCache())
+    if (auto res = StorePipelineCache(); !res)
         return res;
 
     return ok();
 }
 
-titan::result<> titan::Application::InitializeGraphics()
+toolkit::result<> titan::Application::InitializeGraphics()
 {
     return ok()
            & WRAP(CreateXrInstance)
@@ -110,7 +110,7 @@ titan::result<> titan::Application::InitializeGraphics()
            & WRAP(FillBuffers);
 }
 
-titan::result<bool> titan::Application::PollEvents()
+toolkit::result<bool> titan::Application::PollEvents()
 {
     XrEventDataBuffer event_data{ .type = XR_TYPE_EVENT_DATA_BUFFER };
 
@@ -199,7 +199,7 @@ titan::result<bool> titan::Application::PollEvents()
                 };
 
                 if (auto res = xrBeginSession(m_Session, &session_begin_info))
-                    return error<bool>("xrBeginSession => {}", res);
+                    return toolkit::make_error("xrBeginSession => {}", res);
 
                 break;
             }
@@ -207,7 +207,7 @@ titan::result<bool> titan::Application::PollEvents()
             case XR_SESSION_STATE_STOPPING:
             {
                 if (auto res = xrEndSession(m_Session))
-                    return error<bool>("xrEndSession => {}", res);
+                    return toolkit::make_error("xrEndSession => {}", res);
 
                 info(
                     "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
@@ -245,7 +245,7 @@ titan::result<bool> titan::Application::PollEvents()
     return true;
 }
 
-titan::result<> titan::Application::PollActions(const XrTime time)
+toolkit::result<> titan::Application::PollActions(const XrTime time)
 {
     const std::array active_action_sets
     {
@@ -263,7 +263,7 @@ titan::result<> titan::Application::PollActions(const XrTime time)
     };
 
     if (auto res = xrSyncActions(m_Session, &sync_info))
-        return error("xrSyncActions => {}", res);
+        return toolkit::make_error("xrSyncActions => {}", res);
 
     for (auto &hand : m_Hands)
     {
@@ -275,7 +275,7 @@ titan::result<> titan::Application::PollActions(const XrTime time)
         };
 
         if (auto res = xrGetActionStatePose(m_Session, &get_info, &hand.PoseState))
-            return error("xrGetActionStatePose => {}", res);
+            return toolkit::make_error("xrGetActionStatePose => {}", res);
 
         if (!hand.PoseState.isActive)
             continue;
@@ -336,7 +336,7 @@ titan::result<> titan::Application::PollActions(const XrTime time)
         };
 
         if (auto res = xrGetActionStateFloat(m_Session, &get_info, &hand.GrabState))
-            return error("xrGetActionStateFloat => {}", res);
+            return toolkit::make_error("xrGetActionStateFloat => {}", res);
     }
 
     for (auto &hand : m_Hands)
@@ -364,13 +364,13 @@ titan::result<> titan::Application::PollActions(const XrTime time)
             m_Session,
             &action_info,
             reinterpret_cast<const XrHapticBaseHeader *>(&haptic_vibration)))
-            return error("xrApplyHapticFeedback => {}", res);
+            return toolkit::make_error("xrApplyHapticFeedback => {}", res);
     }
 
     return ok();
 }
 
-titan::result<> titan::Application::RenderFrame()
+toolkit::result<> titan::Application::RenderFrame()
 {
     const XrFrameWaitInfo frame_wait_info
     {
@@ -378,10 +378,10 @@ titan::result<> titan::Application::RenderFrame()
     };
 
     XrFrameState frame_state;
-    if (auto res = xr::WaitFrame(m_Session, frame_wait_info) >> frame_state)
+    if (auto res = xr::WaitFrame(m_Session, frame_wait_info) >> frame_state; !res)
         return res;
 
-    if (auto res = PreFrame())
+    if (auto res = PreFrame(); !res)
         return res;
 
     const XrFrameBeginInfo frame_begin_info
@@ -389,10 +389,10 @@ titan::result<> titan::Application::RenderFrame()
         .type = XR_TYPE_FRAME_BEGIN_INFO,
     };
 
-    if (auto res = xr::BeginFrame(m_Session, frame_begin_info))
+    if (auto res = xr::BeginFrame(m_Session, frame_begin_info); !res)
         return res;
 
-    if (auto res = OnFrame())
+    if (auto res = OnFrame(); !res)
         return res;
 
     LayerInfo layer_info
@@ -408,11 +408,11 @@ titan::result<> titan::Application::RenderFrame()
     {
         PollActions(frame_state.predictedDisplayTime);
 
-        if (auto res = UpdateModels())
+        if (auto res = UpdateModels(); !res)
             return res;
-        if (auto res = RenderThirdEye(frame_state.predictedDisplayTime))
+        if (auto res = RenderThirdEye(frame_state.predictedDisplayTime); !res)
             return res;
-        if (auto res = RenderLayer(layer_info))
+        if (auto res = RenderLayer(layer_info); !res)
             return res;
 
         layer_info.Layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer_info.Projection));
@@ -427,13 +427,13 @@ titan::result<> titan::Application::RenderFrame()
         .layers = layer_info.Layers.data(),
     };
 
-    if (auto res = xr::EndFrame(m_Session, frame_end_info))
+    if (auto res = xr::EndFrame(m_Session, frame_end_info); !res)
         return res;
 
     return PostFrame();
 }
 
-titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
+toolkit::result<> titan::Application::RenderLayer(LayerInfo &reference)
 {
     auto &projection_views = reference.Views;
 
@@ -451,7 +451,7 @@ titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
     };
 
     std::vector<XrView> views;
-    if (auto res = xr::LocateViews(m_Session, view_locate_info, view_state) >> views)
+    if (auto res = xr::LocateViews(m_Session, view_locate_info, view_state) >> views; !res)
         return res;
 
     projection_views = {
@@ -476,13 +476,13 @@ titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
         fences.data(),
         true,
         std::numeric_limits<uint64_t>::max()))
-        return error("vkWaitForFences => {}", res);
+        return toolkit::make_error("vkWaitForFences => {}", res);
 
     if (auto res = vkResetFences(
         m_Device,
         fences.size(),
         fences.data()))
-        return error("vkResetFences => {}", res);
+        return toolkit::make_error("vkResetFences => {}", res);
 
     const XrSwapchainImageAcquireInfo acquire_info
     {
@@ -514,10 +514,10 @@ titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
 
         uint32_t image_index;
         if (auto res = xrAcquireSwapchainImage(color.Swapchain, &acquire_info, &image_index))
-            return error("xrAcquireSwapchainImage => {}", res);
+            return toolkit::make_error("xrAcquireSwapchainImage => {}", res);
 
         if (auto res = xrWaitSwapchainImage(color.Swapchain, &wait_info))
-            return error("xrWaitSwapchainImage => {}", res);
+            return toolkit::make_error("xrWaitSwapchainImage => {}", res);
 
         const auto width = view_configuration_view.recommendedImageRectWidth;
         const auto height = view_configuration_view.recommendedImageRectHeight;
@@ -582,7 +582,7 @@ titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
 
         auto screen_matrix = projection_matrix * view_matrix;
 
-        if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffers[image_index]))
+        if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffers[image_index]); !res)
             return res;
     }
 
@@ -597,11 +597,11 @@ titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
     };
 
     if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), m_Fence))
-        return error("vkQueueSubmit2 => {}", res);
+        return toolkit::make_error("vkQueueSubmit2 => {}", res);
 
     for (auto &view : m_SwapchainViews)
         if (auto res = xrReleaseSwapchainImage(view.Color.Swapchain, &release_info))
-            return error("xrReleaseSwapchainImage => {}", res);
+            return toolkit::make_error("xrReleaseSwapchainImage => {}", res);
 
     reference.Projection = {
         .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
@@ -615,7 +615,7 @@ titan::result<> titan::Application::RenderLayer(LayerInfo &reference)
     return ok();
 }
 
-titan::result<> titan::Application::UpdateModels()
+toolkit::result<> titan::Application::UpdateModels()
 {
     static auto begin = std::chrono::high_resolution_clock::now();
     const auto now = std::chrono::high_resolution_clock::now();
@@ -652,7 +652,7 @@ titan::result<> titan::Application::UpdateModels()
     return ok();
 }
 
-titan::result<> titan::Application::RenderThirdEye(const XrTime time)
+toolkit::result<> titan::Application::RenderThirdEye(const XrTime time)
 {
     auto &[
         available,
@@ -674,13 +674,13 @@ titan::result<> titan::Application::RenderThirdEye(const XrTime time)
         fences.data(),
         true,
         std::numeric_limits<uint64_t>::max()))
-        return error("vkWaitForFences => {}", res);
+        return toolkit::make_error("vkWaitForFences => {}", res);
 
     if (auto res = vkResetFences(
         m_Device,
         fences.size(),
         fences.data()))
-        return error("vkResetFences => {}", res);
+        return toolkit::make_error("vkResetFences => {}", res);
 
     const VkAcquireNextImageInfoKHR acquire_info
     {
@@ -694,7 +694,7 @@ titan::result<> titan::Application::RenderThirdEye(const XrTime time)
 
     uint32_t image_index;
     if (auto res = vkAcquireNextImage2KHR(m_Device, &acquire_info, &image_index))
-        return error("vkAcquireNextImage2KHR => {}", res);
+        return toolkit::make_error("vkAcquireNextImage2KHR => {}", res);
 
     XrSpaceLocation view
     {
@@ -702,7 +702,7 @@ titan::result<> titan::Application::RenderThirdEye(const XrTime time)
     };
 
     if (auto res = xrLocateSpace(m_ViewSpace, m_ReferenceSpace, time, &view))
-        return error("xrLocateSpace => {}", res);
+        return toolkit::make_error("xrLocateSpace => {}", res);
 
     int width, height;
     m_Window.GetFramebufferSize(width, height);
@@ -752,7 +752,7 @@ titan::result<> titan::Application::RenderThirdEye(const XrTime time)
 
     auto screen_matrix = projection_matrix * view_matrix;
 
-    if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffer))
+    if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffer); !res)
         return res;
 
     {
@@ -800,7 +800,7 @@ titan::result<> titan::Application::RenderThirdEye(const XrTime time)
         };
 
         if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), fence))
-            return error("vkQueueSubmit2 => {}", res);
+            return toolkit::make_error("vkQueueSubmit2 => {}", res);
     }
 
     {
@@ -825,33 +825,33 @@ titan::result<> titan::Application::RenderThirdEye(const XrTime time)
         };
 
         if (auto res = vkQueuePresentKHR(m_PresentQueue, &present_info))
-            return error("vkQueuePresentKHR =>{}", res);
+            return toolkit::make_error("vkQueuePresentKHR =>{}", res);
     }
 
     return ok();
 }
 
-titan::result<> titan::Application::OnStart()
+toolkit::result<> titan::Application::OnStart()
 {
     return ok();
 }
 
-titan::result<> titan::Application::PreFrame()
+toolkit::result<> titan::Application::PreFrame()
 {
     return ok();
 }
 
-titan::result<> titan::Application::OnFrame()
+toolkit::result<> titan::Application::OnFrame()
 {
     return ok();
 }
 
-titan::result<> titan::Application::PostFrame()
+toolkit::result<> titan::Application::PostFrame()
 {
     return ok();
 }
 
-titan::result<> titan::Application::OnStop()
+toolkit::result<> titan::Application::OnStop()
 {
     return ok();
 }

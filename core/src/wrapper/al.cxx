@@ -1,10 +1,10 @@
 #include <titan/wrapper/al.hxx>
 
-titan::result<titan::al::Device> titan::al::Device::Open(const ALCchar *device_name)
+toolkit::result<titan::al::Device> titan::al::Device::Open(const ALCchar *device_name)
 {
     if (const auto device = alcOpenDevice(device_name))
         return Device(device);
-    return error<Device>("alcOpenDevice => null");
+    return toolkit::make_error("alcOpenDevice => null");
 }
 
 titan::al::Device::~Device()
@@ -37,11 +37,11 @@ titan::al::Device::Device(ALCdevice *handle)
 {
 }
 
-titan::result<titan::al::Context> titan::al::Context::Create(const Device &device, const ALCint *attr_list)
+toolkit::result<titan::al::Context> titan::al::Context::Create(const Device &device, const ALCint *attr_list)
 {
     if (const auto context = alcCreateContext(*device, attr_list))
         return Context(context);
-    return error<Context>("alcCreateContext => null");
+    return toolkit::make_error("alcCreateContext => null");
 }
 
 titan::al::Context::~Context()

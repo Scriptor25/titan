@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::GetDeviceQueues()
+toolkit::result<> titan::Application::GetDeviceQueues()
 {
     {
         const VkDeviceQueueInfo2 device_queue_info

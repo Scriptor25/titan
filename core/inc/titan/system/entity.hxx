@@ -19,6 +19,9 @@ namespace titan
     {
         struct ComponentInfo
         {
+            ComponentID id;
+            const char *name;
+
             size_t size;
             size_t alignment;
             size_t stride;
@@ -34,6 +37,9 @@ namespace titan
         ComponentInfo GetComponentInfo()
         {
             ComponentInfo component{};
+
+            component.id = T::id;
+            component.name = T::name;
 
             component.size = sizeof(T);
             component.alignment = alignof(T);
@@ -176,9 +182,9 @@ namespace titan
         private:
             struct Iterator
             {
-                bool operator!=(const Iterator &other) const
+                bool operator==(const Iterator &other) const
                 {
-                    return chunk_index != other.chunk_index || local_index != other.local_index;
+                    return chunk_index == other.chunk_index && local_index == other.local_index;
                 }
 
                 element_type &operator*() const
@@ -344,6 +350,30 @@ namespace titan
 
         class Archetype
         {
+            struct ComponentEntry
+            {
+                const ComponentInfo *info;
+                const void *pointer;
+            };
+
+            struct Entry
+            {
+                EntityID entity;
+                std::vector<ComponentEntry> components;
+            };
+
+            struct Iterator
+            {
+                bool operator==(const Iterator &other) const;
+
+                Entry operator*() const;
+
+                Iterator &operator++();
+
+                const Archetype &base;
+                size_t index;
+            };
+
         public:
             Archetype();
             Archetype(ComponentMask mask, const std::unordered_map<ComponentID, const ComponentInfo *> &components);
@@ -412,6 +442,12 @@ namespace titan
 
             void Release(EntityID entity);
 
+            Iterator begin() const;
+            Iterator end() const;
+
+            size_t size() const;
+            Entry entry(size_t index) const;
+
         private:
             ComponentMask m_Mask;
 
@@ -434,9 +470,9 @@ namespace titan
                     return { *std::get<I>(data)[offset]... };
                 }
 
-                bool operator!=(const Iterator &other) const
+                bool operator==(const Iterator &other) const
                 {
-                    return offset != other.offset;
+                    return offset == other.offset;
                 }
 
                 std::tuple<C &...> operator*() const

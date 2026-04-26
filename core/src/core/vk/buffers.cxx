@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-titan::result<> titan::Application::CreateBuffers()
+toolkit::result<> titan::Application::CreateBuffers()
 {
     m_ModelReferences.resize(m_ModelData.size());
     for (uint32_t i = 0; i < m_ModelData.size(); ++i)
@@ -18,7 +18,7 @@ titan::result<> titan::Application::CreateBuffers()
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
-            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.VertexBuffer)
+            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.VertexBuffer; !res)
                 return res;
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
@@ -38,7 +38,7 @@ titan::result<> titan::Application::CreateBuffers()
                                requirements.memoryTypeBits,
                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                           >> memory_type_index)
+                           >> memory_type_index; !res)
                 return res;
 
             const VkMemoryAllocateInfo allocate_info
@@ -48,7 +48,7 @@ titan::result<> titan::Application::CreateBuffers()
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.VertexMemory)
+            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.VertexMemory; !res)
                 return res;
 
             const VkBindBufferMemoryInfo bind_info
@@ -59,7 +59,7 @@ titan::result<> titan::Application::CreateBuffers()
                 .memoryOffset = 0,
             };
 
-            if (auto res = vk::BindBufferMemory2(m_Device, bind_info))
+            if (auto res = vk::BindBufferMemory2(m_Device, bind_info); !res)
                 return res;
         }
 
@@ -72,7 +72,7 @@ titan::result<> titan::Application::CreateBuffers()
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
-            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.IndexBuffer)
+            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.IndexBuffer; !res)
                 return res;
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
@@ -92,7 +92,7 @@ titan::result<> titan::Application::CreateBuffers()
                                requirements.memoryTypeBits,
                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                           >> memory_type_index)
+                           >> memory_type_index; !res)
                 return res;
 
             const VkMemoryAllocateInfo allocate_info
@@ -102,7 +102,7 @@ titan::result<> titan::Application::CreateBuffers()
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.IndexMemory)
+            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.IndexMemory; !res)
                 return res;
 
             const VkBindBufferMemoryInfo bind_info
@@ -113,7 +113,7 @@ titan::result<> titan::Application::CreateBuffers()
                 .memoryOffset = 0,
             };
 
-            if (auto res = vk::BindBufferMemory2(m_Device, bind_info))
+            if (auto res = vk::BindBufferMemory2(m_Device, bind_info); !res)
                 return res;
         }
     }

@@ -22,24 +22,24 @@ namespace titan::xr
 
     template<typename T, typename E = T, typename F, typename... A>
         requires std::is_same_v<XrResult(*)(A..., uint32_t, uint32_t *, E *), F>
-    result<std::vector<T>> Enumerate(F fn, const T &value, A... args)
+    toolkit::result<std::vector<T>> Enumerate(F fn, const T &value, A... args)
     {
         uint32_t count;
         if (auto res = fn(args..., 0, &count, nullptr))
-            return error<std::vector<T>>("xr::Enumerate => {}", res);
+            return toolkit::make_error("xr::Enumerate => {}", res);
 
         std::vector<T> elements(count, value);
         if (auto res = fn(args..., count, &count, reinterpret_cast<E *>(elements.data())))
-            return error<std::vector<T>>("xr::Enumerate => {}", res);
+            return toolkit::make_error("xr::Enumerate => {}", res);
 
         return elements;
     }
 
-    result<std::vector<XrViewConfigurationType>> EnumerateViewConfigurationTypes(
+    toolkit::result<std::vector<XrViewConfigurationType>> EnumerateViewConfigurationTypes(
         XrInstance instance,
         XrSystemId system_id);
 
-    result<std::vector<XrViewConfigurationView>> EnumerateViewConfigurationViews(
+    toolkit::result<std::vector<XrViewConfigurationView>> EnumerateViewConfigurationViews(
         XrInstance instance,
         XrSystemId system_id,
         XrViewConfigurationType view_configuration_type);
@@ -66,48 +66,48 @@ namespace titan::xr
             swapchain);
     }
 
-    result<std::vector<XrEnvironmentBlendMode>> EnumerateEnvironmentBlendModes(
+    toolkit::result<std::vector<XrEnvironmentBlendMode>> EnumerateEnvironmentBlendModes(
         XrInstance instance,
         XrSystemId system_id,
         XrViewConfigurationType view_configuration_type);
 
-    result<std::vector<XrView>> LocateViews(
+    toolkit::result<std::vector<XrView>> LocateViews(
         XrSession session,
         const XrViewLocateInfo &view_locate_info,
         XrViewState &view_state);
 
-    result<XrGraphicsRequirementsVulkan2KHR> GetVulkanGraphicsRequirements2KHR(
+    toolkit::result<XrGraphicsRequirementsVulkan2KHR> GetVulkanGraphicsRequirements2KHR(
         XrInstance instance,
         XrSystemId system_id);
 
-    result<vk::Instance> CreateVulkanInstanceKHR(
+    toolkit::result<vk::Instance> CreateVulkanInstanceKHR(
         XrInstance instance,
         const XrVulkanInstanceCreateInfoKHR &create_info);
 
-    result<vk::Device> CreateVulkanDeviceKHR(
+    toolkit::result<vk::Device> CreateVulkanDeviceKHR(
         XrInstance instance,
         const XrVulkanDeviceCreateInfoKHR &create_info);
 
-    result<VkPhysicalDevice> GetVulkanGraphicsDevice2KHR(
+    toolkit::result<VkPhysicalDevice> GetVulkanGraphicsDevice2KHR(
         XrInstance instance,
         const XrVulkanGraphicsDeviceGetInfoKHR &get_info);
 
-    result<XrSystemId> GetSystem(XrInstance instance, const XrSystemGetInfo &get_info);
+    toolkit::result<XrSystemId> GetSystem(XrInstance instance, const XrSystemGetInfo &get_info);
 
-    result<XrFrameState> WaitFrame(XrSession session, const XrFrameWaitInfo &frame_wait_info);
+    toolkit::result<XrFrameState> WaitFrame(XrSession session, const XrFrameWaitInfo &frame_wait_info);
 
-    result<> BeginFrame(XrSession session, const XrFrameBeginInfo &frame_begin_info);
-    result<> EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info);
+    toolkit::result<> BeginFrame(XrSession session, const XrFrameBeginInfo &frame_begin_info);
+    toolkit::result<> EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info);
 
-    result<XrPath> StringToPath(XrInstance instance, const std::string &str);
-    result<std::string> PathToString(XrInstance instance, XrPath path);
+    toolkit::result<XrPath> StringToPath(XrInstance instance, const std::string &str);
+    toolkit::result<std::string> PathToString(XrInstance instance, XrPath path);
 
-    result<> SuggestInteractionProfileBindings(
+    toolkit::result<> SuggestInteractionProfileBindings(
         XrInstance instance,
         const std::string &profile,
         const std::vector<std::pair<XrAction, std::string>> &bindings);
 
-    result<XrInteractionProfileState> GetCurrentInteractionProfile(XrSession session, XrPath path);
+    toolkit::result<XrInteractionProfileState> GetCurrentInteractionProfile(XrSession session, XrPath path);
 }
 
 namespace titan::vk
@@ -136,15 +136,15 @@ namespace titan::vk
 
     template<typename T, typename E = T, typename F, typename... A>
         requires std::is_same_v<VkResult (*)(A..., uint32_t *, E *), F>
-    result<std::vector<T>> Enumerate(F fn, const T &value, A... args)
+    toolkit::result<std::vector<T>> Enumerate(F fn, const T &value, A... args)
     {
         uint32_t count;
         if (auto res = fn(args..., &count, nullptr))
-            return error<std::vector<T>>("vk::Enumerate => {}", res);
+            return toolkit::make_error("vk::Enumerate => {}", res);
 
         std::vector<T> elements(count, value);
         if (auto res = fn(args..., &count, reinterpret_cast<E *>(elements.data())))
-            return error<std::vector<T>>("vk::Enumerate => {}", res);
+            return toolkit::make_error("vk::Enumerate => {}", res);
 
         return elements;
     }
@@ -162,15 +162,15 @@ namespace titan::vk
         return elements;
     }
 
-    result<std::vector<VkSurfaceFormat2KHR>> GetPhysicalDeviceSurfaceFormats2KHR(
+    toolkit::result<std::vector<VkSurfaceFormat2KHR>> GetPhysicalDeviceSurfaceFormats2KHR(
         VkPhysicalDevice physical_device,
         const VkPhysicalDeviceSurfaceInfo2KHR &surface_info);
 
-    result<std::vector<VkPresentModeKHR>> GetPhysicalDeviceSurfacePresentModesKHR(
+    toolkit::result<std::vector<VkPresentModeKHR>> GetPhysicalDeviceSurfacePresentModesKHR(
         VkPhysicalDevice physical_device,
         VkSurfaceKHR surface);
 
-    result<std::vector<VkImage>> GetSwapchainImagesKHR(
+    toolkit::result<std::vector<VkImage>> GetSwapchainImagesKHR(
         VkDevice device,
         VkSwapchainKHR swapchain);
 
@@ -182,24 +182,24 @@ namespace titan::vk
         VkDevice device,
         const VkBufferMemoryRequirementsInfo2 &requirements_info);
 
-    result<> BindBufferMemory2(VkDevice device, const VkBindBufferMemoryInfo &bind_info);
-    result<> BindBufferMemory2(VkDevice device, const std::vector<VkBindBufferMemoryInfo> &bind_infos);
+    toolkit::result<> BindBufferMemory2(VkDevice device, const VkBindBufferMemoryInfo &bind_info);
+    toolkit::result<> BindBufferMemory2(VkDevice device, const std::vector<VkBindBufferMemoryInfo> &bind_infos);
 
-    result<> BindImageMemory2(VkDevice device, const VkBindImageMemoryInfo &bind_info);
-    result<> BindImageMemory2(VkDevice device, const std::vector<VkBindImageMemoryInfo> &bind_infos);
+    toolkit::result<> BindImageMemory2(VkDevice device, const VkBindImageMemoryInfo &bind_info);
+    toolkit::result<> BindImageMemory2(VkDevice device, const std::vector<VkBindImageMemoryInfo> &bind_infos);
 
     VkPhysicalDeviceProperties2 GetPhysicalDeviceProperties2(VkPhysicalDevice physical_device);
 
-    result<std::vector<char>> GetPipelineCacheData(VkDevice device, VkPipelineCache pipeline_cache);
+    toolkit::result<std::vector<char>> GetPipelineCacheData(VkDevice device, VkPipelineCache pipeline_cache);
 
-    result<> ResetCommandBuffer(VkCommandBuffer command_buffer, VkCommandBufferResetFlags flags);
-    result<> BeginCommandBuffer(VkCommandBuffer command_buffer, const VkCommandBufferBeginInfo &begin_info);
-    result<> EndCommandBuffer(VkCommandBuffer command_buffer);
+    toolkit::result<> ResetCommandBuffer(VkCommandBuffer command_buffer, VkCommandBufferResetFlags flags);
+    toolkit::result<> BeginCommandBuffer(VkCommandBuffer command_buffer, const VkCommandBufferBeginInfo &begin_info);
+    toolkit::result<> EndCommandBuffer(VkCommandBuffer command_buffer);
 
-    result<void *> MapMemory2(VkDevice device, const VkMemoryMapInfo &map_info);
-    result<> UnmapMemory2(VkDevice device, const VkMemoryUnmapInfo &unmap_info);
+    toolkit::result<void *> MapMemory2(VkDevice device, const VkMemoryMapInfo &map_info);
+    toolkit::result<> UnmapMemory2(VkDevice device, const VkMemoryUnmapInfo &unmap_info);
 
-    result<VkSurfaceCapabilities2KHR> GetPhysicalDeviceSurfaceCapabilities2KHR(
+    toolkit::result<VkSurfaceCapabilities2KHR> GetPhysicalDeviceSurfaceCapabilities2KHR(
         VkPhysicalDevice physical_device,
         const VkPhysicalDeviceSurfaceInfo2KHR &surface_info);
 }

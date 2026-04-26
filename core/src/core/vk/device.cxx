@@ -3,7 +3,7 @@
 
 #include <set>
 
-titan::result<> titan::Application::CreateDevice()
+toolkit::result<> titan::Application::CreateDevice()
 {
     std::vector<const char *> extensions;
     GetDeviceExtensions(extensions);

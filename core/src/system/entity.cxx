@@ -166,6 +166,24 @@ void titan::detail::ComponentStorage::Swap(const size_t a, const size_t b)
         throw std::runtime_error("component::swap");
 }
 
+bool titan::detail::Archetype::Iterator::operator==(const Iterator &other) const
+{
+    return index == other.index;
+}
+
+titan::detail::Archetype::Entry titan::detail::Archetype::Iterator::operator*() const
+{
+    return base.entry(index);
+}
+
+titan::detail::Archetype::Iterator &titan::detail::Archetype::Iterator::operator++()
+{
+    if (index != ~0ull)
+        if (++index >= base.m_Entities.size())
+            index = ~0ull;
+    return *this;
+}
+
 titan::detail::Archetype::Archetype()
     : m_Mask()
 {
@@ -208,9 +226,8 @@ size_t titan::detail::Archetype::GetCount() const
     return m_Index.size();
 }
 
-std::unordered_map<
-    titan::ComponentID,
-    const titan::detail::ComponentInfo *> titan::detail::Archetype::GetComponents() const
+std::unordered_map<titan::ComponentID, const titan::detail::ComponentInfo *>
+titan::detail::Archetype::GetComponents() const
 {
     std::unordered_map<ComponentID, const ComponentInfo *> components;
     for (auto &[id, storage] : m_Storage)
@@ -298,6 +315,42 @@ void titan::detail::Archetype::Release(const EntityID entity)
 
     for (auto &storage : m_Storage | std::views::values)
         storage.Release();
+}
+
+titan::detail::Archetype::Iterator titan::detail::Archetype::begin() const
+{
+    return { *this, 0ull };
+}
+
+titan::detail::Archetype::Iterator titan::detail::Archetype::end() const
+{
+    return { *this, ~0ull };
+}
+
+size_t titan::detail::Archetype::size() const
+{
+    return m_Entities.size();
+}
+
+titan::detail::Archetype::Entry titan::detail::Archetype::entry(const size_t index) const
+{
+    const auto entity = m_Entities[index];
+    const auto entity_index = m_Index.at(entity);
+
+    std::vector<ComponentEntry> entries;
+    entries.reserve(m_Storage.size());
+
+    for (auto &val : m_Storage | std::views::values)
+        entries.push_back(
+            {
+                .info = val.GetComponent(),
+                .pointer = val.Point(entity_index),
+            });
+
+    return {
+        .entity = entity,
+        .components = std::move(entries),
+    };
 }
 
 titan::detail::Archetype &titan::EntitySystem::GetArchetype(

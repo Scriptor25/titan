@@ -47,7 +47,7 @@ static VkExtent2D select_extent(const VkSurfaceCapabilitiesKHR &capabilities, co
     return extent;
 }
 
-titan::result<> titan::Application::CreateWindowSwapchainView()
+toolkit::result<> titan::Application::CreateWindowSwapchainView()
 {
     const VkPhysicalDeviceSurfaceInfo2KHR surface_info
     {
@@ -56,17 +56,19 @@ titan::result<> titan::Application::CreateWindowSwapchainView()
     };
 
     VkSurfaceCapabilities2KHR surface_capabilities;
-    if (auto res = vk::GetPhysicalDeviceSurfaceCapabilities2KHR(m_PhysicalDevice, surface_info) >> surface_capabilities)
+    if (auto res = vk::GetPhysicalDeviceSurfaceCapabilities2KHR(m_PhysicalDevice, surface_info) >> surface_capabilities;
+        !res)
         return res;
 
     auto &capabilities = surface_capabilities.surfaceCapabilities;
 
     std::vector<VkSurfaceFormat2KHR> surface_formats;
-    if (auto res = vk::GetPhysicalDeviceSurfaceFormats2KHR(m_PhysicalDevice, surface_info) >> surface_formats)
+    if (auto res = vk::GetPhysicalDeviceSurfaceFormats2KHR(m_PhysicalDevice, surface_info) >> surface_formats; !res)
         return res;
 
     std::vector<VkPresentModeKHR> present_modes;
-    if (auto res = vk::GetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_WindowSurface) >> present_modes)
+    if (auto res = vk::GetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_WindowSurface) >> present_modes; !
+        res)
         return res;
 
     const auto &[color_format, color_space] = find_surface_format(surface_formats, m_ColorFormat);
@@ -115,7 +117,7 @@ titan::result<> titan::Application::CreateWindowSwapchainView()
             .pQueueFamilyIndices = queue_family_indices.data(),
         };
 
-        if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Color)
+        if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Color; !res)
             return res;
     }
 
@@ -133,7 +135,7 @@ titan::result<> titan::Application::CreateWindowSwapchainView()
             .pQueueFamilyIndices = queue_family_indices.data(),
         };
 
-        if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Depth)
+        if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Depth; !res)
             return res;
     }
 

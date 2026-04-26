@@ -8,11 +8,11 @@ titan::glfw::Instance::Instance(const bool initialized)
     ++count;
 }
 
-titan::result<titan::glfw::Instance> titan::glfw::Instance::Create()
+toolkit::result<titan::glfw::Instance> titan::glfw::Instance::Create()
 {
     if (!count)
         if (!glfwInit())
-            return error<Instance>("glfwInit => false");
+            return toolkit::make_error("glfwInit => false");
 
     return Instance(true);
 }
@@ -103,7 +103,7 @@ titan::glfw::Monitor::Monitor(GLFWmonitor *handle)
 {
 }
 
-titan::result<titan::glfw::Window> titan::glfw::Window::Create(
+toolkit::result<titan::glfw::Window> titan::glfw::Window::Create(
     const int width,
     const int height,
     const char *title,
@@ -112,10 +112,10 @@ titan::result<titan::glfw::Window> titan::glfw::Window::Create(
 {
     if (const auto window = glfwCreateWindow(width, height, title, monitor, share))
         return Window(window);
-    return error<Window>("glfwCreateWindow => null");
+    return toolkit::make_error("glfwCreateWindow => null");
 }
 
-titan::result<titan::glfw::Window> titan::glfw::Window::Create(
+toolkit::result<titan::glfw::Window> titan::glfw::Window::Create(
     const int width,
     const int height,
     const char *title,
@@ -124,7 +124,7 @@ titan::result<titan::glfw::Window> titan::glfw::Window::Create(
     return Create(width, height, title, monitor, {});
 }
 
-titan::result<titan::glfw::Window> titan::glfw::Window::Create(
+toolkit::result<titan::glfw::Window> titan::glfw::Window::Create(
     const int width,
     const int height,
     const char *title)
@@ -132,11 +132,11 @@ titan::result<titan::glfw::Window> titan::glfw::Window::Create(
     return Create(width, height, title, {}, {});
 }
 
-titan::result<titan::glfw::Monitor> titan::glfw::Monitor::GetPrimary()
+toolkit::result<titan::glfw::Monitor> titan::glfw::Monitor::GetPrimary()
 {
     if (const auto monitor = glfwGetPrimaryMonitor())
         return Monitor(monitor);
-    return error<Monitor>("glfwGetPrimaryMonitor => null");
+    return toolkit::make_error("glfwGetPrimaryMonitor => null");
 }
 
 titan::glfw::Monitor::~Monitor()

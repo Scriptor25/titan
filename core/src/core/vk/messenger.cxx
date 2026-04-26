@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateVkMessenger()
+toolkit::result<> titan::Application::CreateVkMessenger()
 {
     const VkDebugUtilsMessengerCreateInfoEXT create_info
     {

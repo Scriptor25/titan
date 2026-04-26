@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateFramebuffers()
+toolkit::result<> titan::Application::CreateFramebuffers()
 {
     for (auto &[
              view,
@@ -33,7 +33,7 @@ titan::result<> titan::Application::CreateFramebuffers()
                 .layers = 1,
             };
 
-            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer)
+            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer; !res)
                 return res;
         }
     }
@@ -69,7 +69,7 @@ titan::result<> titan::Application::CreateFramebuffers()
                 .layers = 1,
             };
 
-            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer)
+            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer; !res)
                 return res;
         }
     }

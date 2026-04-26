@@ -3,7 +3,7 @@
 
 #define XR_TO_VK_VERSION(VERSION) VK_MAKE_VERSION(XR_VERSION_MAJOR(VERSION), XR_VERSION_MINOR(VERSION), XR_VERSION_PATCH(VERSION))
 
-titan::result<> titan::Application::CreateVkInstance()
+toolkit::result<> titan::Application::CreateVkInstance()
 {
     return ok()
            & [&]

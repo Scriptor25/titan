@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-titan::result<> titan::Application::CreateReferenceSpace()
+toolkit::result<> titan::Application::CreateReferenceSpace()
 {
     return ok()
            & [&]

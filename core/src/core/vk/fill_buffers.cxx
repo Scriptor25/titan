@@ -3,7 +3,7 @@
 
 #include <cstring>
 
-titan::result<> titan::Application::FillBuffers()
+toolkit::result<> titan::Application::FillBuffers()
 {
     for (uint32_t i = 0; i < m_ModelData.size(); ++i)
     {
@@ -37,12 +37,12 @@ titan::result<> titan::Application::FillBuffers()
             };
 
             void *ptr;
-            if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr)
+            if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
             std::memcpy(ptr, data.Mesh.Vertices.data(), reference.VertexBufferSize);
 
-            if (auto res = vk::UnmapMemory2(m_Device, unmap_info))
+            if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;
         }
 
@@ -62,12 +62,12 @@ titan::result<> titan::Application::FillBuffers()
             };
 
             void *ptr;
-            if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr)
+            if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
             std::memcpy(ptr, data.Mesh.Indices.data(), reference.IndexBufferSize);
 
-            if (auto res = vk::UnmapMemory2(m_Device, unmap_info))
+            if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;
         }
     }
