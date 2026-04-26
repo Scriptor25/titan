@@ -1,30 +1,40 @@
 #include <titan/core.hxx>
 
+#include <pkg/mesh.hxx>
+#include <pkg/shader.hxx>
+
 toolkit::result<> titan::Application::CreatePipeline()
 {
-    vk::ShaderModule shader_module_vertex, shader_module_fragment;
+    vk::ShaderModule module_vertex, module_fragment;
 
-    auto shader_module_vertex_binary = LoadBinary("res/shader/vert.spv");
-    auto shader_module_fragment_binary = LoadBinary("res/shader/frag.spv");
+    ResourceID vert_id, frag_id;
 
-    const VkShaderModuleCreateInfo shader_module_vertex_create_info
-    {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = shader_module_vertex_binary.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(shader_module_vertex_binary.data()),
-    };
-
-    const VkShaderModuleCreateInfo shader_module_fragment_create_info
-    {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = shader_module_fragment_binary.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(shader_module_fragment_binary.data()),
-    };
-
-    if (auto res = vk::ShaderModule::create(m_Device, shader_module_vertex_create_info) >> shader_module_vertex; !res)
+    if (auto res = m_Resources.Load("/shader/vert") >> vert_id; !res)
         return res;
-    if (auto res = vk::ShaderModule::create(m_Device, shader_module_fragment_create_info) >> shader_module_fragment; !
-        res)
+
+    if (auto res = m_Resources.Load("/shader/frag") >> frag_id; !res)
+        return res;
+
+    auto vert_shader = m_Resources.Get<pkg::shader::Data>(vert_id);
+    auto frag_shader = m_Resources.Get<pkg::shader::Data>(frag_id);
+
+    const VkShaderModuleCreateInfo module_vertex_create_info
+    {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = vert_shader.Binary.size(),
+        .pCode = reinterpret_cast<const uint32_t *>(vert_shader.Binary.data()),
+    };
+
+    const VkShaderModuleCreateInfo module_fragment_create_info
+    {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = frag_shader.Binary.size(),
+        .pCode = reinterpret_cast<const uint32_t *>(frag_shader.Binary.data()),
+    };
+
+    if (auto res = vk::ShaderModule::create(m_Device, module_vertex_create_info) >> module_vertex; !res)
+        return res;
+    if (auto res = vk::ShaderModule::create(m_Device, module_fragment_create_info) >> module_fragment; !res)
         return res;
 
     const std::array stage_create_info
@@ -33,16 +43,15 @@ toolkit::result<> titan::Application::CreatePipeline()
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = shader_module_vertex,
+            .module = module_vertex,
             .pName = "main",
         },
         VkPipelineShaderStageCreateInfo
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = shader_module_fragment,
+            .module = module_fragment,
             .pName = "main",
-            .pSpecializationInfo = nullptr
         },
     };
 
@@ -51,7 +60,7 @@ toolkit::result<> titan::Application::CreatePipeline()
         VkVertexInputBindingDescription
         {
             .binding = 0,
-            .stride = sizeof(VertexData),
+            .stride = sizeof(pkg::mesh::Vertex),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         }
     };
@@ -63,21 +72,21 @@ toolkit::result<> titan::Application::CreatePipeline()
             .location = 0,
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(VertexData, Position),
+            .offset = offsetof(pkg::mesh::Vertex, Position),
         },
         VkVertexInputAttributeDescription
         {
             .location = 1,
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(VertexData, Normal),
+            .offset = offsetof(pkg::mesh::Vertex, Normal),
         },
         VkVertexInputAttributeDescription
         {
             .location = 2,
             .binding = 0,
             .format = VK_FORMAT_R32G32_SFLOAT,
-            .offset = offsetof(VertexData, Texture),
+            .offset = offsetof(pkg::mesh::Vertex, Texture),
         },
     };
 

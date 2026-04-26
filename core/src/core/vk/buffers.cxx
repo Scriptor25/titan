@@ -1,19 +1,26 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
+#include <pkg/mesh.hxx>
+
 toolkit::result<> titan::Application::CreateBuffers()
 {
     m_ModelReferences.resize(m_ModelData.size());
     for (uint32_t i = 0; i < m_ModelData.size(); ++i)
     {
-        auto &data = m_ModelData[i];
+        auto data = m_Resources.Get<pkg::mesh::Data>(m_ModelData[i].Mesh);
         auto &reference = m_ModelReferences[i];
+
+        reference.BoxMin = data.BoxMin;
+        reference.BoxMax = data.BoxMax;
+
+        reference.BoxCen = data.BoxMin + 0.5f * (data.BoxMax - data.BoxMin);
 
         {
             const VkBufferCreateInfo create_info
             {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = data.Mesh.Vertices.size() * sizeof(VertexData),
+                .size = data.Vertices.size() * sizeof(pkg::mesh::Vertex),
                 .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
@@ -67,7 +74,7 @@ toolkit::result<> titan::Application::CreateBuffers()
             const VkBufferCreateInfo create_info
             {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = data.Mesh.Indices.size() * sizeof(uint32_t),
+                .size = data.Indices.size() * sizeof(uint32_t),
                 .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };

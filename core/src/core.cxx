@@ -17,14 +17,19 @@ toolkit::result<> titan::Application::Initialize(const std::string_view exec, co
 
     m_ModelData = {
         {
-            .Mesh = obj::Open("res/mesh/teapot.obj"),
+            .Mesh = ~0ull,
             .InstanceCount = 1,
         },
         {
-            .Mesh = obj::Open("res/mesh/cube.obj"),
+            .Mesh = ~0ull,
             .InstanceCount = 2,
         },
     };
+
+    if (auto res = m_Resources.Load("/mesh/teapot") >> m_ModelData[0].Mesh; !res)
+        return res;
+    if (auto res = m_Resources.Load("/mesh/cube") >> m_ModelData[1].Mesh; !res)
+        return res;
 
     if (auto res = InitializeWindow(); !res)
         return res;
@@ -69,6 +74,26 @@ toolkit::result<> titan::Application::CleanUp()
         return res;
 
     return ok();
+}
+
+titan::ResourceSystem &titan::Application::GetResources()
+{
+    return m_Resources;
+}
+
+titan::EntitySystem &titan::Application::GetEntities()
+{
+    return m_Entities;
+}
+
+titan::InputSystem &titan::Application::GetInputs()
+{
+    return m_Inputs;
+}
+
+titan::GraphicsSystem &titan::Application::GetGraphics()
+{
+    return m_Graphics;
 }
 
 toolkit::result<> titan::Application::InitializeGraphics()
@@ -290,14 +315,14 @@ toolkit::result<> titan::Application::PollActions(const XrTime time)
 
         if (!(location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT))
         {
-            info("invalid space location position");
+            // info("invalid space location position");
             hand.PoseState.isActive = false;
             continue;
         }
 
         if (!(location.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT))
         {
-            info("invalid space location orientation");
+            // info("invalid space location orientation");
             hand.PoseState.isActive = false;
             continue;
         }
@@ -409,6 +434,8 @@ toolkit::result<> titan::Application::RenderFrame()
         PollActions(frame_state.predictedDisplayTime);
 
         if (auto res = UpdateModels(); !res)
+            return res;
+        if (auto res = Interaction(); !res)
             return res;
         if (auto res = RenderThirdEye(frame_state.predictedDisplayTime); !res)
             return res;
@@ -619,11 +646,12 @@ toolkit::result<> titan::Application::UpdateModels()
 {
     static auto begin = std::chrono::high_resolution_clock::now();
     const auto now = std::chrono::high_resolution_clock::now();
-
     const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
 
     // teapot
     {
+        m_ModelReferences[0].Active[0] = true;
+
         auto &matrix = m_ModelReferences[0].Instances[0].Model;
         matrix = { 1.0f };
         matrix = glm::translate(matrix, glm::vec3(0.0f, 0.0f, 0.0f));
@@ -634,13 +662,19 @@ toolkit::result<> titan::Application::UpdateModels()
     // hands
     for (uint32_t i = 0; i < m_Hands.size(); ++i)
     {
+        const auto active = m_Hands[i].PoseState.isActive;
+        m_ModelReferences[1].Active[i] = active;
+
+        if (!active)
+            continue;
+
         auto &matrix = m_ModelReferences[1].Instances[i].Model;
         auto &[orientation, position] = m_Hands[i].Pose;
 
         const auto translation = glm::translate(glm::mat4(1.0f), position);
         const auto rotation = glm::mat4_cast(orientation);
         const auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
-        const auto translation_local = glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, -0.5f, -0.5f));
+        const auto translation_local = glm::translate(glm::mat4(1.0f), -m_ModelReferences[1].BoxCen);
 
         matrix = translation * rotation * scale * translation_local;
     }
@@ -648,6 +682,41 @@ toolkit::result<> titan::Application::UpdateModels()
     for (auto &model : m_ModelReferences)
         for (auto &instance : model.Instances)
             instance.Normal = glm::transpose(glm::inverse(instance.Model));
+
+    return ok();
+}
+
+toolkit::result<> titan::Application::Interaction()
+{
+    const auto &teapot_reference = m_ModelReferences[0];
+    const auto &hand_reference = m_ModelReferences[1];
+
+    const auto &teapot_model = glm::inverse(teapot_reference.Instances[0].Model);
+
+    auto teapot_min = glm::vec3(teapot_model * glm::vec4(teapot_reference.BoxMin, 1.0f));
+    auto teapot_max = glm::vec3(teapot_model * glm::vec4(teapot_reference.BoxMax, 1.0f));
+    auto teapot_cen = teapot_min + 0.5f * (teapot_max - teapot_min);
+    auto teapot_rad = glm::distance(teapot_min, teapot_max) * 0.5f;
+
+    for (uint32_t i = 0; i < m_Hands.size(); ++i)
+    {
+        if (!m_Hands[i].PoseState.isActive)
+            continue;
+
+        const auto &hand_model = glm::inverse(hand_reference.Instances[i].Model);
+
+        auto hand_min = glm::vec3(hand_model * glm::vec4(hand_reference.BoxMin, 1.0f));
+        auto hand_max = glm::vec3(hand_model * glm::vec4(hand_reference.BoxMax, 1.0f));
+        auto hand_cen = hand_min + 0.5f * (hand_max - hand_min);
+        auto hand_rad = glm::distance(hand_min, hand_max) * 0.5f;
+
+        const auto distance = glm::distance(teapot_cen, hand_cen);
+        const auto radius = teapot_rad + hand_rad;
+        const auto radius2 = 2.0f * radius;
+
+        if (distance < radius2)
+            m_Hands[i].Haptic = std::clamp((radius2 - distance) / radius, 0.0f, 1.0f);
+    }
 
     return ok();
 }

@@ -1,7 +1,10 @@
 #pragma once
 
-#include <titan/obj.hxx>
 #include <titan/result.hxx>
+#include <titan/system/entity.hxx>
+#include <titan/system/graphics.hxx>
+#include <titan/system/input.hxx>
+#include <titan/system/resource.hxx>
 #include <titan/wrapper/al.hxx>
 #include <titan/wrapper/glfw.hxx>
 #include <titan/wrapper/vk.hxx>
@@ -167,8 +170,16 @@ namespace titan
         glm::mat4 Model{ 1.0f }, Normal{ 1.0f };
     };
 
+    struct ModelData
+    {
+        ResourceID Mesh{};
+        uint32_t InstanceCount{};
+    };
+
     struct ModelReference
     {
+        glm::vec3 BoxMin, BoxMax, BoxCen;
+
         vk::DeviceMemory VertexMemory;
         vk::Buffer VertexBuffer;
 
@@ -186,6 +197,7 @@ namespace titan
         uint32_t IndexCount;
 
         std::vector<ModelMatrices> Instances;
+        std::vector<bool> Active;
     };
 
     class Application
@@ -297,6 +309,11 @@ namespace titan
         toolkit::result<bool> Spin();
         toolkit::result<> CleanUp();
 
+        ResourceSystem &GetResources();
+        EntitySystem &GetEntities();
+        InputSystem &GetInputs();
+        GraphicsSystem &GetGraphics();
+
     private:
         toolkit::result<> InitializeWindow();
         toolkit::result<> InitializeAudio();
@@ -383,6 +400,7 @@ namespace titan
         toolkit::result<> RenderLayer(LayerInfo &reference);
 
         toolkit::result<> UpdateModels();
+        toolkit::result<> Interaction();
 
         toolkit::result<> RenderThirdEye(XrTime time);
 
@@ -396,6 +414,11 @@ namespace titan
     private:
         ApplicationInfo m_Info;
         std::vector<ModelData> m_ModelData;
+
+        ResourceSystem m_Resources;
+        EntitySystem m_Entities;
+        InputSystem m_Inputs;
+        GraphicsSystem m_Graphics;
 
         ModelPose m_HeadPose;
 

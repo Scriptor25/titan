@@ -1,6 +1,8 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
+#include <pkg/mesh.hxx>
+
 #include <cstring>
 
 toolkit::result<> titan::Application::FillBuffers()
@@ -10,16 +12,19 @@ toolkit::result<> titan::Application::FillBuffers()
         auto &data = m_ModelData[i];
         auto &reference = m_ModelReferences[i];
 
+        auto mesh = m_Resources.Get<pkg::mesh::Data>(data.Mesh);
+
         reference.VertexBufferOffset = 0;
-        reference.VertexBufferSize = data.Mesh.Vertices.size() * sizeof(VertexData);
-        reference.VertexBufferStride = sizeof(VertexData);
+        reference.VertexBufferSize = mesh.Vertices.size() * sizeof(pkg::mesh::Vertex);
+        reference.VertexBufferStride = sizeof(pkg::mesh::Vertex);
 
         reference.IndexBufferOffset = 0;
-        reference.IndexBufferSize = data.Mesh.Indices.size() * sizeof(uint32_t);
+        reference.IndexBufferSize = mesh.Indices.size() * sizeof(uint32_t);
         reference.IndexType = VK_INDEX_TYPE_UINT32;
-        reference.IndexCount = data.Mesh.Indices.size();
+        reference.IndexCount = mesh.Indices.size();
 
         reference.Instances.resize(data.InstanceCount);
+        reference.Active.resize(data.InstanceCount);
 
         {
             const VkMemoryMapInfo map_info
@@ -40,7 +45,7 @@ toolkit::result<> titan::Application::FillBuffers()
             if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
-            std::memcpy(ptr, data.Mesh.Vertices.data(), reference.VertexBufferSize);
+            std::memcpy(ptr, mesh.Vertices.data(), reference.VertexBufferSize);
 
             if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;
@@ -65,7 +70,7 @@ toolkit::result<> titan::Application::FillBuffers()
             if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
-            std::memcpy(ptr, data.Mesh.Indices.data(), reference.IndexBufferSize);
+            std::memcpy(ptr, mesh.Indices.data(), reference.IndexBufferSize);
 
             if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;

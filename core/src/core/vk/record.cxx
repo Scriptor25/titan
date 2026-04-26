@@ -80,6 +80,12 @@ toolkit::result<> titan::Application::RecordCommandBuffer(
 
     for (auto &model : m_ModelReferences)
     {
+        auto any_active = false;
+        for (auto active : model.Active)
+            any_active |= active;
+        if (!any_active)
+            continue;
+
         const std::array<VkBuffer, 1> buffers
         {
             model.VertexBuffer,
@@ -93,8 +99,13 @@ toolkit::result<> titan::Application::RecordCommandBuffer(
         vkCmdBindVertexBuffers(buffer, 0, buffers.size(), buffers.data(), offsets.data());
         vkCmdBindIndexBuffer(buffer, model.IndexBuffer, model.IndexBufferOffset, model.IndexType);
 
-        for (auto &instance : model.Instances)
+        for (uint32_t i = 0; i < model.Instances.size(); ++i)
         {
+            if (!model.Active[i])
+                continue;
+
+            auto &instance = model.Instances[i];
+
             const ShaderData shader_data
             {
                 .Screen = screen_matrix,

@@ -1,0 +1,7 @@
+{
+  "type": "shader",
+  "path": "./frag.glsl",
+  "name": "/shader/frag",
+  "format": "glsl",
+  "stage": "frag"
+}
