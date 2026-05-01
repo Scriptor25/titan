@@ -222,26 +222,28 @@ int main(const int argc, const char *const *argv)
     signal(SIGTERM, signal_handler);
 
     auto res = game.Initialize(*argv, { argv + 1, argv + argc })
-               & [&]
+               & [&]() -> toolkit::result<int>
                {
-                   toolkit::result<bool> e;
+                   bool value;
                    do
-                       e = game.Spin();
-                   while (e && *e);
-                   return e;
+                       if (auto spin = game.Spin() >> value; !spin)
+                           return spin;
+                   while (value);
+                   return { 0 };
+               }
+               | [](std::string &&error) -> toolkit::result<int>
+               {
+                   std::cerr << error << std::endl;
+                   return { 1 };
                };
 
-    if (auto cleanup_res = game.CleanUp(); !cleanup_res)
-        std::cerr << "during cleanup: " << cleanup_res.error() << std::endl;
-
-    if (res)
-    {
-        game_ptr = nullptr;
-        return 0;
-    }
-
-    std::cerr << res.error() << std::endl;
+    game.CleanUp()
+            | [](std::string &&error)
+            {
+                std::cerr << error << std::endl;
+                return toolkit::result();
+            };
 
     game_ptr = nullptr;
-    return 1;
+    return res.value();
 }
