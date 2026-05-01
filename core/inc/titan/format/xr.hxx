@@ -2,7 +2,9 @@
 
 #include <titan/api.hxx>
 
-#include <map>
+#include <format>
+#include <string>
+#include <unordered_map>
 
 template<>
 struct std::formatter<XrResult> : std::formatter<std::string>
@@ -10,7 +12,7 @@ struct std::formatter<XrResult> : std::formatter<std::string>
     template<typename Context>
     auto format(const XrResult &result, Context &context) const
     {
-        static const std::map<XrResult, const char *> map
+        static const std::unordered_map<XrResult, const char *> map
         {
             {
                 XR_SUCCESS,
@@ -696,7 +698,7 @@ struct std::formatter<XrSessionState> : std::formatter<std::string>
     template<typename Context>
     auto format(const XrSessionState &result, Context &context) const
     {
-        static const std::map<XrSessionState, const char *> map
+        static const std::unordered_map<XrSessionState, const char *> map
         {
             { XR_SESSION_STATE_UNKNOWN, "XR_SESSION_STATE_UNKNOWN" },
             { XR_SESSION_STATE_IDLE, "XR_SESSION_STATE_IDLE" },
@@ -719,7 +721,7 @@ struct std::formatter<XrReferenceSpaceType> : std::formatter<std::string>
     template<typename Context>
     auto format(const XrReferenceSpaceType &result, Context &context) const
     {
-        static const std::map<XrReferenceSpaceType, const char *> map
+        static const std::unordered_map<XrReferenceSpaceType, const char *> map
         {
             { XR_REFERENCE_SPACE_TYPE_VIEW, "XR_REFERENCE_SPACE_TYPE_VIEW" },
             { XR_REFERENCE_SPACE_TYPE_LOCAL, "XR_REFERENCE_SPACE_TYPE_LOCAL" },

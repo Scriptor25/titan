@@ -74,5 +74,5 @@ toolkit::result<> titan::Application::CreateFramebuffers()
         }
     }
 
-    return ok();
+    return {};
 }

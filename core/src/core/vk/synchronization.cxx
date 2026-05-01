@@ -32,5 +32,5 @@ toolkit::result<> titan::Application::CreateSynchronization()
             return res;
     }
 
-    return ok();
+    return {};
 }

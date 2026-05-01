@@ -35,5 +35,5 @@ toolkit::result<> titan::Application::GetDeviceQueues()
         vkGetDeviceQueue2(m_Device, &device_queue_info, &m_PresentQueue);
     }
 
-    return ok();
+    return {};
 }

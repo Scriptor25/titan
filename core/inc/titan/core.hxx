@@ -1,6 +1,5 @@
 #pragma once
 
-#include <titan/result.hxx>
 #include <titan/system/entity.hxx>
 #include <titan/system/graphics.hxx>
 #include <titan/system/input.hxx>
@@ -115,12 +114,6 @@ namespace titan
         uint32_t Present{};
     };
 
-    struct ModelPose
-    {
-        glm::quat Orientation{ 1.0f, 0.0f, 0.0f, 0.0f };
-        glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
-    };
-
     struct VkSwapchainReferenceCreateInfo
     {
         bool useSwapchain;
@@ -152,31 +145,7 @@ namespace titan
         const uint32_t *pQueueFamilyIndices;
     };
 
-    struct HandState
-    {
-        XrPath Path{};
-        xr::ActionSpace Space;
-
-        XrActionStateFloat GrabState{ XR_TYPE_ACTION_STATE_FLOAT };
-        XrActionStatePose PoseState{ XR_TYPE_ACTION_STATE_POSE };
-
-        float Haptic{};
-
-        ModelPose Pose;
-    };
-
-    struct ModelMatrices
-    {
-        glm::mat4 Model{ 1.0f }, Normal{ 1.0f };
-    };
-
-    struct ModelData
-    {
-        ResourceID Mesh{};
-        uint32_t InstanceCount{};
-    };
-
-    struct ModelReference
+    struct MeshInfo
     {
         glm::vec3 BoxMin, BoxMax, BoxCen;
 
@@ -195,9 +164,6 @@ namespace titan
         VkIndexType IndexType;
 
         uint32_t IndexCount;
-
-        std::vector<ModelMatrices> Instances;
-        std::vector<bool> Active;
     };
 
     class Application
@@ -332,8 +298,6 @@ namespace titan
             XrActionType type,
             const std::vector<std::string> &sub_path_strings = {});
 
-        toolkit::result<> CreateHands();
-
         toolkit::result<> SuggestBindings();
         toolkit::result<> RecordBindings();
 
@@ -347,11 +311,6 @@ namespace titan
         toolkit::result<> GetDeviceQueues();
 
         toolkit::result<> CreateSession();
-
-        toolkit::result<> CreateActionSpaces();
-        toolkit::result<xr::ActionSpace> CreateActionSpace(
-            XrAction action,
-            const std::optional<std::string> &sub_path_string = std::nullopt);
 
         toolkit::result<> AttachActionSet();
 
@@ -394,17 +353,16 @@ namespace titan
             framebuffer);
 
         toolkit::result<bool> PollEvents();
-        toolkit::result<> PollActions(XrTime time);
 
         toolkit::result<> RenderFrame();
         toolkit::result<> RenderLayer(LayerInfo &reference);
 
-        toolkit::result<> UpdateModels();
-        toolkit::result<> Interaction();
+        toolkit::result<> UpdateComponents();
 
         toolkit::result<> RenderThirdEye(XrTime time);
 
     protected:
+        virtual toolkit::result<> OnInitialize();
         virtual toolkit::result<> OnStart();
         virtual toolkit::result<> PreFrame();
         virtual toolkit::result<> OnFrame();
@@ -413,14 +371,6 @@ namespace titan
 
     private:
         ApplicationInfo m_Info;
-        std::vector<ModelData> m_ModelData;
-
-        ResourceSystem m_Resources;
-        EntitySystem m_Entities;
-        InputSystem m_Inputs;
-        GraphicsSystem m_Graphics;
-
-        ModelPose m_HeadPose;
 
         VkFormat m_ColorFormat{}, m_DepthFormat{};
 
@@ -459,19 +409,22 @@ namespace titan
         XrEnvironmentBlendMode m_EnvironmentBlendMode{};
         xr::ReferenceSpace m_ViewSpace, m_ReferenceSpace;
 
-        std::array<HandState, 2> m_Hands;
-
         vk::RenderPass m_RenderPass;
         vk::PipelineCache m_PipelineCache;
         vk::PipelineLayout m_PipelineLayout;
         vk::GraphicsPipeline m_Pipeline;
 
-        std::vector<ModelReference> m_ModelReferences;
+        std::unordered_map<ResourceID, MeshInfo> m_Meshes;
 
         std::vector<XrSwapchainView> m_SwapchainViews;
         vk::Fence m_Fence;
 
         std::vector<VkFrameInfo> m_Frames;
         uint32_t m_FrameIndex{};
+
+        ResourceSystem m_Resources;
+        EntitySystem m_Entities;
+        InputSystem m_Inputs;
+        GraphicsSystem m_Graphics;
     };
 }

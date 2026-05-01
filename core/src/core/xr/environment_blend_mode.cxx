@@ -23,6 +23,6 @@ toolkit::result<> titan::Application::GetEnvironmentBlendMode()
                    m_EnvironmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
                }
 
-               return ok();
+               return toolkit::result();
            };
 }

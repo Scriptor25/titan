@@ -2,7 +2,7 @@
 
 toolkit::result<> titan::Application::CreateReferenceSpace()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                const XrReferenceSpaceCreateInfo create_info

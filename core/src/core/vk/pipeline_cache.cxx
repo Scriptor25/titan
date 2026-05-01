@@ -21,6 +21,6 @@ toolkit::result<> titan::Application::StorePipelineCache()
            & [&](std::vector<char> &&data)
            {
                StoreBinary("pipeline-cache", data);
-               return ok();
+               return toolkit::result();
            };
 }

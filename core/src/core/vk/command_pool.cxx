@@ -2,7 +2,7 @@
 
 toolkit::result<> titan::Application::CreateCommandPools()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                const VkCommandPoolCreateInfo create_info

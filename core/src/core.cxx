@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <titan/component.hxx>
 
 titan::Application::Application(ApplicationInfo info)
     : m_Info(std::move(info))
@@ -15,20 +16,7 @@ toolkit::result<> titan::Application::Initialize(const std::string_view exec, co
     (void) exec;
     (void) args;
 
-    m_ModelData = {
-        {
-            .Mesh = ~0ull,
-            .InstanceCount = 1,
-        },
-        {
-            .Mesh = ~0ull,
-            .InstanceCount = 2,
-        },
-    };
-
-    if (auto res = m_Resources.Load("/mesh/teapot") >> m_ModelData[0].Mesh; !res)
-        return res;
-    if (auto res = m_Resources.Load("/mesh/cube") >> m_ModelData[1].Mesh; !res)
+    if (auto res = OnInitialize(); !res)
         return res;
 
     if (auto res = InitializeWindow(); !res)
@@ -36,6 +24,14 @@ toolkit::result<> titan::Application::Initialize(const std::string_view exec, co
     if (auto res = InitializeAudio(); !res)
         return res;
     if (auto res = InitializeGraphics(); !res)
+        return res;
+
+    if (auto res = m_Inputs.Initialize(
+        {
+            .Instance = m_XrInstance,
+            .Session = m_Session,
+            .ActionPalmPose = m_ActionPalmPose,
+        }); !res)
         return res;
 
     return OnStart();
@@ -65,7 +61,7 @@ toolkit::result<> titan::Application::CleanUp()
         return res;
 
     if (!m_Device)
-        return ok();
+        return {};
 
     if (auto res = vkDeviceWaitIdle(m_Device))
         return toolkit::make_error("vkDeviceWaitIdle => {}", res);
@@ -73,7 +69,7 @@ toolkit::result<> titan::Application::CleanUp()
     if (auto res = StorePipelineCache(); !res)
         return res;
 
-    return ok();
+    return {};
 }
 
 titan::ResourceSystem &titan::Application::GetResources()
@@ -98,13 +94,12 @@ titan::GraphicsSystem &titan::Application::GetGraphics()
 
 toolkit::result<> titan::Application::InitializeGraphics()
 {
-    return ok()
+    return toolkit::result()
            & WRAP(CreateXrInstance)
            & WRAP(CreateXrMessenger)
            & WRAP(GetSystemId)
            & WRAP(CreateActionSet)
            & WRAP(CreateActions)
-           & WRAP(CreateHands)
            & WRAP(SuggestBindings)
            & WRAP(CreateVkInstance)
            & WRAP(CreateVkMessenger)
@@ -116,7 +111,6 @@ toolkit::result<> titan::Application::InitializeGraphics()
            & WRAP(CreateWindowSwapchainView)
            & WRAP(GetDeviceQueues)
            & WRAP(CreateSession)
-           & WRAP(CreateActionSpaces)
            & WRAP(AttachActionSet)
            & WRAP(GetViewConfigurationType)
            & WRAP(GetViewConfigurationViews)
@@ -270,131 +264,6 @@ toolkit::result<bool> titan::Application::PollEvents()
     return true;
 }
 
-toolkit::result<> titan::Application::PollActions(const XrTime time)
-{
-    const std::array active_action_sets
-    {
-        XrActiveActionSet
-        {
-            .actionSet = m_ActionSet,
-        },
-    };
-
-    const XrActionsSyncInfo sync_info
-    {
-        .type = XR_TYPE_ACTIONS_SYNC_INFO,
-        .countActiveActionSets = static_cast<uint32_t>(active_action_sets.size()),
-        .activeActionSets = active_action_sets.data(),
-    };
-
-    if (auto res = xrSyncActions(m_Session, &sync_info))
-        return toolkit::make_error("xrSyncActions => {}", res);
-
-    for (auto &hand : m_Hands)
-    {
-        const XrActionStateGetInfo get_info
-        {
-            .type = XR_TYPE_ACTION_STATE_GET_INFO,
-            .action = m_ActionPalmPose,
-            .subactionPath = hand.Path,
-        };
-
-        if (auto res = xrGetActionStatePose(m_Session, &get_info, &hand.PoseState))
-            return toolkit::make_error("xrGetActionStatePose => {}", res);
-
-        if (!hand.PoseState.isActive)
-            continue;
-
-        XrSpaceLocation location{ .type = XR_TYPE_SPACE_LOCATION };
-        if (auto res = xrLocateSpace(hand.Space, m_ReferenceSpace, time, &location))
-        {
-            info("xrLocateSpace => {}", res);
-            hand.PoseState.isActive = false;
-            continue;
-        }
-
-        if (!(location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT))
-        {
-            // info("invalid space location position");
-            hand.PoseState.isActive = false;
-            continue;
-        }
-
-        if (!(location.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT))
-        {
-            // info("invalid space location orientation");
-            hand.PoseState.isActive = false;
-            continue;
-        }
-
-        const glm::quat orientation
-        {
-            location.pose.orientation.w,
-            location.pose.orientation.x,
-            location.pose.orientation.y,
-            location.pose.orientation.z,
-        };
-
-        const glm::vec3 position
-        {
-            location.pose.position.x,
-            location.pose.position.y,
-            location.pose.position.z,
-        };
-
-        // orientation = glm::slerp(hand.Pose.Orientation, orientation, 0.1f);
-        // position = glm::mix(hand.Pose.Position, position, 0.1f);
-
-        hand.Pose = {
-            .Orientation = orientation,
-            .Position = position,
-        };
-    }
-
-    for (auto &hand : m_Hands)
-    {
-        const XrActionStateGetInfo get_info
-        {
-            .type = XR_TYPE_ACTION_STATE_GET_INFO,
-            .action = m_ActionGrab,
-            .subactionPath = hand.Path,
-        };
-
-        if (auto res = xrGetActionStateFloat(m_Session, &get_info, &hand.GrabState))
-            return toolkit::make_error("xrGetActionStateFloat => {}", res);
-    }
-
-    for (auto &hand : m_Hands)
-    {
-        hand.Haptic *= 0.5f;
-        if (hand.Haptic < 0.01f)
-            hand.Haptic = 0.0f;
-
-        const XrHapticActionInfo action_info
-        {
-            .type = XR_TYPE_HAPTIC_ACTION_INFO,
-            .action = m_ActionHaptic,
-            .subactionPath = hand.Path,
-        };
-
-        const XrHapticVibration haptic_vibration
-        {
-            .type = XR_TYPE_HAPTIC_VIBRATION,
-            .duration = XR_MIN_HAPTIC_DURATION,
-            .frequency = XR_FREQUENCY_UNSPECIFIED,
-            .amplitude = hand.Haptic,
-        };
-
-        if (auto res = xrApplyHapticFeedback(
-            m_Session,
-            &action_info,
-            reinterpret_cast<const XrHapticBaseHeader *>(&haptic_vibration)))
-            return toolkit::make_error("xrApplyHapticFeedback => {}", res);
-    }
-
-    return ok();
-}
-
 toolkit::result<> titan::Application::RenderFrame()
 {
     const XrFrameWaitInfo frame_wait_info
@@ -431,14 +300,26 @@ toolkit::result<> titan::Application::RenderFrame()
 
     if (session_active && frame_state.shouldRender)
     {
-        PollActions(frame_state.predictedDisplayTime);
+        if (auto res = UpdateComponents(); !res)
+            return res;
 
-        if (auto res = UpdateModels(); !res)
+        if (auto res = m_Inputs.Update(
+            {
+                .Session = m_Session,
+                .ViewSpace = m_ViewSpace,
+                .ReferenceSpace = m_ReferenceSpace,
+                .ActionSet = m_ActionSet,
+                .ActionPalmPose = m_ActionPalmPose,
+                .ActionGrab = m_ActionGrab,
+                .ActionHaptic = m_ActionHaptic,
+                .SessionState = m_SessionState,
+                .Time = frame_state.predictedDisplayTime,
+            }); !res)
             return res;
-        if (auto res = Interaction(); !res)
-            return res;
+
         if (auto res = RenderThirdEye(frame_state.predictedDisplayTime); !res)
             return res;
+
         if (auto res = RenderLayer(layer_info); !res)
             return res;
 
@@ -639,86 +520,85 @@ toolkit::result<> titan::Application::RenderLayer(LayerInfo &reference)
         .views = projection_views.data(),
     };
 
-    return ok();
+    return {};
 }
 
-toolkit::result<> titan::Application::UpdateModels()
+toolkit::result<> titan::Application::UpdateComponents()
 {
-    static auto begin = std::chrono::high_resolution_clock::now();
-    const auto now = std::chrono::high_resolution_clock::now();
-    const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
-
-    // teapot
+    for (auto [state, transform] : m_Entities.Query<component::Transform>())
     {
-        m_ModelReferences[0].Active[0] = true;
-
-        auto &matrix = m_ModelReferences[0].Instances[0].Model;
-        matrix = { 1.0f };
-        matrix = glm::translate(matrix, glm::vec3(0.0f, 0.0f, 0.0f));
-        matrix = glm::scale(matrix, glm::vec3(0.1f));
-        matrix = glm::rotate(matrix, delta * glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    }
-
-    // hands
-    for (uint32_t i = 0; i < m_Hands.size(); ++i)
-    {
-        const auto active = m_Hands[i].PoseState.isActive;
-        m_ModelReferences[1].Active[i] = active;
-
-        if (!active)
+        if (!state.Active || !transform.Dirty)
             continue;
 
-        auto &matrix = m_ModelReferences[1].Instances[i].Model;
-        auto &[orientation, position] = m_Hands[i].Pose;
+        transform.Dirty = false;
 
-        const auto translation = glm::translate(glm::mat4(1.0f), position);
-        const auto rotation = glm::mat4_cast(orientation);
-        const auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
-        const auto translation_local = glm::translate(glm::mat4(1.0f), -m_ModelReferences[1].BoxCen);
+        const auto translation = glm::translate(glm::mat4(1.0f), transform.Translation);
+        const auto rotation = glm::mat4_cast(transform.Rotation);
+        const auto scale = glm::scale(glm::mat4(1.0f), transform.Scale);
+        const auto translation_local = glm::translate(glm::mat4(1.0f), -transform.Pivot);
 
-        matrix = translation * rotation * scale * translation_local;
+        transform.Matrix = translation * rotation * scale * translation_local;
+        transform.Inverse = glm::inverse(transform.Matrix);
     }
 
-    for (auto &model : m_ModelReferences)
-        for (auto &instance : model.Instances)
-            instance.Normal = glm::transpose(glm::inverse(instance.Model));
-
-    return ok();
-}
-
-toolkit::result<> titan::Application::Interaction()
-{
-    const auto &teapot_reference = m_ModelReferences[0];
-    const auto &hand_reference = m_ModelReferences[1];
-
-    const auto &teapot_model = glm::inverse(teapot_reference.Instances[0].Model);
-
-    auto teapot_min = glm::vec3(teapot_model * glm::vec4(teapot_reference.BoxMin, 1.0f));
-    auto teapot_max = glm::vec3(teapot_model * glm::vec4(teapot_reference.BoxMax, 1.0f));
-    auto teapot_cen = teapot_min + 0.5f * (teapot_max - teapot_min);
-    auto teapot_rad = glm::distance(teapot_min, teapot_max) * 0.5f;
-
-    for (uint32_t i = 0; i < m_Hands.size(); ++i)
+    for (auto [state, camera] : m_Entities.Query<component::FrustumCamera>())
     {
-        if (!m_Hands[i].PoseState.isActive)
+        if (!state.Active || !camera.Dirty)
             continue;
 
-        const auto &hand_model = glm::inverse(hand_reference.Instances[i].Model);
+        camera.Dirty = true;
 
-        auto hand_min = glm::vec3(hand_model * glm::vec4(hand_reference.BoxMin, 1.0f));
-        auto hand_max = glm::vec3(hand_model * glm::vec4(hand_reference.BoxMax, 1.0f));
-        auto hand_cen = hand_min + 0.5f * (hand_max - hand_min);
-        auto hand_rad = glm::distance(hand_min, hand_max) * 0.5f;
-
-        const auto distance = glm::distance(teapot_cen, hand_cen);
-        const auto radius = teapot_rad + hand_rad;
-        const auto radius2 = 2.0f * radius;
-
-        if (distance < radius2)
-            m_Hands[i].Haptic = std::clamp((radius2 - distance) / radius, 0.0f, 1.0f);
+        camera.Matrix = glm::frustumRH_ZO(
+            camera.Left,
+            camera.Right,
+            camera.Bottom,
+            camera.Top,
+            camera.Near,
+            camera.Far);
+        camera.Inverse = glm::inverse(camera.Matrix);
     }
 
-    return ok();
+    for (auto [state, camera] : m_Entities.Query<component::AngleFrustumCamera>())
+    {
+        if (!state.Active || !camera.Dirty)
+            continue;
+
+        camera.Dirty = true;
+
+        const auto left = camera.Near * tanf(camera.FovLeft);
+        const auto right = camera.Near * tanf(camera.FovRight);
+        const auto bottom = camera.Near * tanf(camera.FovDown);
+        const auto top = camera.Near * tanf(camera.FovUp);
+
+        camera.Matrix = glm::frustumRH_ZO(left, right, bottom, top, camera.Near, camera.Far);
+        camera.Inverse = glm::inverse(camera.Matrix);
+    }
+
+    int width, height;
+    m_Window.GetFramebufferSize(width, height);
+
+    const auto aspect = static_cast<float>(width) / static_cast<float>(height);
+
+    for (auto [state, camera] : m_Entities.Query<component::PerspectiveCamera>())
+    {
+        if (!state.Active || !camera.Dirty)
+            continue;
+
+        camera.Dirty = true;
+
+        camera.Matrix = glm::perspectiveRH_ZO(camera.FovY, aspect, camera.Near, camera.Far);
+        camera.Inverse = glm::inverse(camera.Matrix);
+    }
+
+    for (auto [state, script] : m_Entities.Query<component::Script>())
+    {
+        if (!script.Callee)
+            continue;
+
+        script.Callee(*this, { state.ID, state.Active });
+    }
+
+    return {};
 }
 
 toolkit::result<> titan::Application::RenderThirdEye(const XrTime time)
@@ -765,41 +645,12 @@ toolkit::result<> titan::Application::RenderThirdEye(const XrTime time)
     if (auto res = vkAcquireNextImage2KHR(m_Device, &acquire_info, &image_index))
         return toolkit::make_error("vkAcquireNextImage2KHR => {}", res);
 
-    XrSpaceLocation view
-    {
-        .type = XR_TYPE_SPACE_LOCATION,
-    };
-
-    if (auto res = xrLocateSpace(m_ViewSpace, m_ReferenceSpace, time, &view))
-        return toolkit::make_error("xrLocateSpace => {}", res);
-
     int width, height;
     m_Window.GetFramebufferSize(width, height);
 
     glm::mat4 view_matrix;
     {
-        glm::quat orientation
-        {
-            view.pose.orientation.w,
-            view.pose.orientation.x,
-            view.pose.orientation.y,
-            view.pose.orientation.z,
-        };
-
-        glm::vec3 position
-        {
-            view.pose.position.x,
-            view.pose.position.y,
-            view.pose.position.z,
-        };
-
-        orientation = glm::slerp(m_HeadPose.Orientation, orientation, 0.1f);
-        position = glm::mix(m_HeadPose.Position, position, 0.1f);
-
-        m_HeadPose = {
-            .Orientation = orientation,
-            .Position = position,
-        };
+        auto [orientation, position] = m_Inputs.GetHead();
 
         const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
         const auto translation = glm::translate(glm::mat4(1.0f), -position);
@@ -897,30 +748,35 @@ toolkit::result<> titan::Application::RenderThirdEye(const XrTime time)
             return toolkit::make_error("vkQueuePresentKHR =>{}", res);
     }
 
-    return ok();
+    return {};
+}
+
+toolkit::result<> titan::Application::OnInitialize()
+{
+    return {};
 }
 
 toolkit::result<> titan::Application::OnStart()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::PreFrame()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::OnFrame()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::PostFrame()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::OnStop()
 {
-    return ok();
+    return {};
 }

@@ -97,7 +97,7 @@ toolkit::result<> titan::Application::GetQueueFamilyIndices()
             .Transfer = *index_transfer,
             .Present = *index_present,
         };
-        return ok();
+        return {};
     }
 
     return toolkit::make_error("failed to find any suitable queue family for {}.", missing);

@@ -16,7 +16,8 @@ toolkit::result<titan::VkSwapchainReference> titan::Application::CreateSwapchain
             reference.Images.resize(images.size());
             for (uint32_t i = 0; i < images.size(); ++i)
                 reference.Images[i] = vk::Image::wrap(images[i]);
-            return ok();
+
+            return toolkit::result();
         };
 
         const VkSwapchainCreateInfoKHR swapchain_create_info

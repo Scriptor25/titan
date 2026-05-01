@@ -7,45 +7,39 @@
 
 toolkit::result<> titan::Application::FillBuffers()
 {
-    for (uint32_t i = 0; i < m_ModelData.size(); ++i)
+    for (auto &[id, info] : m_Meshes)
     {
-        auto &data = m_ModelData[i];
-        auto &reference = m_ModelReferences[i];
+        auto data = m_Resources.Get<pkg::mesh::Data>(id);
 
-        auto mesh = m_Resources.Get<pkg::mesh::Data>(data.Mesh);
+        info.VertexBufferOffset = 0;
+        info.VertexBufferSize = data.GetVertexCount() * sizeof(pkg::mesh::Vertex);
+        info.VertexBufferStride = sizeof(pkg::mesh::Vertex);
 
-        reference.VertexBufferOffset = 0;
-        reference.VertexBufferSize = mesh.GetVertexCount() * sizeof(pkg::mesh::Vertex);
-        reference.VertexBufferStride = sizeof(pkg::mesh::Vertex);
-
-        reference.IndexBufferOffset = 0;
-        reference.IndexBufferSize = mesh.GetIndexCount() * sizeof(uint32_t);
-        reference.IndexType = VK_INDEX_TYPE_UINT32;
-        reference.IndexCount = mesh.GetIndexCount();
-
-        reference.Instances.resize(data.InstanceCount);
-        reference.Active.resize(data.InstanceCount);
+        info.IndexBufferOffset = 0;
+        info.IndexBufferSize = data.GetIndexCount() * sizeof(uint32_t);
+        info.IndexType = VK_INDEX_TYPE_UINT32;
+        info.IndexCount = data.GetIndexCount();
 
         {
             const VkMemoryMapInfo map_info
             {
                 .sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
-                .memory = reference.VertexMemory,
-                .offset = reference.VertexBufferOffset,
-                .size = reference.VertexBufferSize,
+                .memory = info.VertexMemory,
+                .offset = info.VertexBufferOffset,
+                .size = info.VertexBufferSize,
             };
 
             const VkMemoryUnmapInfo unmap_info
             {
                 .sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
-                .memory = reference.VertexMemory,
+                .memory = info.VertexMemory,
             };
 
             void *ptr;
             if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
-            std::memcpy(ptr, mesh.GetVertexData(), reference.VertexBufferSize);
+            std::memcpy(ptr, data.GetVertexData(), info.VertexBufferSize);
 
             if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;
@@ -55,27 +49,27 @@ toolkit::result<> titan::Application::FillBuffers()
             const VkMemoryMapInfo map_info
             {
                 .sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
-                .memory = reference.IndexMemory,
-                .offset = reference.IndexBufferOffset,
-                .size = reference.IndexBufferSize,
+                .memory = info.IndexMemory,
+                .offset = info.IndexBufferOffset,
+                .size = info.IndexBufferSize,
             };
 
             const VkMemoryUnmapInfo unmap_info
             {
                 .sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
-                .memory = reference.IndexMemory,
+                .memory = info.IndexMemory,
             };
 
             void *ptr;
             if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
-            std::memcpy(ptr, mesh.GetIndexData(), reference.IndexBufferSize);
+            std::memcpy(ptr, data.GetIndexData(), info.IndexBufferSize);
 
             if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;
         }
     }
 
-    return ok();
+    return {};
 }

@@ -139,5 +139,5 @@ toolkit::result<> titan::Application::CreateWindowSwapchainView()
             return res;
     }
 
-    return ok();
+    return {};
 }

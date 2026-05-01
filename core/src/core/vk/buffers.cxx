@@ -1,3 +1,4 @@
+#include <titan/component.hxx>
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
@@ -5,11 +6,13 @@
 
 toolkit::result<> titan::Application::CreateBuffers()
 {
-    m_ModelReferences.resize(m_ModelData.size());
-    for (uint32_t i = 0; i < m_ModelData.size(); ++i)
+    for (auto [entity, mesh] : m_Entities.Query<component::Mesh>())
     {
-        auto data = m_Resources.Get<pkg::mesh::Data>(m_ModelData[i].Mesh);
-        auto &reference = m_ModelReferences[i];
+        if (m_Meshes.contains(mesh.Resource))
+            continue;
+
+        auto &reference = m_Meshes[mesh.Resource];
+        auto data = m_Resources.Get<pkg::mesh::Data>(mesh.Resource);
 
         reference.BoxMin = data.GetBoxMin();
         reference.BoxMax = data.GetBoxMax();
@@ -125,5 +128,5 @@ toolkit::result<> titan::Application::CreateBuffers()
         }
     }
 
-    return ok();
+    return {};
 }

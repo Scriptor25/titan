@@ -5,7 +5,7 @@
 
 toolkit::result<> titan::Application::CreateVkInstance()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                return xr::GetVulkanGraphicsRequirements2KHR(m_XrInstance, m_SystemId);

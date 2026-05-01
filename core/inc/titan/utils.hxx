@@ -108,6 +108,13 @@ namespace titan::xr
         const std::vector<std::pair<XrAction, std::string>> &bindings);
 
     toolkit::result<XrInteractionProfileState> GetCurrentInteractionProfile(XrSession session, XrPath path);
+
+
+    toolkit::result<ActionSpace> CreateActionSpace(
+        XrInstance instance,
+        XrSession session,
+        XrAction action,
+        const std::optional<std::string> &sub_path_string = std::nullopt);
 }
 
 namespace titan::vk

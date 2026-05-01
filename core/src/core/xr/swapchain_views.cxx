@@ -66,5 +66,5 @@ toolkit::result<> titan::Application::CreateSwapchainViews()
         }
     }
 
-    return ok();
+    return {};
 }

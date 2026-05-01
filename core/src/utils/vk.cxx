@@ -62,28 +62,28 @@ toolkit::result<> titan::vk::BindBufferMemory2(VkDevice device, const VkBindBuff
 {
     if (auto res = vkBindBufferMemory2(device, 1, &bind_info))
         return toolkit::make_error("vkBindBufferMemory2 => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::vk::BindBufferMemory2(VkDevice device, const std::vector<VkBindBufferMemoryInfo> &bind_infos)
 {
     if (auto res = vkBindBufferMemory2(device, bind_infos.size(), bind_infos.data()))
         return toolkit::make_error("vkBindBufferMemory2 => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::vk::BindImageMemory2(VkDevice device, const VkBindImageMemoryInfo &bind_info)
 {
     if (auto res = vkBindImageMemory2(device, 1, &bind_info))
         return toolkit::make_error("vkBindImageMemory2 => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::vk::BindImageMemory2(VkDevice device, const std::vector<VkBindImageMemoryInfo> &bind_infos)
 {
     if (auto res = vkBindImageMemory2(device, bind_infos.size(), bind_infos.data()))
         return toolkit::make_error("vkBindImageMemory2 => {}", res);
-    return ok();
+    return {};
 }
 
 VkPhysicalDeviceProperties2 titan::vk::GetPhysicalDeviceProperties2(VkPhysicalDevice physical_device)
@@ -110,7 +110,7 @@ toolkit::result<> titan::vk::ResetCommandBuffer(VkCommandBuffer command_buffer, 
 {
     if (auto res = vkResetCommandBuffer(command_buffer, flags))
         return toolkit::make_error("vkResetCommandBuffer => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::vk::BeginCommandBuffer(
@@ -119,14 +119,14 @@ toolkit::result<> titan::vk::BeginCommandBuffer(
 {
     if (auto res = vkBeginCommandBuffer(command_buffer, &begin_info))
         return toolkit::make_error("vkBeginCommandBuffer => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::vk::EndCommandBuffer(VkCommandBuffer command_buffer)
 {
     if (auto res = vkEndCommandBuffer(command_buffer))
         return toolkit::make_error("vkEndCommandBuffer => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<void *> titan::vk::MapMemory2(VkDevice device, const VkMemoryMapInfo &map_info)
@@ -141,7 +141,7 @@ toolkit::result<> titan::vk::UnmapMemory2(VkDevice device, const VkMemoryUnmapIn
 {
     if (auto res = vkUnmapMemory2(device, &unmap_info))
         return toolkit::make_error("vkUnmapMemory2 => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<VkSurfaceCapabilities2KHR> titan::vk::GetPhysicalDeviceSurfaceCapabilities2KHR(

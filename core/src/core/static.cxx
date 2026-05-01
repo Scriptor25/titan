@@ -66,7 +66,7 @@ toolkit::result<> titan::Application::FindFormats(
     }
 
     if (count >= references.size())
-        return ok();
+        return {};
 
     std::vector<std::string_view> missing;
     for (auto &reference : references)

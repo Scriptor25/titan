@@ -1,3 +1,4 @@
+#include <titan/component.hxx>
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
@@ -78,55 +79,46 @@ toolkit::result<> titan::Application::RecordCommandBuffer(
     vkCmdSetViewportWithCount(buffer, 1, &viewport);
     vkCmdSetScissorWithCount(buffer, 1, &scissor);
 
-    for (auto &model : m_ModelReferences)
+    for (auto [entity, transform, mesh] : m_Entities.Query<component::Transform, component::Mesh>())
     {
-        auto any_active = false;
-        for (auto active : model.Active)
-            any_active |= active;
-        if (!any_active)
+        if (!entity.Active)
             continue;
+
+        auto &info = m_Meshes[mesh.Resource];
 
         const std::array<VkBuffer, 1> buffers
         {
-            model.VertexBuffer,
+            info.VertexBuffer,
         };
 
         const std::array offsets
         {
-            model.VertexBufferOffset,
+            info.VertexBufferOffset,
         };
 
         vkCmdBindVertexBuffers(buffer, 0, buffers.size(), buffers.data(), offsets.data());
-        vkCmdBindIndexBuffer(buffer, model.IndexBuffer, model.IndexBufferOffset, model.IndexType);
+        vkCmdBindIndexBuffer(buffer, info.IndexBuffer, info.IndexBufferOffset, info.IndexType);
 
-        for (uint32_t i = 0; i < model.Instances.size(); ++i)
+        const ShaderData shader_data
         {
-            if (!model.Active[i])
-                continue;
+            .Screen = screen_matrix,
+            .Model = transform.Matrix,
+            .Normal = glm::transpose(transform.Inverse),
+        };
 
-            auto &instance = model.Instances[i];
+        const VkPushConstantsInfo push_constants_info
+        {
+            .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
+            .layout = m_PipelineLayout,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(ShaderData),
+            .pValues = &shader_data,
+        };
 
-            const ShaderData shader_data
-            {
-                .Screen = screen_matrix,
-                .Model = instance.Model,
-                .Normal = instance.Normal,
-            };
+        vkCmdPushConstants2(buffer, &push_constants_info);
 
-            const VkPushConstantsInfo push_constants_info
-            {
-                .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
-                .layout = m_PipelineLayout,
-                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-                .offset = 0,
-                .size = sizeof(ShaderData),
-                .pValues = &shader_data,
-            };
-
-            vkCmdPushConstants2(buffer, &push_constants_info);
-
-            vkCmdDrawIndexed(buffer, model.IndexCount, 1, 0, 0, 0);
-        }
+        vkCmdDrawIndexed(buffer, info.IndexCount, 1, 0, 0, 0);
     }
 
     const VkSubpassEndInfo subpass_end_info

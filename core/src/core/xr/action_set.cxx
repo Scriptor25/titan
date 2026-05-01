@@ -19,7 +19,7 @@ toolkit::result<> titan::Application::CreateActionSet()
 
 toolkit::result<> titan::Application::CreateActions()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                return CreateAction(
@@ -79,22 +79,9 @@ toolkit::result<titan::xr::Action> titan::Application::CreateAction(
     return xr::Action::create(m_ActionSet, create_info);
 }
 
-toolkit::result<> titan::Application::CreateHands()
-{
-    return ok()
-           & [&]
-           {
-               return xr::StringToPath(m_XrInstance, "/user/hand/left") >> m_Hands[0].Path;
-           }
-           & [&]
-           {
-               return xr::StringToPath(m_XrInstance, "/user/hand/right") >> m_Hands[1].Path;
-           };
-}
-
 toolkit::result<> titan::Application::SuggestBindings()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                return xr::SuggestInteractionProfileBindings(
@@ -128,73 +115,13 @@ toolkit::result<> titan::Application::SuggestBindings()
 toolkit::result<> titan::Application::RecordBindings()
 {
     if (!m_Session)
-        return ok();
+        return {};
 
-    return ok()
-           & [&]
-           {
-               return xr::GetCurrentInteractionProfile(m_Session, m_Hands[0].Path);
-           }
-           & [&](XrInteractionProfileState &&state) -> toolkit::result<XrInteractionProfileState>
-           {
-               if (state.interactionProfile)
-               {
-                   std::string str;
-                   if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str; !res)
-                       return res;
-                   info("/user/hand/left => ", str);
-               }
-
-               return xr::GetCurrentInteractionProfile(m_Session, m_Hands[1].Path);
-           }
-           & [&](XrInteractionProfileState &&state)
-           {
-               if (state.interactionProfile)
-               {
-                   std::string str;
-                   if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str; !res)
-                       return res;
-                   info("/user/hand/right => ", str);
-               }
-
-               return ok();
-           };
-}
-
-toolkit::result<> titan::Application::CreateActionSpaces()
-{
-    return ok()
-           & [&]
-           {
-               return CreateActionSpace(m_ActionPalmPose, "/user/hand/left") >> m_Hands[0].Space;
-           }
-           & [&]
-           {
-               return CreateActionSpace(m_ActionPalmPose, "/user/hand/right") >> m_Hands[1].Space;
-           };
-}
-
-toolkit::result<titan::xr::ActionSpace> titan::Application::CreateActionSpace(
-    XrAction action,
-    const std::optional<std::string> &sub_path_string)
-{
-    XrPath sub_path{};
-    if (sub_path_string)
-        if (auto res = xr::StringToPath(m_XrInstance, *sub_path_string) >> sub_path; !res)
-            return res;
-
-    const XrActionSpaceCreateInfo create_info
-    {
-        .type = XR_TYPE_ACTION_SPACE_CREATE_INFO,
-        .action = action,
-        .subactionPath = sub_path,
-        .poseInActionSpace = {
-            .orientation = { 0.0f, 0.0f, 0.0f, 1.0f },
-            .position = { 0.0f, 0.0f, 0.0f },
-        },
-    };
-
-    return xr::ActionSpace::create(m_Session, create_info);
+    return m_Inputs.RecordBindings(
+        {
+            .Instance = m_XrInstance,
+            .Session = m_Session,
+        });
 }
 
 toolkit::result<> titan::Application::AttachActionSet()
@@ -213,5 +140,5 @@ toolkit::result<> titan::Application::AttachActionSet()
 
     if (auto res = xrAttachSessionActionSets(m_Session, &attach_info))
         return toolkit::make_error("xrAttachSessionActionSets => {}", res);
-    return ok();
+    return {};
 }

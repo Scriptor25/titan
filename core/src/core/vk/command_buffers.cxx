@@ -2,7 +2,7 @@
 
 toolkit::result<> titan::Application::AllocateCommandBuffers()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                const VkCommandBufferAllocateInfo allocate_info
@@ -19,7 +19,8 @@ toolkit::result<> titan::Application::AllocateCommandBuffers()
            {
                for (uint32_t i = 0; i < buffers.size(); ++i)
                    m_SwapchainViews[i].Buffer = std::move(buffers[i]);
-               return ok();
+
+               return toolkit::result();
            }
            & [&]
            {
@@ -37,6 +38,7 @@ toolkit::result<> titan::Application::AllocateCommandBuffers()
            {
                for (uint32_t i = 0; i < buffers.size(); ++i)
                    m_Frames[i].Buffer = std::move(buffers[i]);
-               return ok();
+
+               return toolkit::result();
            };
 }

@@ -19,6 +19,6 @@ toolkit::result<> titan::Application::GetViewConfigurationType()
                if (!m_ViewConfigurationType)
                    return toolkit::make_error("failed to find any suitable view configuration type.");
 
-               return ok();
+               return {};
            };
 }

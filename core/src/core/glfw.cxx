@@ -2,7 +2,7 @@
 
 toolkit::result<> titan::Application::InitializeWindow()
 {
-    return ok()
+    return toolkit::result()
            & [&]
            {
                return glfw::Instance::Create() >> m_GlfwInstance;
@@ -29,6 +29,6 @@ toolkit::result<> titan::Application::InitializeWindow()
                m_Window.SetUserPointer(this);
                m_Window.Show();
 
-               return ok();
+               return toolkit::result();
            };
 }

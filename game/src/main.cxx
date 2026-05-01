@@ -1,12 +1,118 @@
+#include <titan/component.hxx>
 #include <titan/core.hxx>
-#include <titan/hash.hxx>
 #include <titan/system/entity.hxx>
+
+#include <pkg/mesh.hxx>
 
 #include <csignal>
 #include <iostream>
 #include <map>
 
-class Game final : titan::Application
+static void teapot_script(titan::Application &context, const titan::EntityState entity)
+{
+    static auto begin = std::chrono::high_resolution_clock::now();
+    const auto now = std::chrono::high_resolution_clock::now();
+    const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
+
+    auto [transform] = context.GetEntities().Get<titan::component::Transform>(entity.ID);
+
+    transform.Rotation = glm::rotate(
+        glm::quat(),
+        delta * glm::radians(20.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+    transform.Scale = glm::vec3(0.1f);
+
+    transform.Dirty = true;
+}
+
+struct CubeState
+{
+    static constexpr auto name = "CubeState";
+    static constexpr auto id = titan::hash64(name);
+
+    size_t Index;
+};
+
+static void cube_script(titan::Application &context, const titan::EntityState entity)
+{
+    auto [transform, mesh, state] = context.GetEntities().Get<
+        titan::component::Transform,
+        titan::component::Mesh,
+        CubeState
+    >(entity.ID);
+
+    const auto hand = context.GetInputs().GetHand(state.Index);
+
+    const auto active = hand.IsActive;
+    entity.Active = active;
+
+    if (!active)
+        return;
+
+    const auto mesh_view = context.GetResources().Get<pkg::mesh::Data>(mesh.Resource);
+
+    auto &box_min = mesh_view.GetBoxMin();
+    auto &box_max = mesh_view.GetBoxMax();
+
+    const auto pivot = box_min + 0.5f * (box_max - box_min);
+
+    transform.Translation = hand.Position;
+    transform.Rotation = hand.Orientation;
+    transform.Scale = glm::vec3(0.1f);
+    transform.Pivot = pivot;
+
+    transform.Dirty = true;
+}
+
+struct ControllerState
+{
+    static constexpr auto name = "ControllerState";
+    static constexpr auto id = titan::hash64(name);
+
+    titan::ResourceID TeapotMesh, CubeMesh;
+    titan::EntityID Teapot;
+    std::vector<titan::EntityID> Cubes;
+};
+
+static void controller_script(titan::Application &context, const titan::EntityState entity)
+{
+    auto [state] = context.GetEntities().Get<ControllerState>(entity.ID);
+
+    auto teapot_mesh = context.GetResources().Get<pkg::mesh::Data>(state.TeapotMesh);
+    auto cube_mesh = context.GetResources().Get<pkg::mesh::Data>(state.CubeMesh);
+
+    auto [teapot_transform] = context.GetEntities().Get<titan::component::Transform>(state.Teapot);
+
+    auto teapot_min = glm::vec3(teapot_transform.Inverse * glm::vec4(teapot_mesh.GetBoxMin(), 1.0f));
+    auto teapot_max = glm::vec3(teapot_transform.Inverse * glm::vec4(teapot_mesh.GetBoxMax(), 1.0f));
+    auto teapot_cen = teapot_min + 0.5f * (teapot_max - teapot_min);
+    auto teapot_rad = glm::distance(teapot_min, teapot_max) * 0.5f;
+
+    for (size_t i = 0; i < state.Cubes.size(); ++i)
+    {
+        auto [cube_transform, cube_state] = context.GetEntities().Get<
+            titan::component::Transform,
+            CubeState
+        >(state.Cubes[i]);
+
+        if (auto hand = context.GetInputs().GetHand(cube_state.Index); hand.IsActive)
+        {
+            auto hand_min = glm::vec3(cube_transform.Inverse * glm::vec4(cube_mesh.GetBoxMin(), 1.0f));
+            auto hand_max = glm::vec3(cube_transform.Inverse * glm::vec4(cube_mesh.GetBoxMax(), 1.0f));
+            auto hand_cen = hand_min + 0.5f * (hand_max - hand_min);
+            auto hand_rad = glm::distance(hand_min, hand_max) * 0.5f;
+
+            const auto distance = glm::distance(teapot_cen, hand_cen);
+            const auto radius = teapot_rad + hand_rad;
+            const auto radius2 = 2.0f * radius;
+
+            if (distance < radius2)
+                hand.Haptic = std::clamp((radius2 - distance) / radius, 0.0f, 1.0f);
+        }
+    }
+}
+
+class Game final : public titan::Application
 {
 public:
     Game()
@@ -23,36 +129,72 @@ public:
     {
     }
 
-    using Application::Initialize;
-    using Application::Terminate;
-    using Application::Spin;
-    using Application::CleanUp;
-
 protected:
-    toolkit::result<> OnStart() override
+    toolkit::result<> OnInitialize() override
     {
-        return titan::ok();
+        if (auto res = GetResources().Load("/mesh/teapot") >> m_TeapotMesh; !res)
+            return res;
+
+        if (auto res = GetResources().Load("/mesh/cube") >> m_CubeMesh; !res)
+            return res;
+
+        {
+            auto [entity, active] = GetEntities().Create(
+                titan::component::Transform{},
+                titan::component::Mesh{ m_TeapotMesh },
+                titan::component::Script{ teapot_script }
+            );
+
+            m_Teapot = entity;
+            active = true;
+        }
+
+        {
+            auto [entity, active] = GetEntities().Create(
+                titan::component::Transform{},
+                titan::component::Mesh{ m_CubeMesh },
+                titan::component::Script{ cube_script },
+                CubeState{ 0ull }
+            );
+
+            m_CubeL = entity;
+            active = false;
+        }
+
+        {
+            auto [entity, active] = GetEntities().Create(
+                titan::component::Transform{},
+                titan::component::Mesh{ m_CubeMesh },
+                titan::component::Script{ cube_script },
+                CubeState{ 1ull }
+            );
+
+            m_CubeR = entity;
+            active = false;
+        }
+
+        {
+            auto [entity, active] = GetEntities().Create(
+                titan::component::Script{ controller_script },
+                ControllerState
+                {
+                    .TeapotMesh = m_TeapotMesh,
+                    .CubeMesh = m_CubeMesh,
+                    .Teapot = m_Teapot,
+                    .Cubes = { m_CubeL, m_CubeR },
+                }
+            );
+
+            m_Controller = entity;
+            active = true;
+        }
+
+        return {};
     }
 
-    toolkit::result<> PreFrame() override
-    {
-        return titan::ok();
-    }
-
-    toolkit::result<> OnFrame() override
-    {
-        return titan::ok();
-    }
-
-    toolkit::result<> PostFrame() override
-    {
-        return titan::ok();
-    }
-
-    toolkit::result<> OnStop() override
-    {
-        return titan::ok();
-    }
+private:
+    titan::ResourceID m_TeapotMesh{}, m_CubeMesh{};
+    titan::EntityID m_Teapot{}, m_CubeL{}, m_CubeR{}, m_Controller{};
 };
 
 static Game *game_ptr = nullptr;
@@ -70,64 +212,6 @@ static void signal_handler(const int signal)
 
     std::cerr << "exit on signal " << signal_map.at(signal) << std::endl;
 }
-
-struct NumberComponent
-{
-    static constexpr auto name = "NumberComponent";
-    static constexpr auto id = titan::hash64(name);
-
-    NumberComponent() = default;
-
-    NumberComponent(const uint32_t value)
-        : value(value)
-    {
-    }
-
-    NumberComponent(const NumberComponent &) = delete;
-    NumberComponent &operator=(const NumberComponent &) = delete;
-
-    NumberComponent(NumberComponent &&other) noexcept
-        : value(other.value)
-    {
-    }
-
-    NumberComponent &operator=(NumberComponent &&other) noexcept
-    {
-        std::swap(value, other.value);
-        return *this;
-    }
-
-    uint32_t value{};
-};
-
-struct StringComponent
-{
-    static constexpr auto name = "StringComponent";
-    static constexpr auto id = titan::hash64(name);
-
-    StringComponent() = default;
-
-    StringComponent(std::string value)
-        : value(std::move(value))
-    {
-    }
-
-    StringComponent(const StringComponent &) = delete;
-    StringComponent &operator=(const StringComponent &) = delete;
-
-    StringComponent(StringComponent &&other) noexcept
-        : value(std::move(other.value))
-    {
-    }
-
-    StringComponent &operator=(StringComponent &&other) noexcept
-    {
-        std::swap(value, other.value);
-        return *this;
-    }
-
-    std::string value;
-};
 
 int main(const int argc, const char *const *argv)
 {
@@ -148,7 +232,7 @@ int main(const int argc, const char *const *argv)
                };
 
     if (auto cleanup_res = game.CleanUp(); !cleanup_res)
-        std::cerr << "during cleanup phase: " << cleanup_res.error() << std::endl;
+        std::cerr << "during cleanup: " << cleanup_res.error() << std::endl;
 
     if (res)
     {
