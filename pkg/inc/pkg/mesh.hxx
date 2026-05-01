@@ -27,86 +27,52 @@ namespace pkg::mesh
 namespace pkg
 {
     template<>
-    struct Serializer<mesh::Vertex>
+    struct Serializer<glm::vec2> : std::true_type
     {
-        template<typename W>
-        static void Serialize(W &&write, const mesh::Vertex &value)
-        {
-            write(value.Position.x);
-            write(value.Position.y);
-            write(value.Position.z);
-
-            write(value.Normal.x);
-            write(value.Normal.y);
-            write(value.Normal.z);
-
-            write(value.Texture.x);
-            write(value.Texture.y);
-        }
-
-        template<typename R>
-        static void Deserialize(R &&read, mesh::Vertex &value)
-        {
-            read(value.Position.x);
-            read(value.Position.y);
-            read(value.Position.z);
-
-            read(value.Normal.x);
-            read(value.Normal.y);
-            read(value.Normal.z);
-
-            read(value.Texture.x);
-            read(value.Texture.y);
-        }
+        static void Serialize(std::ostream &stream, const glm::vec2 &value);
+        static void Deserialize(std::istream &stream, glm::vec2 &value);
     };
 
     template<>
-    struct Serializer<mesh::Data>
+    struct Serializer<glm::vec3> : std::true_type
     {
-        template<typename W>
-        static void Serialize(W &&write, const mesh::Data &value)
-        {
-            write(value.BoxMin.x);
-            write(value.BoxMin.y);
-            write(value.BoxMin.z);
+        static void Serialize(std::ostream &stream, const glm::vec3 &value);
+        static void Deserialize(std::istream &stream, glm::vec3 &value);
+    };
 
-            write(value.BoxMax.x);
-            write(value.BoxMax.y);
-            write(value.BoxMax.z);
+    template<>
+    struct Serializer<mesh::Vertex> : std::true_type
+    {
+        static void Serialize(std::ostream &stream, const mesh::Vertex &value);
+        static void Deserialize(std::istream &stream, mesh::Vertex &value);
+    };
 
-            write(value.Vertices.size());
-            for (auto &vertex : value.Vertices)
-                write(vertex);
+    template<>
+    struct Serializer<mesh::Data> : std::true_type
+    {
+        static void Serialize(std::ostream &stream, const mesh::Data &value);
+        static void Deserialize(std::istream &stream, mesh::Data &value);
+    };
 
-            write(value.Indices.size());
-            for (auto &index : value.Indices)
-                write(index);
-        }
+    template<>
+    class View<mesh::Data> : public std::true_type
+    {
+    public:
+        View(const void *data);
 
-        template<typename R>
-        static void Deserialize(R &&read, mesh::Data &value)
-        {
-            read(value.BoxMin.x);
-            read(value.BoxMin.y);
-            read(value.BoxMin.z);
+        [[nodiscard]] const glm::vec3 &GetBoxMin() const;
+        [[nodiscard]] const glm::vec3 &GetBoxMax() const;
 
-            read(value.BoxMax.x);
-            read(value.BoxMax.y);
-            read(value.BoxMax.z);
+        [[nodiscard]] size_t GetVertexCount() const;
+        [[nodiscard]] const mesh::Vertex *GetVertexData() const;
 
-            size_t vertices_size;
-            read(vertices_size);
+        [[nodiscard]] size_t GetIndexCount() const;
+        [[nodiscard]] const uint32_t *GetIndexData() const;
 
-            value.Vertices.resize(vertices_size);
-            for (auto &vertex : value.Vertices)
-                read(vertex);
+    private:
+        const void *m_Data;
 
-            size_t indices_size;
-            read(indices_size);
-
-            value.Indices.resize(indices_size);
-            for (auto &index : value.Indices)
-                read(index);
-        }
+        size_t m_VertexCount;
+        size_t m_IndexCount;
     };
 }

@@ -15,13 +15,13 @@ toolkit::result<> titan::Application::FillBuffers()
         auto mesh = m_Resources.Get<pkg::mesh::Data>(data.Mesh);
 
         reference.VertexBufferOffset = 0;
-        reference.VertexBufferSize = mesh.Vertices.size() * sizeof(pkg::mesh::Vertex);
+        reference.VertexBufferSize = mesh.GetVertexCount() * sizeof(pkg::mesh::Vertex);
         reference.VertexBufferStride = sizeof(pkg::mesh::Vertex);
 
         reference.IndexBufferOffset = 0;
-        reference.IndexBufferSize = mesh.Indices.size() * sizeof(uint32_t);
+        reference.IndexBufferSize = mesh.GetIndexCount() * sizeof(uint32_t);
         reference.IndexType = VK_INDEX_TYPE_UINT32;
-        reference.IndexCount = mesh.Indices.size();
+        reference.IndexCount = mesh.GetIndexCount();
 
         reference.Instances.resize(data.InstanceCount);
         reference.Active.resize(data.InstanceCount);
@@ -45,7 +45,7 @@ toolkit::result<> titan::Application::FillBuffers()
             if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
-            std::memcpy(ptr, mesh.Vertices.data(), reference.VertexBufferSize);
+            std::memcpy(ptr, mesh.GetVertexData(), reference.VertexBufferSize);
 
             if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;
@@ -70,7 +70,7 @@ toolkit::result<> titan::Application::FillBuffers()
             if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
                 return res;
 
-            std::memcpy(ptr, mesh.Indices.data(), reference.IndexBufferSize);
+            std::memcpy(ptr, mesh.GetIndexData(), reference.IndexBufferSize);
 
             if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
                 return res;

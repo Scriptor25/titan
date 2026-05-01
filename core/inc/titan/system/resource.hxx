@@ -35,18 +35,12 @@ namespace titan
 
         ResourceData Get(ResourceID id) const;
 
-        template<typename T>
-        T Get(ResourceID id) const
+        template<pkg::viewable T>
+        auto Get(ResourceID id) const
         {
             auto data = Get(id);
 
-            size_t offset{};
-            pkg::Reader read{ static_cast<const char *>(data.Block), offset };
-
-            T value;
-            pkg::Serializer<T>::Deserialize(read, value);
-
-            return value;
+            return pkg::view<T>(data.Block);
         }
 
     private:

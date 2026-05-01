@@ -21,15 +21,15 @@ toolkit::result<> titan::Application::CreatePipeline()
     const VkShaderModuleCreateInfo module_vertex_create_info
     {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = vert_shader.Binary.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(vert_shader.Binary.data()),
+        .codeSize = vert_shader.GetBinarySize(),
+        .pCode = static_cast<const uint32_t *>(vert_shader.GetBinaryData()),
     };
 
     const VkShaderModuleCreateInfo module_fragment_create_info
     {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = frag_shader.Binary.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(frag_shader.Binary.data()),
+        .codeSize = frag_shader.GetBinarySize(),
+        .pCode = static_cast<const uint32_t *>(frag_shader.GetBinaryData()),
     };
 
     if (auto res = vk::ShaderModule::create(m_Device, module_vertex_create_info) >> module_vertex; !res)

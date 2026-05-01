@@ -8,6 +8,8 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <pkg/pipeline.hxx>
+#include <pkg/shader.hxx>
 
 #ifdef __linux__
 #include <unistd.h>
@@ -204,9 +206,9 @@ struct data::serializer<pipeline_t>
     }
 };
 
-template<typename W, typename... A>
+template<typename... A>
     requires (std::convertible_to<A, std::string>, ...)
-static int exec(W &&write, const char *file, A &&... args)
+static int exec(std::ostream &stream, const char *file, A &&... args)
 {
     int out_pipe[2];
     int err_pipe[2];
@@ -242,11 +244,11 @@ static int exec(W &&write, const char *file, A &&... args)
     close(out_pipe[1]);
     close(err_pipe[1]);
 
-    uint8_t chunk[4096];
+    char chunk[4096];
     ssize_t count;
 
     while ((count = read(out_pipe[0], chunk, sizeof(chunk))) > 0)
-        write(chunk, count);
+        stream.write(chunk, count);
 
     while ((count = read(err_pipe[0], chunk, sizeof(chunk))) > 0)
         fwrite(chunk, 1, count, stderr);
@@ -302,15 +304,15 @@ int main(int argc, char **argv)
 
         std::cerr << "reading '" << path.string() << "'" << std::endl;
 
-        std::ifstream stream(path);
-        if (!stream)
+        std::ifstream is(path);
+        if (!is)
         {
             std::cerr << "failed to read '" << path.string() << "'" << std::endl;
             continue;
         }
 
         json::Node node;
-        stream >> node;
+        is >> node;
 
         if (!node)
         {
@@ -325,10 +327,20 @@ int main(int argc, char **argv)
             continue;
         }
 
-        std::string name;
-        std::vector<char> buffer;
+        if (chunk && static_cast<size_t>(chunk->tellp()) >= MAX_CHUNK_SIZE)
+        {
+            delete chunk;
+            chunk = {};
+        }
 
-        pkg::Writer write{ buffer };
+        if (!chunk)
+        {
+            auto chunk_path = dst / std::format("chunk{:02x}", chunk_index++);
+            chunk = new std::ofstream(chunk_path, std::ios::binary);
+        }
+
+        std::string name;
+        size_t begin = chunk->tellp();
 
         struct
         {
@@ -341,7 +353,6 @@ int main(int argc, char **argv)
                     src = path.parent_path() / src;
 
                 pkg::mesh::Data data;
-
                 if (resource.format == "obj")
                 {
                     if (!pkg::mesh::obj::Open(src, data))
@@ -351,34 +362,7 @@ int main(int argc, char **argv)
                     return false;
 
                 name = resource.name;
-
-                write(data.BoxMin.x);
-                write(data.BoxMin.y);
-                write(data.BoxMin.z);
-
-                write(data.BoxMax.x);
-                write(data.BoxMax.y);
-                write(data.BoxMax.z);
-
-                write(data.Vertices.size());
-                for (const auto &[position, normal, texture] : data.Vertices)
-                {
-                    write(position.x);
-                    write(position.y);
-                    write(position.z);
-
-                    write(normal.x);
-                    write(normal.y);
-                    write(normal.z);
-
-                    write(texture.x);
-                    write(texture.y);
-                }
-
-                write(data.Indices.size());
-                for (const auto &index : data.Indices)
-                    write(index);
-
+                pkg::serialize(stream, data);
                 return true;
             }
 
@@ -389,44 +373,73 @@ int main(int argc, char **argv)
                     src = path.parent_path() / src;
                 src = std::filesystem::absolute(src);
 
-                if (exec(write, "glslc", "-fshader-stage=" + resource.stage, "-o", "-", src.string()))
+                std::ostringstream data_stream;
+                if (exec(data_stream, "glslc", "-fshader-stage=" + resource.stage, "-o", "-", src.string()))
                     return false;
 
+                const pkg::shader::Data data
+                {
+                    .Binary = { data_stream.view().begin(), data_stream.view().end() },
+                };
+
                 name = resource.name;
+                pkg::serialize(stream, data);
                 return true;
             }
 
             auto operator()(const pipeline_t &resource) const
             {
-                write(resource.stages.size());
+                pkg::pipeline::Data data;
+
                 for (auto &[key, val] : resource.stages)
                 {
-                    write(key);
-                    write(val.size());
-                    for (auto &stage : val)
+                    static const std::unordered_map<std::string_view, pkg::pipeline::StageName> map
                     {
-                        write(stage.module);
-                        write(stage.name);
-                    }
+                        { "vertex", pkg::pipeline::StageName::Vertex },
+                        { "fragment", pkg::pipeline::StageName::Fragment },
+                        { "geometry", pkg::pipeline::StageName::Geometry },
+                        { "tesselation-control", pkg::pipeline::StageName::TesselationControl },
+                        { "tesselation-evaluation", pkg::pipeline::StageName::TesselationEvaluation },
+                        { "compute", pkg::pipeline::StageName::Compute },
+                    };
+
+                    auto &ref = data.Stages[map.at(key)];
+                    ref.resize(val.size());
+
+                    for (size_t i = 0; i < val.size(); ++i)
+                        ref[i] = {
+                            .Module = val[i].module,
+                            .Name = val[i].name,
+                        };
                 }
 
-                write(resource.vertex.size());
-                for (auto &[location, binding, reference] : resource.vertex)
+                data.Vertex.resize(resource.vertex.size());
+                for (size_t i = 0; i < resource.vertex.size(); ++i)
                 {
-                    write(location);
-                    write(binding);
-                    write(reference);
+                    static const std::unordered_map<std::string_view, pkg::pipeline::VertexReference> map
+                    {
+                        { "position", pkg::pipeline::VertexReference::Position },
+                        { "normal", pkg::pipeline::VertexReference::Normal },
+                        { "texture", pkg::pipeline::VertexReference::Texture },
+                    };
+
+                    data.Vertex[i] = {
+                        .Location = resource.vertex[i].location,
+                        .Binding = resource.vertex[i].binding,
+                        .Reference = map.at(resource.vertex[i].reference),
+                    };
                 }
 
                 name = resource.name;
+                pkg::serialize(stream, data);
                 return true;
             }
 
             const std::filesystem::path &path;
 
             std::string &name;
-            pkg::Writer &write;
-        } visitor{ path, name, write };
+            std::ostream &stream;
+        } visitor{ path, name, *chunk };
 
         if (!std::visit(visitor, resource))
         {
@@ -434,25 +447,13 @@ int main(int argc, char **argv)
             continue;
         }
 
-        if (buffer.empty())
+        size_t end = chunk->tellp();
+
+        auto count = end - begin;
+        if (!count)
             continue;
 
-        if (chunk && static_cast<size_t>(chunk->tellp()) + buffer.size() > MAX_CHUNK_SIZE)
-        {
-            delete chunk;
-            chunk = {};
-        }
-
-        if (!chunk)
-        {
-            auto chunk_path = dst / std::format("chunk{:02x}", chunk_index++);
-            chunk = new std::ofstream(chunk_path, std::ios::binary);
-        }
-
-        size_t offset = chunk->tellp();
-        chunk->write(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-
-        index << std::format("{}\n{:02x}\n{:08x}\n{:08x}\n", name, chunk_index - 1ull, offset, buffer.size());
+        index << std::format("{}\n{:02x}\n{:08x}\n{:08x}\n", name, chunk_index - 1ull, begin, count);
     }
 
     if (chunk)

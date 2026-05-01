@@ -11,16 +11,16 @@ toolkit::result<> titan::Application::CreateBuffers()
         auto data = m_Resources.Get<pkg::mesh::Data>(m_ModelData[i].Mesh);
         auto &reference = m_ModelReferences[i];
 
-        reference.BoxMin = data.BoxMin;
-        reference.BoxMax = data.BoxMax;
+        reference.BoxMin = data.GetBoxMin();
+        reference.BoxMax = data.GetBoxMax();
 
-        reference.BoxCen = data.BoxMin + 0.5f * (data.BoxMax - data.BoxMin);
+        reference.BoxCen = reference.BoxMin + 0.5f * (reference.BoxMax - reference.BoxMin);
 
         {
             const VkBufferCreateInfo create_info
             {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = data.Vertices.size() * sizeof(pkg::mesh::Vertex),
+                .size = data.GetVertexCount() * sizeof(pkg::mesh::Vertex),
                 .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
@@ -74,7 +74,7 @@ toolkit::result<> titan::Application::CreateBuffers()
             const VkBufferCreateInfo create_info
             {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = data.Indices.size() * sizeof(uint32_t),
+                .size = data.GetIndexCount() * sizeof(uint32_t),
                 .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };

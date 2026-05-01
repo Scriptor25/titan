@@ -1,9 +1,8 @@
 #include <titan/core.hxx>
+#include <titan/log.hxx>
 #include <titan/utils.hxx>
 
 #include <cstring>
-#include <iostream>
-#include <titan/log.hxx>
 
 toolkit::result<> titan::Application::CreateActionSet()
 {
@@ -100,10 +99,10 @@ toolkit::result<> titan::Application::SuggestBindings()
            {
                return xr::SuggestInteractionProfileBindings(
                    m_XrInstance,
-                   "/interaction_profiles/khr/simple_controller",
+                   "/interaction_profiles/oculus/touch_controller",
                    {
-                       { m_ActionGrab, "/user/hand/left/input/select/click" },
-                       { m_ActionGrab, "/user/hand/right/input/select/click" },
+                       { m_ActionGrab, "/user/hand/left/input/squeeze/value" },
+                       { m_ActionGrab, "/user/hand/right/input/squeeze/value" },
                        { m_ActionPalmPose, "/user/hand/left/input/grip/pose" },
                        { m_ActionPalmPose, "/user/hand/right/input/grip/pose" },
                        { m_ActionHaptic, "/user/hand/left/output/haptic" },
@@ -114,10 +113,10 @@ toolkit::result<> titan::Application::SuggestBindings()
            {
                return xr::SuggestInteractionProfileBindings(
                    m_XrInstance,
-                   "/interaction_profiles/oculus/touch_controller",
+                   "/interaction_profiles/khr/simple_controller",
                    {
-                       { m_ActionGrab, "/user/hand/left/input/squeeze/value" },
-                       { m_ActionGrab, "/user/hand/right/input/squeeze/value" },
+                       { m_ActionGrab, "/user/hand/left/input/select/click" },
+                       { m_ActionGrab, "/user/hand/right/input/select/click" },
                        { m_ActionPalmPose, "/user/hand/left/input/grip/pose" },
                        { m_ActionPalmPose, "/user/hand/right/input/grip/pose" },
                        { m_ActionHaptic, "/user/hand/left/output/haptic" },
@@ -155,7 +154,7 @@ toolkit::result<> titan::Application::RecordBindings()
                    std::string str;
                    if (auto res = xr::PathToString(m_XrInstance, state.interactionProfile) >> str; !res)
                        return res;
-                   info("/user/hand/left => ", str);
+                   info("/user/hand/right => ", str);
                }
 
                return ok();
