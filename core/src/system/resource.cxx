@@ -10,7 +10,7 @@
 
 titan::ResourceSystem::ResourceSystem()
 {
-    std::ifstream stream("res/index", std::ios::binary);
+    std::ifstream stream("data/index", std::ios::binary);
     if (!stream)
         return;
 
@@ -57,7 +57,7 @@ toolkit::result<titan::ResourceID> titan::ResourceSystem::Load(const std::string
 
     auto &[chunk, offset, size] = it->second;
 
-    auto path = std::filesystem::current_path() / "res" / std::format("chunk{:02x}", chunk);
+    auto path = std::filesystem::current_path() / "data" / std::format("chunk{:02x}", chunk);
 
     std::ifstream stream(path, std::ios::binary);
     if (!stream)

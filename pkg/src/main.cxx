@@ -302,8 +302,6 @@ int main(int argc, char **argv)
             continue;
         }
 
-        std::cerr << "reading '" << path.string() << "'" << std::endl;
-
         std::ifstream is(path);
         if (!is)
         {
