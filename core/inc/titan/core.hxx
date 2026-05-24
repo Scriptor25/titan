@@ -10,7 +10,6 @@
 #include <titan/wrapper/xr.hxx>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 #include <filesystem>
 #include <string_view>
@@ -392,11 +391,11 @@ namespace titan
         vk::Instance m_VkInstance;
         vk::DebugUtilsMessengerEXT m_VkMessenger;
 
-        VkPhysicalDevice m_PhysicalDevice{};
+        vk::PhysicalDevice m_PhysicalDevice;
         vk::Device m_Device;
 
         QueueFamilyIndices m_QueueFamilyIndices;
-        VkQueue m_DefaultQueue{}, m_TransferQueue{}, m_PresentQueue{};
+        vk::Queue m_DefaultQueue, m_TransferQueue, m_PresentQueue;
 
         vk::CommandPool m_DefaultPool, m_TransferPool;
 

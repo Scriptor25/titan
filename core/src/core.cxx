@@ -1,10 +1,10 @@
+#include <titan/component.hxx>
 #include <titan/core.hxx>
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <titan/component.hxx>
 
 titan::Application::Application(ApplicationInfo info)
     : m_Info(std::move(info))

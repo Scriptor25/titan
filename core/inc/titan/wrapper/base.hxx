@@ -1,7 +1,8 @@
 #pragma once
 
-#include <iostream>
 #include <titan/result.hxx>
+
+#include <iostream>
 
 namespace titan
 {
@@ -24,19 +25,17 @@ namespace titan
     template<wrappable T, typename... Tags>
     class wrapper_t
     {
+        template<wrappable, typename...>
+        friend class wrapper_t;
+
     public:
         using traits = traits_t<T, Tags...>;
-
-        using make_destroy_args_traits = function_traits_t<decltype(traits::make_destroy_args)>;
-        using create_traits = function_traits_t<decltype(traits::create)>;
-        using destroy_traits = function_traits_t<decltype(traits::destroy)>;
 
         using value_type = traits::value_type;
         using collection_type = std::vector<wrapper_t>;
 
+        using make_destroy_args_traits = function_traits_t<decltype(traits::make_destroy_args)>;
         using destroy_args_type = make_destroy_args_traits::result_type;
-        using create_result_type = create_traits::result_type;
-        using destroy_result_type = destroy_traits::result_type;
 
     private:
         explicit wrapper_t(destroy_args_type args, value_type value)
@@ -48,6 +47,12 @@ namespace titan
         explicit wrapper_t(value_type value)
             : value(value)
         {
+        }
+
+        template<typename... Args>
+        static wrapper_t make(value_type value, Args &&... args)
+        {
+            return wrapper_t(traits::make_destroy_args(args...), value);
         }
 
     public:
@@ -107,17 +112,24 @@ namespace titan
         template<typename... Args>
         static toolkit::result<wrapper_t> create(Args &&... args)
         {
+            using create_traits = function_traits_t<decltype(traits::create)>;
+            using create_result_type = create_traits::result_type;
+
             value_type value;
             if constexpr (std::is_void_v<create_result_type>)
                 traits::create(std::forward<Args>(args)..., value);
             else if (auto res = traits::create(std::forward<Args>(args)..., value))
                 return toolkit::make_error("{} => {}", traits::create_name, res);
-            return wrapper_t(traits::make_destroy_args(std::forward<Args>(args)...), value);
+
+            return make(value, std::forward<Args>(args)...);
         }
 
         template<typename... Args>
         static toolkit::result<collection_type> create_collection(Args &&... args)
         {
+            using create_traits = function_traits_t<decltype(traits::create)>;
+            using create_result_type = create_traits::result_type;
+
             std::vector<value_type> values;
             if constexpr (std::is_void_v<create_result_type>)
                 traits::create_collection(std::forward<Args>(args)..., values);
@@ -126,13 +138,17 @@ namespace titan
 
             collection_type wrappers(values.size());
             for (size_t i = 0; i < values.size(); ++i)
-                wrappers[i] = wrapper_t(traits::make_destroy_args(std::forward<Args>(args)...), values[i]);
+                wrappers[i] = make(values[i], std::forward<Args>(args)...);
+
             return wrappers;
         }
 
     protected:
         void destroy()
         {
+            using destroy_traits = function_traits_t<decltype(traits::destroy)>;
+            using destroy_result_type = destroy_traits::result_type;
+
             if (!value)
                 return;
 

@@ -13,10 +13,12 @@ toolkit::result<> titan::Application::GetPhysicalDevice()
                    .vulkanInstance = m_VkInstance,
                };
 
-               return xr::GetVulkanGraphicsDevice2KHR(m_XrInstance, get_info) >> m_PhysicalDevice;
+               return xr::GetVulkanGraphicsDevice2KHR(m_XrInstance, get_info);
            }
-           & [&]() -> toolkit::result<>
+           & [&](VkPhysicalDevice physical_device) -> toolkit::result<>
            {
+               m_PhysicalDevice = vk::PhysicalDevice::wrap(physical_device);
+
                const auto properties = vk::GetPhysicalDeviceProperties2(m_PhysicalDevice).properties;
 
                if (sizeof(ShaderData) <= properties.limits.maxPushConstantsSize)

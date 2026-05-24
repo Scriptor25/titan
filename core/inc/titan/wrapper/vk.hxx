@@ -484,6 +484,21 @@ namespace titan
     };
 
     template<>
+    struct traits_t<VkPhysicalDevice>
+    {
+        using value_type = VkPhysicalDevice;
+
+        static auto make_destroy_args()
+        {
+            return std::tuple{};
+        }
+
+        static auto destroy(value_type)
+        {
+        }
+    };
+
+    template<>
     struct traits_t<VkPipelineCache>
     {
         using value_type = VkPipelineCache;
@@ -540,6 +555,21 @@ namespace titan
             value_type value)
         {
             return vkDestroyPipelineLayout(device, value, nullptr);
+        }
+    };
+
+    template<>
+    struct traits_t<VkQueue>
+    {
+        using value_type = VkQueue;
+
+        static auto make_destroy_args()
+        {
+            return std::tuple{};
+        }
+
+        static auto destroy(value_type)
+        {
         }
     };
 
@@ -711,8 +741,10 @@ namespace titan
         using Image = wrapper_t<VkImage>;
         using ImageView = wrapper_t<VkImageView>;
         using Instance = wrapper_t<VkInstance>;
+        using PhysicalDevice = wrapper_t<VkPhysicalDevice>;
         using PipelineCache = wrapper_t<VkPipelineCache>;
         using PipelineLayout = wrapper_t<VkPipelineLayout>;
+        using Queue = wrapper_t<VkQueue>;
         using RenderPass = wrapper_t<VkRenderPass>;
         using Semaphore = wrapper_t<VkSemaphore>;
         using ShaderModule = wrapper_t<VkShaderModule>;

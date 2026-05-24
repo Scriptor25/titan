@@ -209,4 +209,6 @@ namespace titan::vk
     toolkit::result<VkSurfaceCapabilities2KHR> GetPhysicalDeviceSurfaceCapabilities2KHR(
         VkPhysicalDevice physical_device,
         const VkPhysicalDeviceSurfaceInfo2KHR &surface_info);
+
+    Queue GetDeviceQueue2(VkDevice device, const VkDeviceQueueInfo2 &info);
 }

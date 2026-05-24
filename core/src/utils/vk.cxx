@@ -153,3 +153,11 @@ toolkit::result<VkSurfaceCapabilities2KHR> titan::vk::GetPhysicalDeviceSurfaceCa
         return toolkit::make_error("vkGetPhysicalDeviceSurfaceCapabilities2KHR => {}", res);
     return surface_capabilities;
 }
+
+titan::vk::Queue titan::vk::GetDeviceQueue2(VkDevice device, const VkDeviceQueueInfo2 &info)
+{
+    VkQueue queue;
+    vkGetDeviceQueue2(device, &info, &queue);
+
+    return Queue::wrap(queue);
+}

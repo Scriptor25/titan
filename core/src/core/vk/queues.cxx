@@ -1,4 +1,5 @@
 #include <titan/core.hxx>
+#include <titan/utils.hxx>
 
 toolkit::result<> titan::Application::GetDeviceQueues()
 {
@@ -10,7 +11,7 @@ toolkit::result<> titan::Application::GetDeviceQueues()
             .queueIndex = 0,
         };
 
-        vkGetDeviceQueue2(m_Device, &device_queue_info, &m_DefaultQueue);
+        m_DefaultQueue = vk::GetDeviceQueue2(m_Device, device_queue_info);
     }
 
     {
@@ -21,7 +22,7 @@ toolkit::result<> titan::Application::GetDeviceQueues()
             .queueIndex = 0,
         };
 
-        vkGetDeviceQueue2(m_Device, &device_queue_info, &m_TransferQueue);
+        m_TransferQueue = vk::GetDeviceQueue2(m_Device, device_queue_info);
     }
 
     {
@@ -32,7 +33,7 @@ toolkit::result<> titan::Application::GetDeviceQueues()
             .queueIndex = 0,
         };
 
-        vkGetDeviceQueue2(m_Device, &device_queue_info, &m_PresentQueue);
+        m_PresentQueue = vk::GetDeviceQueue2(m_Device, device_queue_info);
     }
 
     return {};
