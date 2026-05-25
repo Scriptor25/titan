@@ -38,9 +38,9 @@ namespace titan
         template<pkg::viewable T>
         auto Get(ResourceID id) const
         {
-            auto data = Get(id);
+            auto [size, block] = Get(id);
 
-            return pkg::view<T>(data.Block);
+            return pkg::view<T>(block);
         }
 
     private:

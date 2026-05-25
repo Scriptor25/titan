@@ -26,39 +26,18 @@ namespace titan
             XrPath Path{};
             xr::ActionSpace Space;
 
-            XrActionStateFloat GrabState{ XR_TYPE_ACTION_STATE_FLOAT };
-            XrActionStatePose PoseState{ XR_TYPE_ACTION_STATE_POSE };
+            XrActionStateFloat GrabState{};
+            XrActionStatePose PoseState{};
 
             float Haptic{};
 
             PoseData Pose;
         };
 
-        struct InputInitializeInfo
-        {
-            const xr::Instance &Instance;
-            const xr::Session &Session;
-
-            const xr::Action &ActionPalmPose;
-        };
-
-        struct InputRecordBindingsInfo
-        {
-            const xr::Instance &Instance;
-            const xr::Session &Session;
-        };
-
         struct InputUpdateInfo
         {
-            const xr::Session &Session;
-
             const xr::ReferenceSpace &ViewSpace;
             const xr::ReferenceSpace &ReferenceSpace;
-
-            const xr::ActionSet &ActionSet;
-            const xr::Action &ActionPalmPose;
-            const xr::Action &ActionGrab;
-            const xr::Action &ActionHaptic;
 
             XrSessionState SessionState;
             XrTime Time;
@@ -86,15 +65,36 @@ namespace titan
         friend class Application;
 
     public:
+        InputSystem(xr::Instance &instance, xr::Session &session);
+
         HeadState GetHead();
         HandState GetHand(size_t index);
 
     protected:
-        toolkit::result<> Initialize(const detail::InputInitializeInfo &info);
-        toolkit::result<> RecordBindings(const detail::InputRecordBindingsInfo &bindings_info);
-        toolkit::result<> Update(const detail::InputUpdateInfo &update_info);
+        [[nodiscard]] toolkit::result<> Initialize();
+        [[nodiscard]] toolkit::result<> Update(const detail::InputUpdateInfo &update_info);
+
+        [[nodiscard]] toolkit::result<> CreateActionSet();
+        [[nodiscard]] toolkit::result<> CreateActions();
+
+        [[nodiscard]] toolkit::result<xr::Action> CreateAction(
+            const std::string &name,
+            const std::string &localized_name,
+            XrActionType type,
+            const std::vector<std::string> &sub_path_strings = {});
+
+        [[nodiscard]] toolkit::result<> SuggestBindings();
+
+        [[nodiscard]] toolkit::result<> RecordBindings() const;
+        [[nodiscard]] toolkit::result<> AttachActionSet() const;
 
     private:
+        xr::Instance &m_Instance;
+        xr::Session &m_Session;
+
+        xr::ActionSet m_ActionSet;
+        xr::Action m_ActionGrab, m_ActionHaptic, m_ActionPalmPose;
+
         detail::HeadInfo m_Head;
         std::array<detail::HandInfo, 2> m_Hands;
     };

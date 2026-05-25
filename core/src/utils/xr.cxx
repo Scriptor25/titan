@@ -216,3 +216,44 @@ toolkit::result<titan::xr::ActionSpace> titan::xr::CreateActionSpace(
 
     return ActionSpace::create(session, create_info);
 }
+
+toolkit::result<XrSpaceLocation> titan::xr::LocateSpace(XrSpace space, XrSpace base_space, XrTime time)
+{
+    XrSpaceLocation location{ .type = XR_TYPE_SPACE_LOCATION };
+    if (auto res = xrLocateSpace(space, base_space, time, &location))
+        return toolkit::make_error("xrLocateSpace => {}", res);
+    return location;
+}
+
+toolkit::result<> titan::xr::SyncActions(XrSession session, const XrActionsSyncInfo &info)
+{
+    if (auto res = xrSyncActions(session, &info))
+        return toolkit::make_error("xrSyncActions => {}", res);
+    return {};
+}
+
+toolkit::result<XrActionStatePose> titan::xr::GetActionStatePose(XrSession session, const XrActionStateGetInfo &info)
+{
+    XrActionStatePose state{ .type = XR_TYPE_ACTION_STATE_POSE };
+    if (auto res = xrGetActionStatePose(session, &info, &state))
+        return toolkit::make_error("xrGetActionStatePose => {}", res);
+    return state;
+}
+
+toolkit::result<XrActionStateFloat> titan::xr::GetActionStateFloat(XrSession session, const XrActionStateGetInfo &info)
+{
+    XrActionStateFloat state{ .type = XR_TYPE_ACTION_STATE_FLOAT };
+    if (auto res = xrGetActionStateFloat(session, &info, &state))
+        return toolkit::make_error("xrGetActionStateFloat => {}", res);
+    return state;
+}
+
+toolkit::result<> titan::xr::ApplyHapticFeedback(
+    XrSession session,
+    const XrHapticActionInfo &info,
+    const XrHapticBaseHeader &feedback)
+{
+    if (auto res = xrApplyHapticFeedback(session, &info, &feedback))
+        return toolkit::make_error("xrApplyHapticFeedback => {}", res);
+    return {};
+}

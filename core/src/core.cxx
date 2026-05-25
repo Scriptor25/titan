@@ -7,7 +7,8 @@
 #include <glm/gtc/quaternion.hpp>
 
 titan::Application::Application(ApplicationInfo info)
-    : m_Info(std::move(info))
+    : m_Info(std::move(info)),
+      m_Inputs(m_XrInstance, m_Session)
 {
 }
 
@@ -26,12 +27,7 @@ toolkit::result<> titan::Application::Initialize(const std::string_view exec, co
     if (auto res = InitializeGraphics(); !res)
         return res;
 
-    if (auto res = m_Inputs.Initialize(
-        {
-            .Instance = m_XrInstance,
-            .Session = m_Session,
-            .ActionPalmPose = m_ActionPalmPose,
-        }); !res)
+    if (auto res = m_Inputs.Initialize(); !res)
         return res;
 
     return OnStart();
@@ -98,9 +94,6 @@ toolkit::result<> titan::Application::InitializeGraphics()
            & WRAP(CreateXrInstance)
            & WRAP(CreateXrMessenger)
            & WRAP(GetSystemId)
-           & WRAP(CreateActionSet)
-           & WRAP(CreateActions)
-           & WRAP(SuggestBindings)
            & WRAP(CreateVkInstance)
            & WRAP(CreateVkMessenger)
            & WRAP(GetPhysicalDevice)
@@ -111,7 +104,6 @@ toolkit::result<> titan::Application::InitializeGraphics()
            & WRAP(CreateWindowSwapchainView)
            & WRAP(GetDeviceQueues)
            & WRAP(CreateSession)
-           & WRAP(AttachActionSet)
            & WRAP(GetViewConfigurationType)
            & WRAP(GetViewConfigurationViews)
            & WRAP(CreateSwapchainViews)
@@ -166,7 +158,9 @@ toolkit::result<bool> titan::Application::PollEvents()
                 break;
             }
 
-            RecordBindings();
+            if (auto res = m_Inputs.RecordBindings(); !res)
+                return res;
+
             break;
         }
 
@@ -305,13 +299,8 @@ toolkit::result<> titan::Application::RenderFrame()
 
         if (auto res = m_Inputs.Update(
             {
-                .Session = m_Session,
                 .ViewSpace = m_ViewSpace,
                 .ReferenceSpace = m_ReferenceSpace,
-                .ActionSet = m_ActionSet,
-                .ActionPalmPose = m_ActionPalmPose,
-                .ActionGrab = m_ActionGrab,
-                .ActionHaptic = m_ActionHaptic,
                 .SessionState = m_SessionState,
                 .Time = frame_state.predictedDisplayTime,
             }); !res)
