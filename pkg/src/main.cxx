@@ -61,9 +61,9 @@ using resource_t = std::variant<mesh_t, shader_t, pipeline_t>;
 template<>
 struct data::serializer<mesh_t>
 {
-    static bool from_data(const json::Node &node, mesh_t &value)
+    static bool from_data(const json::node &node, mesh_t &value)
     {
-        if (!node.Is<json::Object>())
+        if (!node.is<json::object>())
             return false;
 
         auto ok = true;
@@ -77,9 +77,9 @@ struct data::serializer<mesh_t>
         return ok && value.type == "mesh";
     }
 
-    static void to_data(json::Node &node, const mesh_t &value)
+    static void to_data(json::node &node, const mesh_t &value)
     {
-        node = json::Object
+        node = json::object
         {
             { "type", value.type },
             { "path", value.path },
@@ -93,9 +93,9 @@ struct data::serializer<mesh_t>
 template<>
 struct data::serializer<shader_t>
 {
-    static bool from_data(const json::Node &node, shader_t &value)
+    static bool from_data(const json::node &node, shader_t &value)
     {
-        if (!node.Is<json::Object>())
+        if (!node.is<json::object>())
             return false;
 
         auto ok = true;
@@ -109,9 +109,9 @@ struct data::serializer<shader_t>
         return ok && value.type == "shader";
     }
 
-    static void to_data(json::Node &node, const shader_t &value)
+    static void to_data(json::node &node, const shader_t &value)
     {
-        node = json::Object
+        node = json::object
         {
             { "type", value.type },
             { "path", value.path },
@@ -125,9 +125,9 @@ struct data::serializer<shader_t>
 template<>
 struct data::serializer<stage_t>
 {
-    static bool from_data(const json::Node &node, stage_t &value)
+    static bool from_data(const json::node &node, stage_t &value)
     {
-        if (!node.Is<json::Object>())
+        if (!node.is<json::object>())
             return false;
 
         auto ok = true;
@@ -138,9 +138,9 @@ struct data::serializer<stage_t>
         return ok;
     }
 
-    static void to_data(json::Node &node, const stage_t &value)
+    static void to_data(json::node &node, const stage_t &value)
     {
-        node = json::Object
+        node = json::object
         {
             { "module", value.module },
             { "name", value.name },
@@ -151,9 +151,9 @@ struct data::serializer<stage_t>
 template<>
 struct data::serializer<vertex_attribute_t>
 {
-    static bool from_data(const json::Node &node, vertex_attribute_t &value)
+    static bool from_data(const json::node &node, vertex_attribute_t &value)
     {
-        if (!node.Is<json::Object>())
+        if (!node.is<json::object>())
             return false;
 
         auto ok = true;
@@ -165,9 +165,9 @@ struct data::serializer<vertex_attribute_t>
         return ok;
     }
 
-    static void to_data(json::Node &node, const vertex_attribute_t &value)
+    static void to_data(json::node &node, const vertex_attribute_t &value)
     {
-        node = json::Object
+        node = json::object
         {
             { "location", value.location },
             { "binding", value.binding },
@@ -179,9 +179,9 @@ struct data::serializer<vertex_attribute_t>
 template<>
 struct data::serializer<pipeline_t>
 {
-    static bool from_data(const json::Node &node, pipeline_t &value)
+    static bool from_data(const json::node &node, pipeline_t &value)
     {
-        if (!node.Is<json::Object>())
+        if (!node.is<json::object>())
             return false;
 
         auto ok = true;
@@ -194,9 +194,9 @@ struct data::serializer<pipeline_t>
         return ok && value.type == "pipeline";
     }
 
-    static void to_data(json::Node &node, const pipeline_t &value)
+    static void to_data(json::node &node, const pipeline_t &value)
     {
-        node = json::Object
+        node = json::object
         {
             { "type", value.type },
             { "name", value.name },
@@ -309,7 +309,7 @@ int main(int argc, char **argv)
             continue;
         }
 
-        json::Node node;
+        json::node node;
         is >> node;
 
         if (!node)

@@ -30,7 +30,7 @@ struct CubeState
     static constexpr auto name = "CubeState";
     static constexpr auto id = titan::hash64(name);
 
-    size_t Index;
+    size_t Index{};
 };
 
 static void cube_script(titan::Application &context, const titan::EntityState entity)
@@ -69,8 +69,8 @@ struct ControllerState
     static constexpr auto name = "ControllerState";
     static constexpr auto id = titan::hash64(name);
 
-    titan::ResourceID TeapotMesh, CubeMesh;
-    titan::EntityID Teapot;
+    titan::ResourceID TeapotMesh{}, CubeMesh{};
+    titan::EntityID Teapot{};
     std::vector<titan::EntityID> Cubes;
 };
 
@@ -237,12 +237,8 @@ int main(const int argc, const char *const *argv)
                    return { 1 };
                };
 
-    game.CleanUp()
-            | [](std::string &&error)
-            {
-                std::cerr << error << std::endl;
-                return toolkit::result();
-            };
+    if (auto cleanup = game.CleanUp(); !cleanup)
+        std::cerr << cleanup.error() << std::endl;
 
     game_ptr = nullptr;
     return res.value();
