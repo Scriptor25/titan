@@ -303,7 +303,9 @@ namespace titan
         [[nodiscard]] toolkit::result<> GetViewConfigurationViews();
         [[nodiscard]] toolkit::result<> CreateSwapchainViews();
         [[nodiscard]] toolkit::result<> GetEnvironmentBlendMode();
-        [[nodiscard]] toolkit::result<> CreateReferenceSpace();
+
+        [[nodiscard]] toolkit::result<> CreateReferenceSpaces();
+        [[nodiscard]] toolkit::result<xr::ReferenceSpace> CreateReferenceSpace(XrReferenceSpaceType type);
 
         [[nodiscard]] toolkit::result<> CreateWindowSurface();
         [[nodiscard]] toolkit::result<> CreateWindowSwapchainView();
@@ -322,7 +324,12 @@ namespace titan
         [[nodiscard]] toolkit::result<> CreateFramebuffers();
 
         [[nodiscard]] toolkit::result<> CreateCommandPools();
+        [[nodiscard]] toolkit::result<vk::CommandPool> CreateCommandPool(uint32_t queue_family_index);
+
         [[nodiscard]] toolkit::result<> AllocateCommandBuffers();
+        [[nodiscard]] toolkit::result<std::vector<vk::CommandBuffer>> AllocateCommandBuffers(
+            VkCommandPool pool,
+            uint32_t count);
 
         [[nodiscard]] toolkit::result<> CreateSynchronization();
 

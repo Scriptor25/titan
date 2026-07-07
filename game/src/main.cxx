@@ -132,11 +132,8 @@ public:
 protected:
     toolkit::result<> OnInitialize() override
     {
-        if (auto res = GetResources().Load("/mesh/teapot") >> m_TeapotMesh; !res)
-            return res;
-
-        if (auto res = GetResources().Load("/mesh/cube") >> m_CubeMesh; !res)
-            return res;
+        HANDLE(GetResources().Load("/mesh/teapot") >> m_TeapotMesh);
+        HANDLE(GetResources().Load("/mesh/cube") >> m_CubeMesh);
 
         {
             auto [entity, active] = GetEntities().Create(

@@ -9,16 +9,14 @@ toolkit::result<> titan::Application::RecordCommandBuffer(
     vk::CommandBuffer &buffer,
     vk::Framebuffer &framebuffer)
 {
-    if (auto res = vk::ResetCommandBuffer(buffer, 0); !res)
-        return res;
+    HANDLE(vk::ResetCommandBuffer(buffer, 0));
 
     const VkCommandBufferBeginInfo command_buffer_begin_info
     {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
 
-    if (auto res = vk::BeginCommandBuffer(buffer, command_buffer_begin_info); !res)
-        return res;
+    HANDLE(vk::BeginCommandBuffer(buffer, command_buffer_begin_info));
 
     const VkViewport viewport
     {

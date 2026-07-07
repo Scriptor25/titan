@@ -4,25 +4,24 @@
 
 toolkit::result<> titan::Application::GetEnvironmentBlendMode()
 {
-    return xr::EnumerateEnvironmentBlendModes(m_XrInstance, m_SystemId, m_ViewConfigurationType)
-           & [&](std::vector<XrEnvironmentBlendMode> &&value)
-           {
-               m_EnvironmentBlendMode = {};
+    std::vector<XrEnvironmentBlendMode> value;
+    HANDLE(xr::EnumerateEnvironmentBlendModes(m_XrInstance, m_SystemId, m_ViewConfigurationType) >> value);
 
-               for (const auto mode : value)
-                   for (const auto allowed_mode : XR_ENVIRONMENT_BLEND_MODES)
-                       if (mode == allowed_mode)
-                       {
-                           m_EnvironmentBlendMode = mode;
-                           break;
-                       }
+    m_EnvironmentBlendMode = {};
 
-               if (!m_EnvironmentBlendMode)
-               {
-                   info("failed to find any suitable environment blend mode.");
-                   m_EnvironmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-               }
+    for (const auto mode : value)
+        for (const auto allowed_mode : XR_ENVIRONMENT_BLEND_MODES)
+            if (mode == allowed_mode)
+            {
+                m_EnvironmentBlendMode = mode;
+                break;
+            }
 
-               return toolkit::result();
-           };
+    if (!m_EnvironmentBlendMode)
+    {
+        info("failed to find any suitable environment blend mode.");
+        m_EnvironmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+    }
+
+    return {};
 }

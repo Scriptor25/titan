@@ -40,8 +40,7 @@ toolkit::result<> titan::Application::CreateSwapchainViews()
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             };
 
-            if (auto res = CreateSwapchainReference(create_info) >> color; !res)
-                return res;
+            HANDLE(CreateSwapchainReference(create_info) >> color);
         }
 
         {
@@ -61,8 +60,7 @@ toolkit::result<> titan::Application::CreateSwapchainViews()
                 .pQueueFamilyIndices = queue_family_indices.data(),
             };
 
-            if (auto res = CreateSwapchainReference(create_info) >> depth; !res)
-                return res;
+            HANDLE(CreateSwapchainReference(create_info) >> depth);
         }
     }
 

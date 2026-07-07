@@ -3,30 +3,25 @@
 
 toolkit::result<> titan::Application::GetPhysicalDevice()
 {
-    return toolkit::result()
-           & [&]
-           {
-               const XrVulkanGraphicsDeviceGetInfoKHR get_info
-               {
-                   .type = XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR,
-                   .systemId = m_SystemId,
-                   .vulkanInstance = m_VkInstance,
-               };
+    const XrVulkanGraphicsDeviceGetInfoKHR get_info
+    {
+        .type = XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR,
+        .systemId = m_SystemId,
+        .vulkanInstance = m_VkInstance,
+    };
 
-               return xr::GetVulkanGraphicsDevice2KHR(m_XrInstance, get_info);
-           }
-           & [&](VkPhysicalDevice physical_device) -> toolkit::result<>
-           {
-               m_PhysicalDevice = vk::PhysicalDevice::wrap(physical_device);
+    VkPhysicalDevice physical_device;
+    HANDLE(xr::GetVulkanGraphicsDevice2KHR(m_XrInstance, get_info) >> physical_device);
 
-               const auto properties = vk::GetPhysicalDeviceProperties2(m_PhysicalDevice).properties;
+    m_PhysicalDevice = vk::PhysicalDevice::wrap(physical_device);
 
-               if (sizeof(ShaderData) <= properties.limits.maxPushConstantsSize)
-                   return {};
+    const auto properties = vk::GetPhysicalDeviceProperties2(m_PhysicalDevice).properties;
 
-               return toolkit::make_error(
-                   "shader data struct size is greater than physical device max push constants size ({} > {}).",
-                   sizeof(ShaderData),
-                   properties.limits.maxPushConstantsSize);
-           };
+    if (sizeof(ShaderData) > properties.limits.maxPushConstantsSize)
+        return toolkit::make_error(
+            "shader data struct size is greater than physical device max push constants size ({} > {}).",
+            sizeof(ShaderData),
+            properties.limits.maxPushConstantsSize);
+
+    return {};
 }

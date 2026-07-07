@@ -155,15 +155,13 @@ toolkit::result<> titan::xr::SuggestInteractionProfileBindings(
     const std::vector<std::pair<XrAction, std::string>> &bindings)
 {
     XrPath profile_path;
-    if (auto res = StringToPath(instance, profile) >> profile_path; !res)
-        return res;
+    HANDLE(StringToPath(instance, profile) >> profile_path);
 
     std::vector<XrActionSuggestedBinding> suggested_bindings(bindings.size());
     for (uint32_t i = 0; i < bindings.size(); ++i)
     {
         XrPath binding;
-        if (auto res = StringToPath(instance, bindings[i].second) >> binding; !res)
-            return res;
+        HANDLE(StringToPath(instance, bindings[i].second) >> binding);
 
         suggested_bindings[i] = {
             .action = bindings[i].first,
@@ -200,8 +198,7 @@ toolkit::result<titan::xr::ActionSpace> titan::xr::CreateActionSpace(
 {
     XrPath sub_path{};
     if (sub_path_string)
-        if (auto res = StringToPath(instance, *sub_path_string) >> sub_path; !res)
-            return res;
+        HANDLE(StringToPath(instance, *sub_path_string) >> sub_path);
 
     const XrActionSpaceCreateInfo create_info
     {

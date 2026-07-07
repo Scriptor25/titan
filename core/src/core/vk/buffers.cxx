@@ -28,8 +28,7 @@ toolkit::result<> titan::Application::CreateBuffers()
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
-            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.VertexBuffer; !res)
-                return res;
+            HANDLE(vk::Buffer::create(m_Device, create_info) >> reference.VertexBuffer);
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
             {
@@ -43,13 +42,13 @@ toolkit::result<> titan::Application::CreateBuffers()
                     .memoryRequirements;
 
             uint32_t memory_type_index;
-            if (auto res = FindMemoryType(
-                               m_PhysicalDevice,
-                               requirements.memoryTypeBits,
-                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                               | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                           >> memory_type_index; !res)
-                return res;
+            HANDLE(
+                FindMemoryType(
+                    m_PhysicalDevice,
+                    requirements.memoryTypeBits,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                ) >> memory_type_index);
 
             const VkMemoryAllocateInfo allocate_info
             {
@@ -58,8 +57,7 @@ toolkit::result<> titan::Application::CreateBuffers()
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.VertexMemory; !res)
-                return res;
+            HANDLE(vk::DeviceMemory::create(m_Device, allocate_info) >> reference.VertexMemory);
 
             const VkBindBufferMemoryInfo bind_info
             {
@@ -69,8 +67,7 @@ toolkit::result<> titan::Application::CreateBuffers()
                 .memoryOffset = 0,
             };
 
-            if (auto res = vk::BindBufferMemory2(m_Device, bind_info); !res)
-                return res;
+            HANDLE(vk::BindBufferMemory2(m_Device, bind_info));
         }
 
         {
@@ -82,8 +79,7 @@ toolkit::result<> titan::Application::CreateBuffers()
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
-            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.IndexBuffer; !res)
-                return res;
+            HANDLE(vk::Buffer::create(m_Device, create_info) >> reference.IndexBuffer);
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
             {
@@ -97,13 +93,13 @@ toolkit::result<> titan::Application::CreateBuffers()
                     .memoryRequirements;
 
             uint32_t memory_type_index;
-            if (auto res = FindMemoryType(
-                               m_PhysicalDevice,
-                               requirements.memoryTypeBits,
-                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                               | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-                           >> memory_type_index; !res)
-                return res;
+            HANDLE(
+                FindMemoryType(
+                    m_PhysicalDevice,
+                    requirements.memoryTypeBits,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                ) >> memory_type_index);
 
             const VkMemoryAllocateInfo allocate_info
             {
@@ -112,8 +108,7 @@ toolkit::result<> titan::Application::CreateBuffers()
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.IndexMemory; !res)
-                return res;
+            HANDLE(vk::DeviceMemory::create(m_Device, allocate_info) >> reference.IndexMemory);
 
             const VkBindBufferMemoryInfo bind_info
             {
@@ -123,8 +118,7 @@ toolkit::result<> titan::Application::CreateBuffers()
                 .memoryOffset = 0,
             };
 
-            if (auto res = vk::BindBufferMemory2(m_Device, bind_info); !res)
-                return res;
+            HANDLE(vk::BindBufferMemory2(m_Device, bind_info));
         }
     }
 

@@ -17,20 +17,17 @@ toolkit::result<> titan::Application::Initialize(const std::string_view exec, co
     (void) exec;
     (void) args;
 
-    if (auto res = OnInitialize(); !res)
-        return res;
+    HANDLE(OnInitialize());
 
-    if (auto res = InitializeWindow(); !res)
-        return res;
-    if (auto res = InitializeAudio(); !res)
-        return res;
-    if (auto res = InitializeGraphics(); !res)
-        return res;
+    HANDLE(InitializeWindow());
+    HANDLE(InitializeAudio());
+    HANDLE(InitializeGraphics());
 
-    if (auto res = m_Inputs.Initialize(); !res)
-        return res;
+    HANDLE(m_Inputs.Initialize());
 
-    return OnStart();
+    HANDLE(OnStart());
+
+    return {};
 }
 
 void titan::Application::Terminate() const
@@ -43,18 +40,20 @@ toolkit::result<bool> titan::Application::Spin()
 {
     glfw::PollEvents();
 
-    if (auto res = PollEvents(); !res || !*res)
-        return res;
-    if (auto res = RenderFrame(); !res)
-        return res;
+    bool poll;
+    HANDLE(PollEvents() >> poll);
+
+    if (!poll)
+        return poll;
+
+    HANDLE(RenderFrame());
 
     return !m_Window.ShouldClose();
 }
 
 toolkit::result<> titan::Application::CleanUp()
 {
-    if (auto res = OnStop(); !res)
-        return res;
+    HANDLE(OnStop());
 
     if (!m_Device)
         return {};
@@ -62,8 +61,7 @@ toolkit::result<> titan::Application::CleanUp()
     if (auto res = vkDeviceWaitIdle(m_Device))
         return toolkit::make_error("vkDeviceWaitIdle => {}", res);
 
-    if (auto res = StorePipelineCache(); !res)
-        return res;
+    HANDLE(StorePipelineCache());
 
     return {};
 }
@@ -90,35 +88,35 @@ titan::GraphicsSystem &titan::Application::GetGraphics()
 
 toolkit::result<> titan::Application::InitializeGraphics()
 {
-    return toolkit::result()
-           & WRAP(CreateXrInstance)
-           & WRAP(CreateXrMessenger)
-           & WRAP(GetSystemId)
-           & WRAP(CreateVkInstance)
-           & WRAP(CreateVkMessenger)
-           & WRAP(GetPhysicalDevice)
-           & WRAP(GetFormats)
-           & WRAP(CreateWindowSurface)
-           & WRAP(GetQueueFamilyIndices)
-           & WRAP(CreateDevice)
-           & WRAP(CreateWindowSwapchainView)
-           & WRAP(GetDeviceQueues)
-           & WRAP(CreateSession)
-           & WRAP(GetViewConfigurationType)
-           & WRAP(GetViewConfigurationViews)
-           & WRAP(CreateSwapchainViews)
-           & WRAP(GetEnvironmentBlendMode)
-           & WRAP(CreateReferenceSpace)
-           & WRAP(CreateRenderPass)
-           & WRAP(CreateFramebuffers)
-           & WRAP(CreatePipelineCache)
-           & WRAP(CreatePipelineLayout)
-           & WRAP(CreatePipeline)
-           & WRAP(CreateCommandPools)
-           & WRAP(AllocateCommandBuffers)
-           & WRAP(CreateSynchronization)
-           & WRAP(CreateBuffers)
-           & WRAP(FillBuffers);
+    HANDLE(CreateXrInstance());
+    HANDLE(CreateXrMessenger());
+    HANDLE(GetSystemId());
+    HANDLE(CreateVkInstance());
+    HANDLE(CreateVkMessenger());
+    HANDLE(GetPhysicalDevice());
+    HANDLE(GetFormats());
+    HANDLE(CreateWindowSurface());
+    HANDLE(GetQueueFamilyIndices());
+    HANDLE(CreateDevice());
+    HANDLE(CreateWindowSwapchainView());
+    HANDLE(GetDeviceQueues());
+    HANDLE(CreateSession());
+    HANDLE(GetViewConfigurationType());
+    HANDLE(GetViewConfigurationViews());
+    HANDLE(CreateSwapchainViews());
+    HANDLE(GetEnvironmentBlendMode());
+    HANDLE(CreateReferenceSpaces());
+    HANDLE(CreateRenderPass());
+    HANDLE(CreateFramebuffers());
+    HANDLE(CreatePipelineCache());
+    HANDLE(CreatePipelineLayout());
+    HANDLE(CreatePipeline());
+    HANDLE(CreateCommandPools());
+    HANDLE(AllocateCommandBuffers());
+    HANDLE(CreateSynchronization());
+    HANDLE(CreateBuffers());
+    HANDLE(FillBuffers());
+    return {};
 }
 
 toolkit::result<bool> titan::Application::PollEvents()
@@ -158,8 +156,7 @@ toolkit::result<bool> titan::Application::PollEvents()
                 break;
             }
 
-            if (auto res = m_Inputs.RecordBindings(); !res)
-                return res;
+            HANDLE(m_Inputs.RecordBindings());
 
             break;
         }
@@ -266,22 +263,18 @@ toolkit::result<> titan::Application::RenderFrame()
     };
 
     XrFrameState frame_state;
-    if (auto res = xr::WaitFrame(m_Session, frame_wait_info) >> frame_state; !res)
-        return res;
+    HANDLE(xr::WaitFrame(m_Session, frame_wait_info) >> frame_state);
 
-    if (auto res = PreFrame(); !res)
-        return res;
+    HANDLE(PreFrame());
 
     const XrFrameBeginInfo frame_begin_info
     {
         .type = XR_TYPE_FRAME_BEGIN_INFO,
     };
 
-    if (auto res = xr::BeginFrame(m_Session, frame_begin_info); !res)
-        return res;
+    HANDLE(xr::BeginFrame(m_Session, frame_begin_info));
 
-    if (auto res = OnFrame(); !res)
-        return res;
+    HANDLE(OnFrame());
 
     LayerInfo layer_info
     {
@@ -294,23 +287,20 @@ toolkit::result<> titan::Application::RenderFrame()
 
     if (session_active && frame_state.shouldRender)
     {
-        if (auto res = UpdateComponents(); !res)
-            return res;
+        HANDLE(UpdateComponents());
 
-        if (auto res = m_Inputs.Update(
-            {
+        HANDLE(
+            m_Inputs.Update(
+                {
                 .ViewSpace = m_ViewSpace,
                 .ReferenceSpace = m_ReferenceSpace,
                 .SessionState = m_SessionState,
                 .Time = frame_state.predictedDisplayTime,
-            }); !res)
-            return res;
+                }));
 
-        if (auto res = RenderThirdEye(frame_state.predictedDisplayTime); !res)
-            return res;
+        HANDLE(RenderThirdEye(frame_state.predictedDisplayTime));
 
-        if (auto res = RenderLayer(layer_info); !res)
-            return res;
+        HANDLE(RenderLayer(layer_info));
 
         layer_info.Layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer_info.Projection));
     }
@@ -324,8 +314,7 @@ toolkit::result<> titan::Application::RenderFrame()
         .layers = layer_info.Layers.data(),
     };
 
-    if (auto res = xr::EndFrame(m_Session, frame_end_info); !res)
-        return res;
+    HANDLE(xr::EndFrame(m_Session, frame_end_info));
 
     return PostFrame();
 }
@@ -348,8 +337,7 @@ toolkit::result<> titan::Application::RenderLayer(LayerInfo &reference)
     };
 
     std::vector<XrView> views;
-    if (auto res = xr::LocateViews(m_Session, view_locate_info, view_state) >> views; !res)
-        return res;
+    HANDLE(xr::LocateViews(m_Session, view_locate_info, view_state) >> views);
 
     projection_views = {
         views.size(),
@@ -479,8 +467,7 @@ toolkit::result<> titan::Application::RenderLayer(LayerInfo &reference)
 
         auto screen_matrix = projection_matrix * view_matrix;
 
-        if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffers[image_index]); !res)
-            return res;
+        HANDLE(RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffers[image_index]));
     }
 
     const std::array submits
@@ -661,8 +648,7 @@ toolkit::result<> titan::Application::RenderThirdEye(const XrTime time)
 
     auto screen_matrix = projection_matrix * view_matrix;
 
-    if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffer); !res)
-        return res;
+    HANDLE(RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffer));
 
     {
         const std::array wait_semaphores

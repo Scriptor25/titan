@@ -36,13 +36,11 @@ toolkit::result<> titan::Application::FillBuffers()
             };
 
             void *ptr;
-            if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
-                return res;
+            HANDLE(vk::MapMemory2(m_Device, map_info) >> ptr);
 
             std::memcpy(ptr, data.GetVertexData(), info.VertexBufferSize);
 
-            if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
-                return res;
+            HANDLE(vk::UnmapMemory2(m_Device, unmap_info));
         }
 
         {
@@ -61,13 +59,11 @@ toolkit::result<> titan::Application::FillBuffers()
             };
 
             void *ptr;
-            if (auto res = vk::MapMemory2(m_Device, map_info) >> ptr; !res)
-                return res;
+            HANDLE(vk::MapMemory2(m_Device, map_info) >> ptr);
 
             std::memcpy(ptr, data.GetIndexData(), info.IndexBufferSize);
 
-            if (auto res = vk::UnmapMemory2(m_Device, unmap_info); !res)
-                return res;
+            HANDLE(vk::UnmapMemory2(m_Device, unmap_info));
         }
     }
 

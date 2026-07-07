@@ -9,11 +9,8 @@ toolkit::result<> titan::Application::CreatePipeline()
 
     ResourceID vert_id, frag_id;
 
-    if (auto res = m_Resources.Load("/shader/vert") >> vert_id; !res)
-        return res;
-
-    if (auto res = m_Resources.Load("/shader/frag") >> frag_id; !res)
-        return res;
+    HANDLE(m_Resources.Load("/shader/vert") >> vert_id);
+    HANDLE(m_Resources.Load("/shader/frag") >> frag_id);
 
     auto vert_shader = m_Resources.Get<pkg::shader::Data>(vert_id);
     auto frag_shader = m_Resources.Get<pkg::shader::Data>(frag_id);
@@ -32,10 +29,8 @@ toolkit::result<> titan::Application::CreatePipeline()
         .pCode = static_cast<const uint32_t *>(frag_shader.GetBinaryData()),
     };
 
-    if (auto res = vk::ShaderModule::create(m_Device, module_vertex_create_info) >> module_vertex; !res)
-        return res;
-    if (auto res = vk::ShaderModule::create(m_Device, module_fragment_create_info) >> module_fragment; !res)
-        return res;
+    HANDLE(vk::ShaderModule::create(m_Device, module_vertex_create_info) >> module_vertex);
+    HANDLE(vk::ShaderModule::create(m_Device, module_fragment_create_info) >> module_fragment);
 
     const std::array stage_create_info
     {

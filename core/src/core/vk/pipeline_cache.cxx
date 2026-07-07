@@ -17,10 +17,9 @@ toolkit::result<> titan::Application::CreatePipelineCache()
 
 toolkit::result<> titan::Application::StorePipelineCache()
 {
-    return vk::GetPipelineCacheData(m_Device, m_PipelineCache)
-           & [&](std::vector<char> &&data)
-           {
-               StoreBinary("pipeline-cache", data);
-               return toolkit::result();
-           };
+    std::vector<char> data;
+    HANDLE(vk::GetPipelineCacheData(m_Device, m_PipelineCache) >> data);
+
+    StoreBinary("pipeline-cache", data);
+    return {};
 }

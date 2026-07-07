@@ -13,8 +13,7 @@ toolkit::result<> titan::Application::CreateSynchronization()
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
 
-    if (auto res = vk::Fence::create(m_Device, fence_create_info) >> m_Fence; !res)
-        return res;
+    HANDLE(vk::Fence::create(m_Device, fence_create_info) >> m_Fence);
 
     for (auto &[
              available,
@@ -24,12 +23,9 @@ toolkit::result<> titan::Application::CreateSynchronization()
              buffer
          ] : m_Frames)
     {
-        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> available; !res)
-            return res;
-        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> finished; !res)
-            return res;
-        if (auto res = vk::Fence::create(m_Device, fence_create_info) >> fence; !res)
-            return res;
+        HANDLE(vk::Semaphore::create(m_Device, semaphore_create_info) >> available);
+        HANDLE(vk::Semaphore::create(m_Device, semaphore_create_info) >> finished);
+        HANDLE(vk::Fence::create(m_Device, fence_create_info) >> fence);
     }
 
     return {};

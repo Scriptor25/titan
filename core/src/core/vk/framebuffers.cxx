@@ -33,8 +33,7 @@ toolkit::result<> titan::Application::CreateFramebuffers()
                 .layers = 1,
             };
 
-            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer; !res)
-                return res;
+            HANDLE(vk::Framebuffer::create(m_Device, create_info) >> framebuffer);
         }
     }
 
@@ -69,8 +68,7 @@ toolkit::result<> titan::Application::CreateFramebuffers()
                 .layers = 1,
             };
 
-            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer; !res)
-                return res;
+            HANDLE(vk::Framebuffer::create(m_Device, create_info) >> framebuffer);
         }
     }
 

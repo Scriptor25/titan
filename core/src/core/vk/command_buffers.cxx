@@ -2,43 +2,36 @@
 
 toolkit::result<> titan::Application::AllocateCommandBuffers()
 {
-    return toolkit::result()
-           & [&]
-           {
-               const VkCommandBufferAllocateInfo allocate_info
-               {
-                   .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                   .commandPool = m_DefaultPool,
-                   .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                   .commandBufferCount = static_cast<uint32_t>(m_SwapchainViews.size()),
-               };
+    {
+        std::vector<vk::CommandBuffer> buffers;
+        HANDLE(AllocateCommandBuffers(m_DefaultPool, m_SwapchainViews.size()) >> buffers);
 
-               return vk::CommandBuffer::create_collection(m_Device, allocate_info);
-           }
-           & [&](std::vector<vk::CommandBuffer> &&buffers)
-           {
-               for (uint32_t i = 0; i < buffers.size(); ++i)
-                   m_SwapchainViews[i].Buffer = std::move(buffers[i]);
+        for (uint32_t i = 0; i < buffers.size(); ++i)
+            m_SwapchainViews[i].Buffer = std::move(buffers[i]);
+    }
 
-               return toolkit::result();
-           }
-           & [&]
-           {
-               const VkCommandBufferAllocateInfo allocate_info
-               {
-                   .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                   .commandPool = m_TransferPool,
-                   .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                   .commandBufferCount = static_cast<uint32_t>(m_Frames.size()),
-               };
+    {
+        std::vector<vk::CommandBuffer> buffers;
+        HANDLE(AllocateCommandBuffers(m_TransferPool, m_Frames.size()) >> buffers);
 
-               return vk::CommandBuffer::create_collection(m_Device, allocate_info);
-           }
-           & [&](std::vector<vk::CommandBuffer> &&buffers)
-           {
-               for (uint32_t i = 0; i < buffers.size(); ++i)
-                   m_Frames[i].Buffer = std::move(buffers[i]);
+        for (uint32_t i = 0; i < buffers.size(); ++i)
+            m_Frames[i].Buffer = std::move(buffers[i]);
+    }
 
-               return toolkit::result();
-           };
+    return {};
+}
+
+toolkit::result<std::vector<titan::vk::CommandBuffer>> titan::Application::AllocateCommandBuffers(
+    VkCommandPool pool,
+    const uint32_t count)
+{
+    const VkCommandBufferAllocateInfo allocate_info
+    {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = count,
+    };
+
+    return vk::CommandBuffer::create_collection(m_Device, allocate_info);
 }
