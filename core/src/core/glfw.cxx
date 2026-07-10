@@ -2,7 +2,8 @@
 
 toolkit::result<> titan::Application::InitializeWindow()
 {
-    HANDLE(glfw::Instance::Create() >> m_GlfwInstance);
+    if (auto res = glfw::Instance::Create() >> m_GlfwInstance; !res)
+        return res;
 
     glfwSetErrorCallback(GlfwDebugCallback);
 
@@ -12,11 +13,13 @@ toolkit::result<> titan::Application::InitializeWindow()
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     glfw::Monitor monitor;
-    HANDLE(glfw::Monitor::GetPrimary() >> monitor);
+    if (auto res = glfw::Monitor::GetPrimary() >> monitor; !res)
+        return res;
 
     const auto mode = monitor.GetVideoMode();
 
-    HANDLE(glfw::Window::Create(mode->width, mode->height, m_Info.Name.c_str(), monitor) >> m_Window);
+    if (auto res = glfw::Window::Create(mode->width, mode->height, m_Info.Name.c_str(), monitor) >> m_Window; !res)
+        return res;
 
     m_Window.SetUserPointer(this);
     m_Window.Show();

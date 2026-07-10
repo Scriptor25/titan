@@ -39,31 +39,39 @@ titan::HandState titan::InputSystem::GetHand(const size_t index)
 
 toolkit::result<> titan::InputSystem::Initialize()
 {
-    HANDLE(CreateActionSet());
-    HANDLE(CreateActions());
+    if (auto res = CreateActionSet(); !res)
+        return res;
+    if (auto res = CreateActions(); !res)
+        return res;
 
-    HANDLE(SuggestBindings());
+    if (auto res = SuggestBindings(); !res)
+        return res;
 
-    HANDLE(AttachActionSet());
+    if (auto res = AttachActionSet(); !res)
+        return res;
 
-    HANDLE(xr::StringToPath(m_Instance, "/user/hand/left") >> m_Hands[0].Path);
-    HANDLE(xr::StringToPath(m_Instance, "/user/hand/right") >> m_Hands[1].Path);
+    if (auto res = xr::StringToPath(m_Instance, "/user/hand/left") >> m_Hands[0].Path; !res)
+        return res;
+    if (auto res = xr::StringToPath(m_Instance, "/user/hand/right") >> m_Hands[1].Path; !res)
+        return res;
 
-    HANDLE(
-        xr::CreateActionSpace(
-            m_Instance,
-            m_Session,
-            m_ActionPalmPose,
-            "/user/hand/left"
-        ) >> m_Hands[0].Space);
+    if (auto res =
+            xr::CreateActionSpace(
+                m_Instance,
+                m_Session,
+                m_ActionPalmPose,
+                "/user/hand/left"
+            ) >> m_Hands[0].Space; !res)
+        return res;
 
-    HANDLE(
-        xr::CreateActionSpace(
-            m_Instance,
-            m_Session,
-            m_ActionPalmPose,
-            "/user/hand/right"
-        ) >> m_Hands[1].Space);
+    if (auto res =
+            xr::CreateActionSpace(
+                m_Instance,
+                m_Session,
+                m_ActionPalmPose,
+                "/user/hand/right"
+            ) >> m_Hands[1].Space; !res)
+        return res;
 
     return {};
 }
@@ -72,12 +80,12 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
 {
     {
         XrSpaceLocation location;
-        HANDLE(
-            xr::LocateSpace(
-                update_info.ViewSpace,
-                update_info.ReferenceSpace,
-                update_info.Time
-            ) >> location);
+        if (auto res = xr::LocateSpace(
+                           update_info.ViewSpace,
+                           update_info.ReferenceSpace,
+                           update_info.Time
+                       ) >> location; !res)
+            return res;
 
         const glm::quat orientation
         {
@@ -118,7 +126,8 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
         .activeActionSets = active_action_sets.data(),
     };
 
-    HANDLE(xr::SyncActions(m_Session, sync_info));
+    if (auto res = xr::SyncActions(m_Session, sync_info); !res)
+        return res;
 
     for (auto &hand : m_Hands)
     {
@@ -129,7 +138,8 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
             .subactionPath = hand.Path,
         };
 
-        HANDLE(xr::GetActionStatePose(m_Session, get_info) >> hand.PoseState);
+        if (auto res = xr::GetActionStatePose(m_Session, get_info) >> hand.PoseState; !res)
+            return res;
 
         if (!hand.PoseState.isActive)
             continue;
@@ -184,7 +194,8 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
             .subactionPath = hand.Path,
         };
 
-        HANDLE(xr::GetActionStateFloat(m_Session, get_info) >> hand.GrabState);
+        if (auto res = xr::GetActionStateFloat(m_Session, get_info) >> hand.GrabState; !res)
+            return res;
     }
 
     for (auto &hand : m_Hands)
@@ -210,7 +221,8 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
 
         auto &haptic_base = reinterpret_cast<const XrHapticBaseHeader &>(haptic_vibration);
 
-        HANDLE(xr::ApplyHapticFeedback(m_Session, action_info, haptic_base));
+        if (auto res = xr::ApplyHapticFeedback(m_Session, action_info, haptic_base); !res)
+            return res;
     }
 
     return {};
@@ -231,27 +243,27 @@ toolkit::result<> titan::InputSystem::CreateActionSet()
 
 toolkit::result<> titan::InputSystem::CreateActions()
 {
-    HANDLE(
-        CreateAction(
-            "grab",
-            "Grab",
-            XR_ACTION_TYPE_FLOAT_INPUT,
-            { "/user/hand/left", "/user/hand/right" }
-        ) >> m_ActionGrab);
-    HANDLE(
-        CreateAction(
-            "palm-pose",
-            "Palm Pose",
-            XR_ACTION_TYPE_POSE_INPUT,
-            { "/user/hand/left", "/user/hand/right" }
-        ) >> m_ActionPalmPose);
-    HANDLE(
-        CreateAction(
-            "haptic",
-            "Haptic",
-            XR_ACTION_TYPE_VIBRATION_OUTPUT,
-            { "/user/hand/left", "/user/hand/right" }
-        ) >> m_ActionHaptic);
+    if (auto res = CreateAction(
+                       "grab",
+                       "Grab",
+                       XR_ACTION_TYPE_FLOAT_INPUT,
+                       { "/user/hand/left", "/user/hand/right" }
+                   ) >> m_ActionGrab; !res)
+        return res;
+    if (auto res = CreateAction(
+                       "palm-pose",
+                       "Palm Pose",
+                       XR_ACTION_TYPE_POSE_INPUT,
+                       { "/user/hand/left", "/user/hand/right" }
+                   ) >> m_ActionPalmPose; !res)
+        return res;
+    if (auto res = CreateAction(
+                       "haptic",
+                       "Haptic",
+                       XR_ACTION_TYPE_VIBRATION_OUTPUT,
+                       { "/user/hand/left", "/user/hand/right" }
+                   ) >> m_ActionHaptic; !res)
+        return res;
 
     return {};
 }
@@ -264,7 +276,8 @@ toolkit::result<titan::xr::Action> titan::InputSystem::CreateAction(
 {
     std::vector<XrPath> sub_paths(sub_path_strings.size());
     for (uint32_t i = 0; i < sub_path_strings.size(); ++i)
-        HANDLE(xr::StringToPath(m_Instance, sub_path_strings[i]) >> sub_paths[i]);
+        if (auto res = xr::StringToPath(m_Instance, sub_path_strings[i]) >> sub_paths[i]; !res)
+            return res;
 
     XrActionCreateInfo create_info
     {
@@ -288,31 +301,31 @@ toolkit::result<titan::xr::Action> titan::InputSystem::CreateAction(
 
 toolkit::result<> titan::InputSystem::SuggestBindings()
 {
-    HANDLE(
-        xr::SuggestInteractionProfileBindings(
-            m_Instance,
-            "/interaction_profiles/oculus/touch_controller",
-            {
+    if (auto res = xr::SuggestInteractionProfileBindings(
+        m_Instance,
+        "/interaction_profiles/oculus/touch_controller",
+        {
             { m_ActionGrab, "/user/hand/left/input/squeeze/value" },
             { m_ActionGrab, "/user/hand/right/input/squeeze/value" },
             { m_ActionPalmPose, "/user/hand/left/input/grip/pose" },
             { m_ActionPalmPose, "/user/hand/right/input/grip/pose" },
             { m_ActionHaptic, "/user/hand/left/output/haptic" },
             { m_ActionHaptic, "/user/hand/right/output/haptic" },
-            }));
+        }); !res)
+        return res;
 
-    HANDLE(
-        xr::SuggestInteractionProfileBindings(
-            m_Instance,
-            "/interaction_profiles/khr/simple_controller",
-            {
+    if (auto res = xr::SuggestInteractionProfileBindings(
+        m_Instance,
+        "/interaction_profiles/khr/simple_controller",
+        {
             { m_ActionGrab, "/user/hand/left/input/select/click" },
             { m_ActionGrab, "/user/hand/right/input/select/click" },
             { m_ActionPalmPose, "/user/hand/left/input/grip/pose" },
             { m_ActionPalmPose, "/user/hand/right/input/grip/pose" },
             { m_ActionHaptic, "/user/hand/left/output/haptic" },
             { m_ActionHaptic, "/user/hand/right/output/haptic" },
-            }));
+        }); !res)
+        return res;
 
     return {};
 }
@@ -320,22 +333,26 @@ toolkit::result<> titan::InputSystem::SuggestBindings()
 toolkit::result<> titan::InputSystem::RecordBindings() const
 {
     XrInteractionProfileState state;
-    HANDLE(xr::GetCurrentInteractionProfile(m_Session, m_Hands[0].Path) >> state);
+    if (auto res = xr::GetCurrentInteractionProfile(m_Session, m_Hands[0].Path) >> state; !res)
+        return res;
 
     if (state.interactionProfile)
     {
         std::string str;
-        HANDLE(xr::PathToString(m_Instance, state.interactionProfile) >> str);
+        if (auto res = xr::PathToString(m_Instance, state.interactionProfile) >> str; !res)
+            return res;
 
         info("/user/hand/left => {}", str);
     }
 
-    HANDLE(xr::GetCurrentInteractionProfile(m_Session, m_Hands[1].Path) >> state);
+    if (auto res = xr::GetCurrentInteractionProfile(m_Session, m_Hands[1].Path) >> state; !res)
+        return res;
 
     if (state.interactionProfile)
     {
         std::string str;
-        HANDLE(xr::PathToString(m_Instance, state.interactionProfile) >> str);
+        if (auto res = xr::PathToString(m_Instance, state.interactionProfile) >> str; !res)
+            return res;
 
         info("/user/hand/right => {}", str);
     }

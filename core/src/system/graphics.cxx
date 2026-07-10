@@ -469,7 +469,7 @@ toolkit::result<> titan::GraphicsSystem::CreateCommandPools()
 toolkit::result<> titan::GraphicsSystem::CreatePipelineCache()
 {
     std::vector<char> data;
-    if (auto res = m_Application.LoadBinary("pipeline-cache") >> data; !res)
+    if (auto res = Application::LoadBinary("pipeline-cache") >> data; !res)
         return res;
 
     const VkPipelineCacheCreateInfo create_info
@@ -487,7 +487,7 @@ toolkit::result<> titan::GraphicsSystem::StorePipelineCache()
     return vk::GetPipelineCacheData(m_Device, m_PipelineCache)
            & [&](std::vector<char> &&data) -> toolkit::result<>
            {
-               return m_Application.StoreBinary("pipeline-cache", data);
+               return Application::StoreBinary("pipeline-cache", data);
            };
 }
 
@@ -1318,7 +1318,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
             buffer
         ] = m_SwapchainViews[view_index];
 
-        view_configuration_view = std::move(view_configuration_views[view_index]);
+        view_configuration_view = view_configuration_views[view_index];
 
         const detail::XrSwapchainReferenceCreateInfo color_create_info
         {

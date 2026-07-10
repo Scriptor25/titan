@@ -2,8 +2,10 @@
 
 toolkit::result<> titan::Application::InitializeAudio()
 {
-    HANDLE(al::Device::Open() >> m_AlDevice);
-    HANDLE(al::Context::Create(m_AlDevice) >> m_AlContext);
+    if (auto res = al::Device::Open() >> m_AlDevice; !res)
+        return res;
+    if (auto res = al::Context::Create(m_AlDevice) >> m_AlContext; !res)
+        return res;
 
     m_AlContext.MakeCurrent();
     return {};
