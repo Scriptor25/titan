@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-toolkit::result<> titan::Application::CreateXrInstance()
+toolkit::result<> titan::Application::InitializeXrInstance()
 {
     XrApplicationInfo application_info
     {
@@ -16,7 +16,7 @@ toolkit::result<> titan::Application::CreateXrInstance()
         .apiVersion = XR_CURRENT_API_VERSION,
     };
 
-    std::memcpy(application_info.applicationName, m_Info.Name.data(), std::min(128LU, m_Info.Name.size()));
+    std::memcpy(application_info.applicationName, m_Info.Name.data(), std::min<size_t>(128, m_Info.Name.size()));
 
     const XrInstanceCreateInfo instance_create_info
     {

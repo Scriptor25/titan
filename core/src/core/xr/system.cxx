@@ -1,7 +1,7 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-toolkit::result<> titan::Application::GetSystemId()
+toolkit::result<> titan::Application::InitializeXrSystemId()
 {
     const XrSystemGetInfo get_info
     {
@@ -9,5 +9,5 @@ toolkit::result<> titan::Application::GetSystemId()
         .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY,
     };
 
-    return xr::GetSystem(m_XrInstance, get_info) >> m_SystemId;
+    return xr::GetSystem(m_XrInstance, get_info) >> m_XrSystemId;
 }

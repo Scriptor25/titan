@@ -2,6 +2,7 @@
 
 #include <titan/api.hxx>
 
+#include <format>
 #include <map>
 
 template<>

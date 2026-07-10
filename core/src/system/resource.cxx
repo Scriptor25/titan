@@ -8,7 +8,8 @@
 #include <fstream>
 #include <ranges>
 
-titan::ResourceSystem::ResourceSystem()
+titan::ResourceSystem::ResourceSystem(Application &application)
+    : m_Application(application)
 {
     std::ifstream stream("data/index", std::ios::binary);
     if (!stream)
@@ -41,6 +42,11 @@ titan::ResourceSystem::~ResourceSystem()
     }
 
     m_Data.clear();
+}
+
+toolkit::result<> titan::ResourceSystem::Destroy()
+{
+    return {};
 }
 
 toolkit::result<titan::ResourceID> titan::ResourceSystem::Load(const std::string &name)

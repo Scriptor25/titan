@@ -60,12 +60,16 @@ namespace titan
         float &Haptic;
     };
 
+    class Application;
+
     class InputSystem
     {
         friend class Application;
 
     public:
-        InputSystem(xr::Instance &instance, xr::Session &session);
+        InputSystem(Application &application);
+
+        [[nodiscard]] toolkit::result<> Destroy();
 
         HeadState GetHead();
         HandState GetHand(size_t index);
@@ -89,6 +93,8 @@ namespace titan
         [[nodiscard]] toolkit::result<> AttachActionSet() const;
 
     private:
+        Application &m_Application;
+
         xr::Instance &m_Instance;
         xr::Session &m_Session;
 

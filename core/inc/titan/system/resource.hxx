@@ -24,11 +24,17 @@ namespace titan
         void *Block;
     };
 
+    class Application;
+
     class ResourceSystem
     {
+        friend class Application;
+
     public:
-        ResourceSystem();
+        ResourceSystem(Application &application);
         ~ResourceSystem();
+
+        [[nodiscard]] toolkit::result<> Destroy();
 
         toolkit::result<ResourceID> Load(const std::string &name);
         void Discard(ResourceID id);
@@ -44,6 +50,8 @@ namespace titan
         }
 
     private:
+        Application &m_Application;
+
         std::unordered_map<std::string, ResourceLocation> m_Location;
 
         std::unordered_map<std::string, ResourceID> m_Index;

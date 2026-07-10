@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-toolkit::result<> titan::Application::CreateXrMessenger()
+toolkit::result<> titan::Application::InitializeXrMessenger()
 {
     const XrDebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info
     {

@@ -132,8 +132,11 @@ public:
 protected:
     toolkit::result<> OnInitialize() override
     {
-        HANDLE(GetResources().Load("/mesh/teapot") >> m_TeapotMesh);
-        HANDLE(GetResources().Load("/mesh/cube") >> m_CubeMesh);
+        if (auto res = GetResources().Load("/mesh/teapot") >> m_TeapotMesh; !res)
+            return res;
+
+        if (auto res = GetResources().Load("/mesh/cube") >> m_CubeMesh; !res)
+            return res;
 
         {
             auto [entity, active] = GetEntities().Create(
@@ -234,8 +237,12 @@ int main(const int argc, const char *const *argv)
                    return { 1 };
                };
 
-    if (auto cleanup = game.CleanUp(); !cleanup)
-        std::cerr << cleanup.error() << std::endl;
+    (void) (game.Destroy()
+            | [](std::string &&error)
+            {
+                std::cerr << error << std::endl;
+                return toolkit::result();
+            });
 
     game_ptr = nullptr;
     return res.value();

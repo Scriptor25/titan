@@ -2,26 +2,27 @@
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
 
-toolkit::result<> titan::Application::GetEnvironmentBlendMode()
+toolkit::result<> titan::Application::InitializeXrEnvironmentBlendMode()
 {
-    std::vector<XrEnvironmentBlendMode> value;
-    HANDLE(xr::EnumerateEnvironmentBlendModes(m_XrInstance, m_SystemId, m_ViewConfigurationType) >> value);
+    return xr::EnumerateEnvironmentBlendModes(m_XrInstance, m_XrSystemId, m_XrViewConfigurationType)
+           & [&](std::vector<XrEnvironmentBlendMode> &&value) -> toolkit::result<>
+           {
+               m_XrEnvironmentBlendMode = {};
 
-    m_EnvironmentBlendMode = {};
+               for (const auto mode : value)
+                   for (const auto allowed_mode : XR_ENVIRONMENT_BLEND_MODES)
+                       if (mode == allowed_mode)
+                       {
+                           m_XrEnvironmentBlendMode = mode;
+                           break;
+                       }
 
-    for (const auto mode : value)
-        for (const auto allowed_mode : XR_ENVIRONMENT_BLEND_MODES)
-            if (mode == allowed_mode)
-            {
-                m_EnvironmentBlendMode = mode;
-                break;
-            }
+               if (!m_XrEnvironmentBlendMode)
+               {
+                   info("failed to find any suitable environment blend mode.");
+                   m_XrEnvironmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+               }
 
-    if (!m_EnvironmentBlendMode)
-    {
-        info("failed to find any suitable environment blend mode.");
-        m_EnvironmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-    }
-
-    return {};
+               return {};
+           };
 }

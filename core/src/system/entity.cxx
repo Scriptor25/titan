@@ -361,6 +361,16 @@ titan::detail::Archetype::Entry titan::detail::Archetype::entry(const size_t ind
     };
 }
 
+titan::EntitySystem::EntitySystem(Application &application)
+    : m_Application(application)
+{
+}
+
+toolkit::result<> titan::EntitySystem::Destroy()
+{
+    return {};
+}
+
 titan::detail::Archetype &titan::EntitySystem::GetArchetype(
     const detail::ComponentMask mask,
     const std::unordered_map<ComponentID, const detail::ComponentInfo *> &components)

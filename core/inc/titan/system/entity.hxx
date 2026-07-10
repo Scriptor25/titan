@@ -1,5 +1,7 @@
 #pragma once
 
+#include <toolkit/result.hxx>
+
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -541,9 +543,17 @@ namespace titan
         };
     }
 
+    class Application;
+
     class EntitySystem
     {
+        friend class Application;
+
     public:
+        EntitySystem(Application &application);
+
+        [[nodiscard]] toolkit::result<> Destroy();
+
         detail::Archetype &GetArchetype(
             detail::ComponentMask mask,
             const std::unordered_map<ComponentID, const detail::ComponentInfo *> &components);
@@ -721,6 +731,8 @@ namespace titan
         }
 
     private:
+        Application &m_Application;
+
         detail::ComponentRegistry m_Registry;
         std::unordered_map<detail::ComponentMask, detail::Archetype> m_Archetypes;
         std::unordered_map<EntityID, detail::EntityInfo> m_Entities;

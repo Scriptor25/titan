@@ -1,23 +1,30 @@
 #include <titan/core.hxx>
 #include <titan/utils.hxx>
 
-toolkit::result<> titan::Application::GetViewConfigurationType()
+toolkit::result<> titan::Application::InitializeXrViewConfigurationType()
 {
-    std::vector<XrViewConfigurationType> values;
-    HANDLE(xr::EnumerateViewConfigurationTypes(m_XrInstance, m_SystemId) >>values);
+    return xr::EnumerateViewConfigurationTypes(m_XrInstance, m_XrSystemId)
+           & [&](std::vector<XrViewConfigurationType> &&values) -> toolkit::result<>
+           {
+               m_XrViewConfigurationType = {};
 
-    m_ViewConfigurationType = {};
+               for (const auto type : values)
+                   for (const auto allowed_type : XR_VIEW_CONFIGURATION_TYPES)
+                       if (type == allowed_type)
+                       {
+                           m_XrViewConfigurationType = type;
+                           break;
+                       }
 
-    for (const auto type : values)
-        for (const auto allowed_type : XR_VIEW_CONFIGURATION_TYPES)
-            if (type == allowed_type)
-            {
-                m_ViewConfigurationType = type;
-                break;
-            }
+               if (!m_XrViewConfigurationType)
+                   return toolkit::make_error("failed to find any suitable view configuration type.");
 
-    if (!m_ViewConfigurationType)
-        return toolkit::make_error("failed to find any suitable view configuration type.");
+               return {};
+           };
+}
 
-    return {};
+toolkit::result<> titan::Application::InitializeXrViewConfigurationViews()
+{
+    return xr::EnumerateViewConfigurationViews(m_XrInstance, m_XrSystemId, m_XrViewConfigurationType)
+           >> m_XrViewConfigurationViews;
 }

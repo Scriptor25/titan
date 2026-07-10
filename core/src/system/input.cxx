@@ -1,13 +1,20 @@
+#include <titan/core.hxx>
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
 #include <titan/system/input.hxx>
 
 #include <cstring>
 
-titan::InputSystem::InputSystem(xr::Instance &instance, xr::Session &session)
-    : m_Instance(instance),
-      m_Session(session)
+titan::InputSystem::InputSystem(Application &application)
+    : m_Application(application),
+      m_Instance(application.GetXrInstance()),
+      m_Session(application.GetXrSession())
 {
+}
+
+toolkit::result<> titan::InputSystem::Destroy()
+{
+    return {};
 }
 
 titan::HeadState titan::InputSystem::GetHead()
