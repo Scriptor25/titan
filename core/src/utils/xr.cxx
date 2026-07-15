@@ -118,14 +118,14 @@ toolkit::result<> titan::xr::BeginFrame(XrSession session, const XrFrameBeginInf
 {
     if (auto res = xrBeginFrame(session, &frame_begin_info))
         return toolkit::make_error("xrBeginFrame => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::xr::EndFrame(XrSession session, const XrFrameEndInfo &frame_end_info)
 {
     if (auto res = xrEndFrame(session, &frame_end_info))
         return toolkit::make_error("xrEndFrame => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<XrPath> titan::xr::StringToPath(XrInstance instance, const std::string &str)
@@ -146,7 +146,7 @@ toolkit::result<std::string> titan::xr::PathToString(XrInstance instance, XrPath
     if (auto res = xrPathToString(instance, path, buffer.size(), &capacity, buffer.data()))
         return toolkit::make_error("xrPathToString => {}", res);
 
-    return std::string(buffer.begin(), buffer.end());
+    return std::string(buffer.begin(), buffer.end() - 1);
 }
 
 toolkit::result<> titan::xr::SuggestInteractionProfileBindings(
@@ -181,7 +181,7 @@ toolkit::result<> titan::xr::SuggestInteractionProfileBindings(
 
     if (auto res = xrSuggestInteractionProfileBindings(instance, &profile_suggested_bindings))
         return toolkit::make_error("xrSuggestInteractionProfileBindings => {}", res);
-    return ok();
+    return {};
 }
 
 toolkit::result<XrInteractionProfileState> titan::xr::GetCurrentInteractionProfile(XrSession session, XrPath path)
@@ -190,4 +190,71 @@ toolkit::result<XrInteractionProfileState> titan::xr::GetCurrentInteractionProfi
     if (auto res = xrGetCurrentInteractionProfile(session, path, &interaction_profile_state))
         return toolkit::make_error("xrGetCurrentInteractionProfile => {}", res);
     return interaction_profile_state;
+}
+
+toolkit::result<titan::xr::ActionSpace> titan::xr::CreateActionSpace(
+    Heap *heap,
+    XrInstance instance,
+    XrSession session,
+    XrAction action,
+    const std::optional<std::string> &sub_path_string)
+{
+    XrPath sub_path{};
+    if (sub_path_string)
+        if (auto res = StringToPath(instance, *sub_path_string) >> sub_path; !res)
+            return res;
+
+    const XrActionSpaceCreateInfo create_info
+    {
+        .type = XR_TYPE_ACTION_SPACE_CREATE_INFO,
+        .action = action,
+        .subactionPath = sub_path,
+        .poseInActionSpace = {
+            .orientation = { 0.0f, 0.0f, 0.0f, 1.0f },
+            .position = { 0.0f, 0.0f, 0.0f },
+        },
+    };
+
+    return ActionSpace::create(heap, session, create_info);
+}
+
+toolkit::result<XrSpaceLocation> titan::xr::LocateSpace(XrSpace space, XrSpace base_space, XrTime time)
+{
+    XrSpaceLocation location{ .type = XR_TYPE_SPACE_LOCATION };
+    if (auto res = xrLocateSpace(space, base_space, time, &location))
+        return toolkit::make_error("xrLocateSpace => {}", res);
+    return location;
+}
+
+toolkit::result<> titan::xr::SyncActions(XrSession session, const XrActionsSyncInfo &info)
+{
+    if (auto res = xrSyncActions(session, &info))
+        return toolkit::make_error("xrSyncActions => {}", res);
+    return {};
+}
+
+toolkit::result<XrActionStatePose> titan::xr::GetActionStatePose(XrSession session, const XrActionStateGetInfo &info)
+{
+    XrActionStatePose state{ .type = XR_TYPE_ACTION_STATE_POSE };
+    if (auto res = xrGetActionStatePose(session, &info, &state))
+        return toolkit::make_error("xrGetActionStatePose => {}", res);
+    return state;
+}
+
+toolkit::result<XrActionStateFloat> titan::xr::GetActionStateFloat(XrSession session, const XrActionStateGetInfo &info)
+{
+    XrActionStateFloat state{ .type = XR_TYPE_ACTION_STATE_FLOAT };
+    if (auto res = xrGetActionStateFloat(session, &info, &state))
+        return toolkit::make_error("xrGetActionStateFloat => {}", res);
+    return state;
+}
+
+toolkit::result<> titan::xr::ApplyHapticFeedback(
+    XrSession session,
+    const XrHapticActionInfo &info,
+    const XrHapticBaseHeader &feedback)
+{
+    if (auto res = xrApplyHapticFeedback(session, &info, &feedback))
+        return toolkit::make_error("xrApplyHapticFeedback => {}", res);
+    return {};
 }

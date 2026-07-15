@@ -1,5 +1,7 @@
 #pragma once
 
+#include <toolkit/result.hxx>
+
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -14,6 +16,12 @@ namespace titan
 {
     using EntityID = size_t;
     using ComponentID = size_t;
+
+    struct EntityState
+    {
+        EntityID ID;
+        bool &Active;
+    };
 
     namespace detail
     {
@@ -391,8 +399,10 @@ namespace titan
 
             [[nodiscard]] bool Matches(ComponentMask mask) const;
 
-            ComponentStorage &GetColumn(ComponentID id);
-            const ComponentStorage &GetColumn(ComponentID id) const;
+            std::vector<EntityID> GetEntities() const;
+
+            ComponentStorage &GetColumn(ComponentID component);
+            const ComponentStorage &GetColumn(ComponentID component) const;
 
             template<typename C>
             auto GetColumn()
@@ -406,22 +416,22 @@ namespace titan
                 return GetColumn(C::id).template Cast<C>();
             }
 
-            void Get(EntityID entity, ComponentID id, void * &data);
-            void Get(EntityID entity, ComponentID id, const void * &data) const;
+            void Get(EntityID entity, ComponentID component, void * &data);
+            void Get(EntityID entity, ComponentID component, const void * &data) const;
 
-            void Set(EntityID entity, ComponentID id, void *data);
-            void Set(EntityID entity, ComponentID id, const void *data);
+            void Set(EntityID entity, ComponentID component, void *data);
+            void Set(EntityID entity, ComponentID component, const void *data);
 
             template<typename C>
-            C &At(EntityID entity, ComponentID id)
+            C &At(EntityID entity)
             {
-                return m_Storage.at(id).At<C>(m_Index.at(entity));
+                return m_Storage.at(C::id).template At<C>(m_Index.at(entity));
             }
 
             template<typename C>
-            const C &At(EntityID entity, ComponentID id) const
+            const C &At(EntityID entity) const
             {
-                return m_Storage.at(id).At<C>(m_Index.at(entity));
+                return m_Storage.at(C::id).template At<C>(m_Index.at(entity));
             }
 
             void Allocate(EntityID entity);
@@ -457,17 +467,37 @@ namespace titan
             std::unordered_map<ComponentID, ComponentStorage> m_Storage;
         };
 
+        struct EntityInfo
+        {
+            Archetype *Storage;
+            bool Active;
+        };
+
+        struct EntityReference
+        {
+            EntityID ID;
+            bool *Active;
+        };
+
         template<typename... C>
         class QueryResult
         {
-            using value_type = std::tuple<std::vector<C *>...>;
+            using value_type = std::tuple<std::vector<EntityReference>, std::vector<C *>...>;
 
             struct Iterator
             {
                 template<size_t ... I>
-                std::tuple<C &...> extract(std::index_sequence<I...>) const
+                std::tuple<EntityState, C &...> extract(std::index_sequence<I...>) const
                 {
-                    return { *std::get<I>(data)[offset]... };
+                    auto &reference = std::get<0>(data)[offset];
+                    return {
+                        EntityState
+                        {
+                            .ID = reference.ID,
+                            .Active = *reference.Active,
+                        },
+                        *std::get<I + 1>(data)[offset]...
+                    };
                 }
 
                 bool operator==(const Iterator &other) const
@@ -475,7 +505,7 @@ namespace titan
                     return offset == other.offset;
                 }
 
-                std::tuple<C &...> operator*() const
+                std::tuple<EntityState, C &...> operator*() const
                 {
                     return extract(std::index_sequence_for<C...>());
                 }
@@ -513,9 +543,17 @@ namespace titan
         };
     }
 
+    class Application;
+
     class EntitySystem
     {
+        friend class Application;
+
     public:
+        EntitySystem(Application &application);
+
+        [[nodiscard]] toolkit::result<> Destroy();
+
         detail::Archetype &GetArchetype(
             detail::ComponentMask mask,
             const std::unordered_map<ComponentID, const detail::ComponentInfo *> &components);
@@ -537,7 +575,7 @@ namespace titan
             const auto mask = detail::GetComponentMask<C...>();
 
             size_t count{};
-            std::tuple<std::vector<C *>...> result;
+            std::tuple<std::vector<detail::EntityReference>, std::vector<C *>...> result;
 
             for (auto &archetype : m_Archetypes | std::views::values)
             {
@@ -546,11 +584,29 @@ namespace titan
 
                 count += archetype.GetCount();
 
+                {
+                    auto &dst = std::get<0>(result);
+                    auto entities = archetype.GetEntities();
+
+                    auto base = dst.size();
+                    dst.resize(base + entities.size());
+
+                    for (size_t i = 0; i < entities.size(); ++i)
+                    {
+                        auto entity = entities[i];
+                        auto &[_1, active] = m_Entities[entity];
+                        dst[base + i] = {
+                            .ID = entity,
+                            .Active = &active,
+                        };
+                    }
+                }
+
                 auto extract = [&]<size_t ... I>(std::index_sequence<I...>)
                 {
                     ([&]
                     {
-                        auto &dst = std::get<I>(result);
+                        auto &dst = std::get<I + 1>(result);
                         auto &src = archetype.GetColumn(C::id);
 
                         for (auto cast = src.template Cast<C>(); auto &component : cast)
@@ -564,64 +620,89 @@ namespace titan
             return { count, std::move(result) };
         }
 
-        EntityID Create(std::unordered_map<ComponentID, void *> component_data);
+        EntityState Create(std::unordered_map<ComponentID, void *> component_data);
 
         template<typename... C>
-        EntityID Create(C &&... components)
+        EntityState Create(C &&... components)
         {
             auto &archetype = GetArchetype<C...>();
             auto entity = m_Entities.size();
 
-            m_Entities[entity] = &archetype;
+            auto &ref = m_Entities[entity];
+            ref = {
+                .Storage = &archetype,
+                .Active = false,
+            };
 
             archetype.Allocate(entity, std::forward<C>(components)...);
 
-            return entity;
+            return {
+                .ID = entity,
+                .Active = ref.Active,
+            };
         }
 
         void Destroy(EntityID entity);
 
-        void Add(EntityID entity, ComponentID id, void *data);
+        void Add(EntityID entity, ComponentID component, void *data);
 
         template<typename C>
-        void Add(EntityID entity, C &&component)
+        void Add(EntityID entity, C &&value)
         {
-            auto &src = *m_Entities.at(entity);
+            auto &[storage, _1] = m_Entities.at(entity);
+
+            auto &src = *storage;
+
+            const auto src_mask = src.GetMask();
+            const auto component_mask = detail::GetComponentMask<C>();
+
+            if (src_mask & component_mask)
+            {
+                src.At<C>(entity) = std::forward<C>(value);
+                return;
+            }
 
             auto components = src.GetComponents();
             components[C::id] = &m_Registry.Register<C>();
 
-            auto &dst = GetArchetype(src.GetMask() | detail::GetComponentMask<C>(), components);
+            auto &dst = GetArchetype(src_mask | component_mask, components);
 
-            dst.Allocate(entity, std::forward<C>(component));
+            dst.Allocate(entity, std::forward<C>(value));
 
-            auto mask = src.GetMask();
+            auto mask = src_mask;
             for (size_t index{}; mask; ++index, mask >>= 1)
                 if (mask & 1)
                 {
-                    const auto id = detail::GetComponentID(index);
+                    const auto component = detail::GetComponentID(index);
 
                     void *data;
-                    src.Get(entity, id, data);
-                    dst.Set(entity, id, data);
+                    src.Get(entity, component, data);
+                    dst.Set(entity, component, data);
                 }
 
             src.Release(entity);
 
-            m_Entities[entity] = &dst;
+            storage = &dst;
         }
 
-        void Remove(EntityID entity, ComponentID id);
+        void Remove(EntityID entity, ComponentID component);
 
         template<typename C>
         void Remove(EntityID entity)
         {
-            auto &src = *m_Entities.at(entity);
+            auto &[storage, _1] = m_Entities.at(entity);
+
+            auto &src = *storage;
+
+            const auto src_mask = src.GetMask();
+            const auto component_mask = detail::GetComponentMask<C>();
+            if (!(src_mask & component_mask))
+                return;
 
             auto components = src.GetComponents();
             components.erase(C::id);
 
-            auto &dst = GetArchetype(src.GetMask() & ~detail::GetComponentMask<C>(), components);
+            auto &dst = GetArchetype(src_mask & ~component_mask, components);
 
             dst.Allocate(entity);
 
@@ -629,22 +710,31 @@ namespace titan
             for (size_t index{}; mask; ++index, mask >>= 1)
                 if (mask & 1)
                 {
-                    const auto id = detail::GetComponentID(index);
+                    const auto component = detail::GetComponentID(index);
 
                     void *data;
-                    src.Get(entity, id, data);
-                    dst.Set(entity, id, data);
+                    src.Get(entity, component, data);
+                    dst.Set(entity, component, data);
                 }
 
             src.Release(entity);
 
-            m_Entities[entity] = &dst;
+            storage = &dst;
+        }
+
+        template<typename... C>
+        std::tuple<C &...> Get(EntityID entity) const
+        {
+            auto &[storage, _1] = m_Entities.at(entity);
+
+            return { storage->At<C>(entity)... };
         }
 
     private:
-        detail::ComponentRegistry m_Registry;
+        Application &m_Application;
 
+        detail::ComponentRegistry m_Registry;
         std::unordered_map<detail::ComponentMask, detail::Archetype> m_Archetypes;
-        std::unordered_map<EntityID, detail::Archetype *> m_Entities;
+        std::unordered_map<EntityID, detail::EntityInfo> m_Entities;
     };
 }

@@ -2,12 +2,14 @@
 
 #include <toolkit/result.hxx>
 
-#define WRAP(FN) ([&]{ return (FN)(); })
-
 namespace titan
 {
-    inline toolkit::result<> ok()
+    template<typename T, typename... F>
+    auto sequence(T *self, F &&... f)
     {
-        return {};
+        return (toolkit::result() & ... & [self, fn = std::forward<F>(f)]() -> toolkit::result<>
+        {
+            return (self->*fn)();
+        });
     }
 }

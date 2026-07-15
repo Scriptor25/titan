@@ -1,0 +1,35 @@
+{
+  "type": "pipeline",
+  "name": "/pipeline/default",
+  "stages": {
+    "vertex": [
+      {
+        "module": "/shader/vert",
+        "name": "main"
+      }
+    ],
+    "fragment": [
+      {
+        "module": "/shader/frag",
+        "name": "main"
+      }
+    ]
+  },
+  "vertex": [
+    {
+      "location": 0,
+      "binding": 0,
+      "reference": "position"
+    },
+    {
+      "location": 1,
+      "binding": 0,
+      "reference": "normal"
+    },
+    {
+      "location": 2,
+      "binding": 0,
+      "reference": "texture"
+    }
+  ]
+}

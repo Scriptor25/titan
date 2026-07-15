@@ -1,6 +1,6 @@
 #include <titan/core.hxx>
 
-toolkit::result<> titan::Application::CreateXrMessenger()
+toolkit::result<> titan::Application::InitializeXrMessenger()
 {
     const XrDebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info
     {
@@ -17,5 +17,9 @@ toolkit::result<> titan::Application::CreateXrMessenger()
         .userData = this,
     };
 
-    return xr::DebugUtilsMessengerEXT::create(m_XrInstance, debug_utils_messenger_create_info) >> m_XrMessenger;
+    return xr::DebugUtilsMessengerEXT::create(
+               &m_Heap,
+               m_XrInstance,
+               debug_utils_messenger_create_info
+           ) >> m_XrMessenger;
 }

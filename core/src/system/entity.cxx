@@ -230,8 +230,8 @@ std::unordered_map<titan::ComponentID, const titan::detail::ComponentInfo *>
 titan::detail::Archetype::GetComponents() const
 {
     std::unordered_map<ComponentID, const ComponentInfo *> components;
-    for (auto &[id, storage] : m_Storage)
-        components[id] = storage.GetComponent();
+    for (auto &[component, storage] : m_Storage)
+        components[component] = storage.GetComponent();
     return components;
 }
 
@@ -240,34 +240,42 @@ bool titan::detail::Archetype::Matches(const ComponentMask mask) const
     return (mask & m_Mask) == mask;
 }
 
-titan::detail::ComponentStorage &titan::detail::Archetype::GetColumn(const ComponentID id)
+std::vector<titan::EntityID> titan::detail::Archetype::GetEntities() const
 {
-    return m_Storage.at(id);
+    std::vector<EntityID> entities(m_Index.size());
+    for (auto &[entity, index] : m_Index)
+        entities[index] = entity;
+    return entities;
 }
 
-const titan::detail::ComponentStorage &titan::detail::Archetype::GetColumn(const ComponentID id) const
+titan::detail::ComponentStorage &titan::detail::Archetype::GetColumn(const ComponentID component)
 {
-    return m_Storage.at(id);
+    return m_Storage.at(component);
 }
 
-void titan::detail::Archetype::Get(const EntityID entity, const ComponentID id, void *&data)
+const titan::detail::ComponentStorage &titan::detail::Archetype::GetColumn(const ComponentID component) const
 {
-    m_Storage.at(id).Get(m_Index.at(entity), data);
+    return m_Storage.at(component);
 }
 
-void titan::detail::Archetype::Get(const EntityID entity, const ComponentID id, const void *&data) const
+void titan::detail::Archetype::Get(const EntityID entity, const ComponentID component, void *&data)
 {
-    m_Storage.at(id).Get(m_Index.at(entity), data);
+    m_Storage.at(component).Get(m_Index.at(entity), data);
 }
 
-void titan::detail::Archetype::Set(const EntityID entity, const ComponentID id, void *data)
+void titan::detail::Archetype::Get(const EntityID entity, const ComponentID component, const void *&data) const
 {
-    m_Storage.at(id).Set(m_Index.at(entity), data);
+    m_Storage.at(component).Get(m_Index.at(entity), data);
 }
 
-void titan::detail::Archetype::Set(const EntityID entity, const ComponentID id, const void *data)
+void titan::detail::Archetype::Set(const EntityID entity, const ComponentID component, void *data)
 {
-    m_Storage.at(id).Set(m_Index.at(entity), data);
+    m_Storage.at(component).Set(m_Index.at(entity), data);
+}
+
+void titan::detail::Archetype::Set(const EntityID entity, const ComponentID component, const void *data)
+{
+    m_Storage.at(component).Set(m_Index.at(entity), data);
 }
 
 void titan::detail::Archetype::Allocate(const EntityID entity)
@@ -353,6 +361,16 @@ titan::detail::Archetype::Entry titan::detail::Archetype::entry(const size_t ind
     };
 }
 
+titan::EntitySystem::EntitySystem(Application &application)
+    : m_Application(application)
+{
+}
+
+toolkit::result<> titan::EntitySystem::Destroy()
+{
+    return {};
+}
+
 titan::detail::Archetype &titan::EntitySystem::GetArchetype(
     const detail::ComponentMask mask,
     const std::unordered_map<ComponentID, const detail::ComponentInfo *> &components)
@@ -363,73 +381,99 @@ titan::detail::Archetype &titan::EntitySystem::GetArchetype(
     return m_Archetypes[mask] = { mask, components };
 }
 
-titan::EntityID titan::EntitySystem::Create(std::unordered_map<ComponentID, void *> component_data)
+titan::EntityState titan::EntitySystem::Create(std::unordered_map<ComponentID, void *> component_data)
 {
     detail::ComponentMask mask{};
     std::unordered_map<ComponentID, const detail::ComponentInfo *> components;
 
-    for (auto &id : component_data | std::views::keys)
+    for (auto &component : component_data | std::views::keys)
     {
-        mask |= 1ull << detail::GetComponentIndex(id);
-        components[id] = &m_Registry[id];
+        mask |= 1ull << detail::GetComponentIndex(component);
+        components[component] = &m_Registry[component];
     }
 
     auto &archetype = GetArchetype(mask, components);
     const auto entity = m_Entities.size();
 
-    m_Entities[entity] = &archetype;
+    auto &ref = m_Entities[entity];
+    ref = {
+        .Storage = &archetype,
+        .Active = false,
+    };
 
     archetype.Allocate(entity);
     for (auto &[id, val] : component_data)
         archetype.Set(entity, id, val);
 
-    return entity;
+    return {
+        .ID = entity,
+        .Active = ref.Active,
+    };
 }
 
 void titan::EntitySystem::Destroy(const EntityID entity)
 {
-    auto &archetype = *m_Entities.at(entity);
+    auto &[storage, _1] = m_Entities.at(entity);
 
-    archetype.Release(entity);
+    storage->Release(entity);
     m_Entities.erase(entity);
 }
 
-void titan::EntitySystem::Add(const EntityID entity, const ComponentID id, void *data)
+void titan::EntitySystem::Add(const EntityID entity, const ComponentID component, void *data)
 {
-    auto &src = *m_Entities.at(entity);
+    auto &[storage, _1] = m_Entities.at(entity);
+
+    auto &src = *storage;
+
+    const auto src_mask = src.GetMask();
+    const auto component_mask = 1ull << detail::GetComponentIndex(component);
+
+    if (src_mask & component_mask)
+    {
+        src.Set(entity, component, data);
+        return;
+    }
 
     auto components = src.GetComponents();
-    components[id] = &m_Registry[id];
+    components[component] = &m_Registry[component];
 
-    auto &dst = GetArchetype(src.GetMask() | 1ull << detail::GetComponentIndex(id), components);
+    auto &dst = GetArchetype(src_mask | component_mask, components);
 
     dst.Allocate(entity);
-    dst.Set(entity, id, data);
+    dst.Set(entity, component, data);
 
-    auto mask = src.GetMask();
+    auto mask = src_mask;
     for (size_t index{}; mask; ++index, mask >>= 1)
         if (mask & 1)
         {
-            const auto c_id = detail::GetComponentID(index);
+            const auto component_ = detail::GetComponentID(index);
 
-            void *c_data;
-            src.Get(entity, c_id, c_data);
-            dst.Set(entity, c_id, c_data);
+            void *data_;
+            src.Get(entity, component_, data_);
+            dst.Set(entity, component_, data_);
         }
 
     src.Release(entity);
 
-    m_Entities[entity] = &dst;
+    storage = &dst;
 }
 
-void titan::EntitySystem::Remove(const EntityID entity, const ComponentID id)
+void titan::EntitySystem::Remove(const EntityID entity, const ComponentID component)
 {
-    auto &src = *m_Entities.at(entity);
+    auto &[storage, _1] = m_Entities.at(entity);
+
+    auto &src = *storage;
+
+    const auto src_mask = src.GetMask();
+    const auto component_mask = 1ull << detail::GetComponentIndex(component);
+
+    if (!(src_mask & component_mask))
+        return;
 
     auto components = src.GetComponents();
-    components.erase(id);
+    components.erase(component);
 
-    auto &dst = GetArchetype(src.GetMask() & ~(1ull << detail::GetComponentIndex(id)), components);
+    auto &dst = GetArchetype(src_mask & ~component_mask, components);
 
     dst.Allocate(entity);
 
@@ -437,14 +481,14 @@ void titan::EntitySystem::Remove(const EntityID entity, const ComponentID id)
     for (size_t index{}; mask; ++index, mask >>= 1)
         if (mask & 1)
         {
-            const auto c_id = detail::GetComponentID(index);
+            const auto component_ = detail::GetComponentID(index);
 
-            void *c_data;
-            src.Get(entity, c_id, c_data);
-            dst.Set(entity, c_id, c_data);
+            void *data_;
+            src.Get(entity, component_, data_);
+            dst.Set(entity, component_, data_);
         }
 
     src.Release(entity);
 
-    m_Entities[entity] = &dst;
+    storage = &dst;
 }

@@ -15,22 +15,46 @@ namespace titan
         static constexpr auto create_name = "xrCreateAction";
         static constexpr auto destroy_name = "xrDestroyAction";
 
-        static auto make_destroy_args(XrActionSet, const XrActionCreateInfo &)
+        static auto make_destroy_args(
+            Heap *heap,
+            XrActionSet,
+            const XrActionCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrActionSet action_set,
             const XrActionCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateAction(action_set, &create_info, &value);
+            if (const auto result = xrCreateAction(action_set, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                action_set);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroyAction(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroyAction(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -42,22 +66,46 @@ namespace titan
         static constexpr auto create_name = "xrCreateActionSet";
         static constexpr auto destroy_name = "xrDestroyActionSet";
 
-        static auto make_destroy_args(XrInstance, const XrActionSetCreateInfo &)
+        static auto make_destroy_args(
+            Heap *heap,
+            XrInstance,
+            const XrActionSetCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrInstance instance,
             const XrActionSetCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateActionSet(instance, &create_info, &value);
+            if (const auto result = xrCreateActionSet(instance, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                instance);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroyActionSet(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroyActionSet(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -70,25 +118,46 @@ namespace titan
         static constexpr auto destroy_name = "xrDestroyDebugUtilsMessengerEXT";
 
         static auto make_destroy_args(
+            Heap *heap,
             XrInstance instance,
             const XrDebugUtilsMessengerCreateInfoEXT &)
         {
-            return std::tuple{ instance };
+            return std::tuple{ heap, instance };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrInstance instance,
             const XrDebugUtilsMessengerCreateInfoEXT &create_info,
             value_type &value)
         {
-            return xrCreateDebugUtilsMessengerEXT(instance, &create_info, &value);
+            if (const auto result = xrCreateDebugUtilsMessengerEXT(instance, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, instance, value]
+                {
+                    destroy(heap, instance, value);
+                },
+                instance);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(
+        static XrResult destroy(
+            Heap *heap,
             XrInstance instance,
             value_type value)
         {
-            return xrDestroyDebugUtilsMessengerEXT(instance, value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroyDebugUtilsMessengerEXT(instance, value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -100,21 +169,43 @@ namespace titan
         static constexpr auto create_name = "xrCreateInstance";
         static constexpr auto destroy_name = "xrDestroyInstance";
 
-        static auto make_destroy_args(const XrInstanceCreateInfo &)
+        static auto make_destroy_args(
+            Heap *heap,
+            const XrInstanceCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             const XrInstanceCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateInstance(&create_info, &value);
+            if (const auto result = xrCreateInstance(&create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                });
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroyInstance(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroyInstance(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -127,23 +218,45 @@ namespace titan
         static constexpr auto destroy_name = "xrDestroySession";
 
         static auto make_destroy_args(
+            Heap *heap,
             XrInstance,
             const XrSessionCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrInstance instance,
             const XrSessionCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateSession(instance, &create_info, &value);
+            if (const auto result = xrCreateSession(instance, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                instance);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroySession(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroySession(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -156,23 +269,46 @@ namespace titan
         static constexpr auto destroy_name = "xrDestroySpace<ActionSpace>";
 
         static auto make_destroy_args(
+            Heap *heap,
             XrSession,
             const XrActionSpaceCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrSession session,
             const XrActionSpaceCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateActionSpace(session, &create_info, &value);
+            if (const auto result = xrCreateActionSpace(session, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                session,
+                create_info.action);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroySpace(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroySpace(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -185,23 +321,45 @@ namespace titan
         static constexpr auto destroy_name = "xrDestroySpace<ReferenceSpace>";
 
         static auto make_destroy_args(
+            Heap *heap,
             XrSession,
             const XrReferenceSpaceCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrSession session,
             const XrReferenceSpaceCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateReferenceSpace(session, &create_info, &value);
+            if (const auto result = xrCreateReferenceSpace(session, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                session);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroySpace(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroySpace(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 
@@ -214,23 +372,45 @@ namespace titan
         static constexpr auto destroy_name = "xrDestroySwapchain";
 
         static auto make_destroy_args(
+            Heap *heap,
             XrSession,
             const XrSwapchainCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto create(
+        static XrResult create(
+            Heap *heap,
             XrSession session,
             const XrSwapchainCreateInfo &create_info,
             value_type &value)
         {
-            return xrCreateSwapchain(session, &create_info, &value);
+            if (const auto result = xrCreateSwapchain(session, &create_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                session);
+
+            return XR_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static XrResult destroy(
+            Heap *heap,
+            value_type value)
         {
-            return xrDestroySwapchain(value);
+            if (heap->Uses(value))
+                return XR_SUCCESS;
+
+            if (const auto result = xrDestroySwapchain(value))
+                return result;
+
+            heap->Erase(value);
+            return XR_SUCCESS;
         }
     };
 

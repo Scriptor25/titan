@@ -1,3 +1,4 @@
+#include <titan/component.hxx>
 #include <titan/core.hxx>
 #include <titan/log.hxx>
 #include <titan/utils.hxx>
@@ -6,7 +7,11 @@
 #include <glm/gtc/quaternion.hpp>
 
 titan::Application::Application(ApplicationInfo info)
-    : m_Info(std::move(info))
+    : m_Info(std::move(info)),
+      m_Resources(*this),
+      m_Entities(*this),
+      m_Graphics(*this, m_Heap),
+      m_Inputs(*this, m_Heap)
 {
 }
 
@@ -15,22 +20,18 @@ toolkit::result<> titan::Application::Initialize(const std::string_view exec, co
     (void) exec;
     (void) args;
 
-    m_ModelData = {
-        {
-            .Mesh = obj::Open("res/mesh/teapot.obj"),
-            .InstanceCount = 1,
-        },
-        {
-            .Mesh = obj::Open("res/mesh/cube.obj"),
-            .InstanceCount = 2,
-        },
-    };
+    if (auto res = sequence(
+        this,
+        &Application::OnInitialize,
+        &Application::InitializeWindow,
+        &Application::InitializeAudio,
+        &Application::InitializeXr); !res)
+        return res;
 
-    if (auto res = InitializeWindow(); !res)
+    if (auto res = m_Graphics.Initialize(); !res)
         return res;
-    if (auto res = InitializeAudio(); !res)
-        return res;
-    if (auto res = InitializeGraphics(); !res)
+
+    if (auto res = m_Inputs.Initialize(); !res)
         return res;
 
     return OnStart();
@@ -54,60 +55,102 @@ toolkit::result<bool> titan::Application::Spin()
     return !m_Window.ShouldClose();
 }
 
-toolkit::result<> titan::Application::CleanUp()
+toolkit::result<> titan::Application::Destroy()
 {
     if (auto res = OnStop(); !res)
         return res;
 
-    if (!m_Device)
-        return ok();
-
-    if (auto res = vkDeviceWaitIdle(m_Device))
-        return toolkit::make_error("vkDeviceWaitIdle => {}", res);
-
-    if (auto res = StorePipelineCache(); !res)
+    if (auto res = m_Inputs.Destroy(); !res)
+        return res;
+    if (auto res = m_Entities.Destroy(); !res)
+        return res;
+    if (auto res = m_Graphics.Destroy(); !res)
+        return res;
+    if (auto res = m_Resources.Destroy(); !res)
         return res;
 
-    return ok();
+    return {};
 }
 
-toolkit::result<> titan::Application::InitializeGraphics()
+const std::string &titan::Application::GetName() const
 {
-    return ok()
-           & WRAP(CreateXrInstance)
-           & WRAP(CreateXrMessenger)
-           & WRAP(GetSystemId)
-           & WRAP(CreateActionSet)
-           & WRAP(CreateActions)
-           & WRAP(CreateHands)
-           & WRAP(SuggestBindings)
-           & WRAP(CreateVkInstance)
-           & WRAP(CreateVkMessenger)
-           & WRAP(GetPhysicalDevice)
-           & WRAP(GetFormats)
-           & WRAP(CreateWindowSurface)
-           & WRAP(GetQueueFamilyIndices)
-           & WRAP(CreateDevice)
-           & WRAP(CreateWindowSwapchainView)
-           & WRAP(GetDeviceQueues)
-           & WRAP(CreateSession)
-           & WRAP(CreateActionSpaces)
-           & WRAP(AttachActionSet)
-           & WRAP(GetViewConfigurationType)
-           & WRAP(GetViewConfigurationViews)
-           & WRAP(CreateSwapchainViews)
-           & WRAP(GetEnvironmentBlendMode)
-           & WRAP(CreateReferenceSpace)
-           & WRAP(CreateRenderPass)
-           & WRAP(CreateFramebuffers)
-           & WRAP(CreatePipelineCache)
-           & WRAP(CreatePipelineLayout)
-           & WRAP(CreatePipeline)
-           & WRAP(CreateCommandPools)
-           & WRAP(AllocateCommandBuffers)
-           & WRAP(CreateSynchronization)
-           & WRAP(CreateBuffers)
-           & WRAP(FillBuffers);
+    return m_Info.Name;
+}
+
+titan::VersionInfo titan::Application::GetVersion() const
+{
+    return m_Info.Version;
+}
+
+titan::VersionInfo titan::Application::GetEngineVersion() const
+{
+    return {
+        .Major = VERSION_MAJOR,
+        .Minor = VERSION_MINOR,
+        .Patch = VERSION_PATCH,
+    };
+}
+
+titan::ResourceSystem &titan::Application::GetResources()
+{
+    return m_Resources;
+}
+
+titan::EntitySystem &titan::Application::GetEntities()
+{
+    return m_Entities;
+}
+
+titan::InputSystem &titan::Application::GetInputs()
+{
+    return m_Inputs;
+}
+
+titan::GraphicsSystem &titan::Application::GetGraphics()
+{
+    return m_Graphics;
+}
+
+titan::glfw::Window &titan::Application::GetWindow()
+{
+    return m_Window;
+}
+
+titan::xr::Instance &titan::Application::GetXrInstance()
+{
+    return m_XrInstance;
+}
+
+XrSystemId titan::Application::GetXrSystemId()
+{
+    return m_XrSystemId;
+}
+
+XrViewConfigurationType titan::Application::GetXrViewConfigurationType()
+{
+    return m_XrViewConfigurationType;
+}
+
+std::span<XrViewConfigurationView> titan::Application::GetXrViewConfigurationViews()
+{
+    return m_XrViewConfigurationViews;
+}
+
+titan::xr::Session &titan::Application::GetXrSession()
+{
+    return m_Graphics.m_Session;
+}
+
+toolkit::result<> titan::Application::InitializeXr()
+{
+    return sequence(
+        this,
+        &Application::InitializeXrInstance,
+        &Application::InitializeXrMessenger,
+        &Application::InitializeXrSystemId,
+        &Application::InitializeXrViewConfigurationType,
+        &Application::InitializeXrViewConfigurationViews,
+        &Application::InitializeXrEnvironmentBlendMode);
 }
 
 toolkit::result<bool> titan::Application::PollEvents()
@@ -141,13 +184,15 @@ toolkit::result<bool> titan::Application::PollEvents()
                 "XrEventDataInteractionProfileChanged {{ session={} }}",
                 static_cast<void *>(interaction_profile_changed->session));
 
-            if (interaction_profile_changed->session != m_Session)
+            if (interaction_profile_changed->session != m_Graphics.m_Session)
             {
                 info("XrEventDataInteractionProfileChanged for foreign session!");
                 break;
             }
 
-            RecordBindings();
+            if (auto res = m_Inputs.RecordBindings(); !res)
+                return res;
+
             break;
         }
 
@@ -162,7 +207,7 @@ toolkit::result<bool> titan::Application::PollEvents()
                 reference_space_change_pending->changeTime,
                 reference_space_change_pending->poseValid);
 
-            if (reference_space_change_pending->session != m_Session)
+            if (reference_space_change_pending->session != m_Graphics.m_Session)
             {
                 info("XrEventDataReferenceSpaceChangePending for foreign session!");
                 break;
@@ -180,13 +225,13 @@ toolkit::result<bool> titan::Application::PollEvents()
                 session_state_changed->state,
                 session_state_changed->time);
 
-            if (session_state_changed->session != m_Session)
+            if (session_state_changed->session != m_Graphics.m_Session)
             {
                 info("XrEventDataSessionStateChanged for foreign session!");
                 break;
             }
 
-            m_SessionState = session_state_changed->state;
+            m_XrSessionState = session_state_changed->state;
 
             switch (session_state_changed->state)
             {
@@ -195,10 +240,10 @@ toolkit::result<bool> titan::Application::PollEvents()
                 const XrSessionBeginInfo session_begin_info
                 {
                     .type = XR_TYPE_SESSION_BEGIN_INFO,
-                    .primaryViewConfigurationType = m_ViewConfigurationType,
+                    .primaryViewConfigurationType = m_XrViewConfigurationType,
                 };
 
-                if (auto res = xrBeginSession(m_Session, &session_begin_info))
+                if (auto res = xrBeginSession(m_Graphics.m_Session, &session_begin_info))
                     return toolkit::make_error("xrBeginSession => {}", res);
 
                 break;
@@ -206,7 +251,7 @@ toolkit::result<bool> titan::Application::PollEvents()
 
             case XR_SESSION_STATE_STOPPING:
             {
-                if (auto res = xrEndSession(m_Session))
+                if (auto res = xrEndSession(m_Graphics.m_Session))
                     return toolkit::make_error("xrEndSession => {}", res);
 
                 info(
@@ -245,131 +290,6 @@ toolkit::result<bool> titan::Application::PollEvents()
     return true;
 }
 
-toolkit::result<> titan::Application::PollActions(const XrTime time)
-{
-    const std::array active_action_sets
-    {
-        XrActiveActionSet
-        {
-            .actionSet = m_ActionSet,
-        },
-    };
-
-    const XrActionsSyncInfo sync_info
-    {
-        .type = XR_TYPE_ACTIONS_SYNC_INFO,
-        .countActiveActionSets = static_cast<uint32_t>(active_action_sets.size()),
-        .activeActionSets = active_action_sets.data(),
-    };
-
-    if (auto res = xrSyncActions(m_Session, &sync_info))
-        return toolkit::make_error("xrSyncActions => {}", res);
-
-    for (auto &hand : m_Hands)
-    {
-        const XrActionStateGetInfo get_info
-        {
-            .type = XR_TYPE_ACTION_STATE_GET_INFO,
-            .action = m_ActionPalmPose,
-            .subactionPath = hand.Path,
-        };
-
-        if (auto res = xrGetActionStatePose(m_Session, &get_info, &hand.PoseState))
-            return toolkit::make_error("xrGetActionStatePose => {}", res);
-
-        if (!hand.PoseState.isActive)
-            continue;
-
-        XrSpaceLocation location{ .type = XR_TYPE_SPACE_LOCATION };
-        if (auto res = xrLocateSpace(hand.Space, m_ReferenceSpace, time, &location))
-        {
-            info("xrLocateSpace => {}", res);
-            hand.PoseState.isActive = false;
-            continue;
-        }
-
-        if (!(location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT))
-        {
-            info("invalid space location position");
-            hand.PoseState.isActive = false;
-            continue;
-        }
-
-        if (!(location.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT))
-        {
-            info("invalid space location orientation");
-            hand.PoseState.isActive = false;
-            continue;
-        }
-
-        const glm::quat orientation
-        {
-            location.pose.orientation.w,
-            location.pose.orientation.x,
-            location.pose.orientation.y,
-            location.pose.orientation.z,
-        };
-
-        const glm::vec3 position
-        {
-            location.pose.position.x,
-            location.pose.position.y,
-            location.pose.position.z,
-        };
-
-        // orientation = glm::slerp(hand.Pose.Orientation, orientation, 0.1f);
-        // position = glm::mix(hand.Pose.Position, position, 0.1f);
-
-        hand.Pose = {
-            .Orientation = orientation,
-            .Position = position,
-        };
-    }
-
-    for (auto &hand : m_Hands)
-    {
-        const XrActionStateGetInfo get_info
-        {
-            .type = XR_TYPE_ACTION_STATE_GET_INFO,
-            .action = m_ActionGrab,
-            .subactionPath = hand.Path,
-        };
-
-        if (auto res = xrGetActionStateFloat(m_Session, &get_info, &hand.GrabState))
-            return toolkit::make_error("xrGetActionStateFloat => {}", res);
-    }
-
-    for (auto &hand : m_Hands)
-    {
-        hand.Haptic *= 0.5f;
-        if (hand.Haptic < 0.01f)
-            hand.Haptic = 0.0f;
-
-        const XrHapticActionInfo action_info
-        {
-            .type = XR_TYPE_HAPTIC_ACTION_INFO,
-            .action = m_ActionHaptic,
-            .subactionPath = hand.Path,
-        };
-
-        const XrHapticVibration haptic_vibration
-        {
-            .type = XR_TYPE_HAPTIC_VIBRATION,
-            .duration = XR_MIN_HAPTIC_DURATION,
-            .frequency = XR_FREQUENCY_UNSPECIFIED,
-            .amplitude = hand.Haptic,
-        };
-
-        if (auto res = xrApplyHapticFeedback(
-            m_Session,
-            &action_info,
-            reinterpret_cast<const XrHapticBaseHeader *>(&haptic_vibration)))
-            return toolkit::make_error("xrApplyHapticFeedback => {}", res);
-    }
-
-    return ok();
-}
-
 toolkit::result<> titan::Application::RenderFrame()
 {
     const XrFrameWaitInfo frame_wait_info
@@ -378,7 +298,7 @@ toolkit::result<> titan::Application::RenderFrame()
     };
 
     XrFrameState frame_state;
-    if (auto res = xr::WaitFrame(m_Session, frame_wait_info) >> frame_state; !res)
+    if (auto res = xr::WaitFrame(m_Graphics.m_Session, frame_wait_info) >> frame_state; !res)
         return res;
 
     if (auto res = PreFrame(); !res)
@@ -389,469 +309,168 @@ toolkit::result<> titan::Application::RenderFrame()
         .type = XR_TYPE_FRAME_BEGIN_INFO,
     };
 
-    if (auto res = xr::BeginFrame(m_Session, frame_begin_info); !res)
+    if (auto res = xr::BeginFrame(m_Graphics.m_Session, frame_begin_info); !res)
         return res;
 
     if (auto res = OnFrame(); !res)
         return res;
 
-    LayerInfo layer_info
+    detail::LayerReference reference
     {
         .PredictedDisplayTime = frame_state.predictedDisplayTime,
     };
 
-    const auto session_active = m_SessionState == XR_SESSION_STATE_SYNCHRONIZED
-                                || m_SessionState == XR_SESSION_STATE_VISIBLE
-                                || m_SessionState == XR_SESSION_STATE_FOCUSED;
+    const auto session_active = m_XrSessionState == XR_SESSION_STATE_SYNCHRONIZED
+                                || m_XrSessionState == XR_SESSION_STATE_VISIBLE
+                                || m_XrSessionState == XR_SESSION_STATE_FOCUSED;
 
     if (session_active && frame_state.shouldRender)
     {
-        PollActions(frame_state.predictedDisplayTime);
-
-        if (auto res = UpdateModels(); !res)
-            return res;
-        if (auto res = RenderThirdEye(frame_state.predictedDisplayTime); !res)
-            return res;
-        if (auto res = RenderLayer(layer_info); !res)
+        if (auto res = UpdateEntities(); !res)
             return res;
 
-        layer_info.Layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer_info.Projection));
+        if (auto res = UpdateInputs(frame_state.predictedDisplayTime); !res)
+            return res;
+
+        if (auto res = m_Graphics.RenderWindowView(); !res)
+            return res;
+
+        if (auto res = m_Graphics.RenderViews(reference); !res)
+            return res;
+
+        reference.Layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&reference.Projection));
     }
 
     const XrFrameEndInfo frame_end_info
     {
         .type = XR_TYPE_FRAME_END_INFO,
         .displayTime = frame_state.predictedDisplayTime,
-        .environmentBlendMode = m_EnvironmentBlendMode,
-        .layerCount = static_cast<uint32_t>(layer_info.Layers.size()),
-        .layers = layer_info.Layers.data(),
+        .environmentBlendMode = m_XrEnvironmentBlendMode,
+        .layerCount = static_cast<uint32_t>(reference.Layers.size()),
+        .layers = reference.Layers.data(),
     };
 
-    if (auto res = xr::EndFrame(m_Session, frame_end_info); !res)
+    if (auto res = xr::EndFrame(m_Graphics.m_Session, frame_end_info); !res)
         return res;
 
     return PostFrame();
 }
 
-toolkit::result<> titan::Application::RenderLayer(LayerInfo &reference)
+toolkit::result<> titan::Application::UpdateEntities()
 {
-    auto &projection_views = reference.Views;
-
-    const XrViewLocateInfo view_locate_info
+    for (auto [state, transform] : m_Entities.Query<component::Transform>())
     {
-        .type = XR_TYPE_VIEW_LOCATE_INFO,
-        .viewConfigurationType = m_ViewConfigurationType,
-        .displayTime = reference.PredictedDisplayTime,
-        .space = m_ReferenceSpace,
-    };
+        if (!state.Active || !transform.Dirty)
+            continue;
 
-    XrViewState view_state
-    {
-        .type = XR_TYPE_VIEW_STATE,
-    };
+        transform.Dirty = false;
 
-    std::vector<XrView> views;
-    if (auto res = xr::LocateViews(m_Session, view_locate_info, view_state) >> views; !res)
-        return res;
+        const auto translation = glm::translate(glm::mat4(1.0f), transform.Translation);
+        const auto rotation = glm::mat4_cast(transform.Rotation);
+        const auto scale = glm::scale(glm::mat4(1.0f), transform.Scale);
+        const auto translation_local = glm::translate(glm::mat4(1.0f), -transform.Pivot);
 
-    projection_views = {
-        views.size(),
-        { .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW },
-    };
-
-    std::vector<VkCommandBufferSubmitInfo> command_buffers
-    {
-        views.size(),
-        { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO },
-    };
-
-    const std::vector<VkFence> fences
-    {
-        m_Fence,
-    };
-
-    if (auto res = vkWaitForFences(
-        m_Device,
-        fences.size(),
-        fences.data(),
-        true,
-        std::numeric_limits<uint64_t>::max()))
-        return toolkit::make_error("vkWaitForFences => {}", res);
-
-    if (auto res = vkResetFences(
-        m_Device,
-        fences.size(),
-        fences.data()))
-        return toolkit::make_error("vkResetFences => {}", res);
-
-    const XrSwapchainImageAcquireInfo acquire_info
-    {
-        .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
-    };
-
-    const XrSwapchainImageReleaseInfo release_info
-    {
-        .type = XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO,
-    };
-
-    const XrSwapchainImageWaitInfo wait_info
-    {
-        .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
-        .timeout = XR_INFINITE_DURATION,
-    };
-
-    for (uint32_t view_index = 0; view_index < views.size(); ++view_index)
-    {
-        const auto &view = views[view_index];
-
-        auto &[
-            view_configuration_view,
-            color,
-            depth,
-            framebuffers,
-            buffer
-        ] = m_SwapchainViews[view_index];
-
-        uint32_t image_index;
-        if (auto res = xrAcquireSwapchainImage(color.Swapchain, &acquire_info, &image_index))
-            return toolkit::make_error("xrAcquireSwapchainImage => {}", res);
-
-        if (auto res = xrWaitSwapchainImage(color.Swapchain, &wait_info))
-            return toolkit::make_error("xrWaitSwapchainImage => {}", res);
-
-        const auto width = view_configuration_view.recommendedImageRectWidth;
-        const auto height = view_configuration_view.recommendedImageRectHeight;
-
-        projection_views[view_index] = {
-            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-            .pose = view.pose,
-            .fov = view.fov,
-            .subImage = {
-                .swapchain = color.Swapchain,
-                .imageRect = {
-                    .offset = {
-                        .x = 0,
-                        .y = 0,
-                    },
-                    .extent = {
-                        .width = static_cast<int32_t>(width),
-                        .height = static_cast<int32_t>(height),
-                    },
-                },
-                .imageArrayIndex = 0,
-            },
-        };
-
-        command_buffers[view_index] = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-            .commandBuffer = buffer,
-        };
-
-        glm::mat4 view_matrix;
-        {
-            const glm::quat orientation
-            {
-                view.pose.orientation.w,
-                view.pose.orientation.x,
-                view.pose.orientation.y,
-                view.pose.orientation.z,
-            };
-
-            const glm::vec3 position
-            {
-                view.pose.position.x,
-                view.pose.position.y,
-                view.pose.position.z,
-            };
-
-            const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
-            const auto translation = glm::translate(glm::mat4(1.0f), -position);
-
-            view_matrix = rotation * translation;
-        }
-
-        glm::mat4 projection_matrix;
-        {
-            auto l = NEAR * tanf(view.fov.angleLeft);
-            auto r = NEAR * tanf(view.fov.angleRight);
-            auto b = NEAR * tanf(view.fov.angleDown);
-            auto t = NEAR * tanf(view.fov.angleUp);
-
-            projection_matrix = glm::frustumRH_ZO(l, r, t, b, NEAR, FAR);
-        }
-
-        auto screen_matrix = projection_matrix * view_matrix;
-
-        if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffers[image_index]); !res)
-            return res;
+        transform.Matrix = translation * rotation * scale * translation_local;
+        transform.Inverse = glm::inverse(transform.Matrix);
     }
 
-    const std::array submits
+    for (auto [state, camera] : m_Entities.Query<component::FrustumCamera>())
     {
-        VkSubmitInfo2
-        {
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-            .commandBufferInfoCount = static_cast<uint32_t>(command_buffers.size()),
-            .pCommandBufferInfos = command_buffers.data(),
-        },
-    };
+        if (!state.Active || !camera.Dirty)
+            continue;
 
-    if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), m_Fence))
-        return toolkit::make_error("vkQueueSubmit2 => {}", res);
+        camera.Dirty = true;
 
-    for (auto &view : m_SwapchainViews)
-        if (auto res = xrReleaseSwapchainImage(view.Color.Swapchain, &release_info))
-            return toolkit::make_error("xrReleaseSwapchainImage => {}", res);
-
-    reference.Projection = {
-        .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
-        .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
-                      | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT,
-        .space = m_ReferenceSpace,
-        .viewCount = static_cast<uint32_t>(projection_views.size()),
-        .views = projection_views.data(),
-    };
-
-    return ok();
-}
-
-toolkit::result<> titan::Application::UpdateModels()
-{
-    static auto begin = std::chrono::high_resolution_clock::now();
-    const auto now = std::chrono::high_resolution_clock::now();
-
-    const auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(now - begin).count();
-
-    // teapot
-    {
-        auto &matrix = m_ModelReferences[0].Instances[0].Model;
-        matrix = { 1.0f };
-        matrix = glm::translate(matrix, glm::vec3(0.0f, 0.0f, 0.0f));
-        matrix = glm::scale(matrix, glm::vec3(0.1f));
-        matrix = glm::rotate(matrix, delta * glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        camera.Matrix = glm::frustumRH_ZO(
+            camera.Left,
+            camera.Right,
+            camera.Bottom,
+            camera.Top,
+            camera.Near,
+            camera.Far);
+        camera.Inverse = glm::inverse(camera.Matrix);
     }
 
-    // hands
-    for (uint32_t i = 0; i < m_Hands.size(); ++i)
+    for (auto [state, camera] : m_Entities.Query<component::AngleFrustumCamera>())
     {
-        auto &matrix = m_ModelReferences[1].Instances[i].Model;
-        auto &[orientation, position] = m_Hands[i].Pose;
+        if (!state.Active || !camera.Dirty)
+            continue;
 
-        const auto translation = glm::translate(glm::mat4(1.0f), position);
-        const auto rotation = glm::mat4_cast(orientation);
-        const auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
-        const auto translation_local = glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, -0.5f, -0.5f));
+        camera.Dirty = true;
 
-        matrix = translation * rotation * scale * translation_local;
+        const auto left = camera.Near * tanf(camera.FovLeft);
+        const auto right = camera.Near * tanf(camera.FovRight);
+        const auto bottom = camera.Near * tanf(camera.FovDown);
+        const auto top = camera.Near * tanf(camera.FovUp);
+
+        camera.Matrix = glm::frustumRH_ZO(left, right, bottom, top, camera.Near, camera.Far);
+        camera.Inverse = glm::inverse(camera.Matrix);
     }
-
-    for (auto &model : m_ModelReferences)
-        for (auto &instance : model.Instances)
-            instance.Normal = glm::transpose(glm::inverse(instance.Model));
-
-    return ok();
-}
-
-toolkit::result<> titan::Application::RenderThirdEye(const XrTime time)
-{
-    auto &[
-        available,
-        finished,
-        fence,
-        framebuffer,
-        buffer
-    ] = m_Frames[m_FrameIndex];
-    m_FrameIndex = (m_FrameIndex + 1) % m_Frames.size();
-
-    const std::vector<VkFence> fences
-    {
-        fence,
-    };
-
-    if (auto res = vkWaitForFences(
-        m_Device,
-        fences.size(),
-        fences.data(),
-        true,
-        std::numeric_limits<uint64_t>::max()))
-        return toolkit::make_error("vkWaitForFences => {}", res);
-
-    if (auto res = vkResetFences(
-        m_Device,
-        fences.size(),
-        fences.data()))
-        return toolkit::make_error("vkResetFences => {}", res);
-
-    const VkAcquireNextImageInfoKHR acquire_info
-    {
-        .sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
-        .swapchain = m_WindowSwapchainView.Color.Swapchain,
-        .timeout = std::numeric_limits<uint64_t>::max(),
-        .semaphore = available,
-        .fence = nullptr,
-        .deviceMask = 1,
-    };
-
-    uint32_t image_index;
-    if (auto res = vkAcquireNextImage2KHR(m_Device, &acquire_info, &image_index))
-        return toolkit::make_error("vkAcquireNextImage2KHR => {}", res);
-
-    XrSpaceLocation view
-    {
-        .type = XR_TYPE_SPACE_LOCATION,
-    };
-
-    if (auto res = xrLocateSpace(m_ViewSpace, m_ReferenceSpace, time, &view))
-        return toolkit::make_error("xrLocateSpace => {}", res);
 
     int width, height;
     m_Window.GetFramebufferSize(width, height);
 
-    glm::mat4 view_matrix;
+    const auto aspect = static_cast<float>(width) / static_cast<float>(height);
+
+    for (auto [state, camera] : m_Entities.Query<component::PerspectiveCamera>())
     {
-        glm::quat orientation
-        {
-            view.pose.orientation.w,
-            view.pose.orientation.x,
-            view.pose.orientation.y,
-            view.pose.orientation.z,
-        };
+        if (!state.Active || !camera.Dirty)
+            continue;
 
-        glm::vec3 position
-        {
-            view.pose.position.x,
-            view.pose.position.y,
-            view.pose.position.z,
-        };
+        camera.Dirty = true;
 
-        orientation = glm::slerp(m_HeadPose.Orientation, orientation, 0.1f);
-        position = glm::mix(m_HeadPose.Position, position, 0.1f);
-
-        m_HeadPose = {
-            .Orientation = orientation,
-            .Position = position,
-        };
-
-        const auto rotation = glm::mat4_cast(glm::conjugate(orientation));
-        const auto translation = glm::translate(glm::mat4(1.0f), -position);
-
-        view_matrix = rotation * translation;
+        camera.Matrix = glm::perspectiveRH_ZO(camera.FovY, aspect, camera.Near, camera.Far);
+        camera.Inverse = glm::inverse(camera.Matrix);
     }
 
-    glm::mat4 projection_matrix;
+    for (auto [state, script] : m_Entities.Query<component::Script>())
     {
-        projection_matrix = glm::perspectiveFovRH_ZO(
-            glm::radians(FOV),
-            static_cast<float>(width),
-            static_cast<float>(height),
-            NEAR,
-            FAR);
+        if (!script.Callee)
+            continue;
 
-        projection_matrix[1][1] *= -1.0f;
+        script.Callee(*this, { state.ID, state.Active });
     }
 
-    auto screen_matrix = projection_matrix * view_matrix;
+    return {};
+}
 
-    if (auto res = RecordCommandBuffer(width, height, screen_matrix, buffer, framebuffer); !res)
-        return res;
-
-    {
-        const std::array wait_semaphores
+toolkit::result<> titan::Application::UpdateInputs(XrTime time)
+{
+    return m_Inputs.Update(
         {
-            VkSemaphoreSubmitInfo
-            {
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                .semaphore = available,
-                .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            },
-        };
+            .ViewSpace = m_Graphics.m_ViewSpace,
+            .ReferenceSpace = m_Graphics.m_ReferenceSpace,
+            .SessionState = m_XrSessionState,
+            .Time = time,
+        });
+}
 
-        const std::array command_buffers
-        {
-            VkCommandBufferSubmitInfo
-            {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                .commandBuffer = buffer,
-            }
-        };
-
-        const std::array signal_semaphores
-        {
-            VkSemaphoreSubmitInfo
-            {
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                .semaphore = finished,
-                .stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-            },
-        };
-
-        const std::array submits
-        {
-            VkSubmitInfo2
-            {
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-                .waitSemaphoreInfoCount = wait_semaphores.size(),
-                .pWaitSemaphoreInfos = wait_semaphores.data(),
-                .commandBufferInfoCount = command_buffers.size(),
-                .pCommandBufferInfos = command_buffers.data(),
-                .signalSemaphoreInfoCount = signal_semaphores.size(),
-                .pSignalSemaphoreInfos = signal_semaphores.data(),
-            },
-        };
-
-        if (auto res = vkQueueSubmit2(m_DefaultQueue, submits.size(), submits.data(), fence))
-            return toolkit::make_error("vkQueueSubmit2 => {}", res);
-    }
-
-    {
-        const std::vector<VkSemaphore> wait_semaphores
-        {
-            finished,
-        };
-
-        const std::vector<VkSwapchainKHR> swapchains
-        {
-            m_WindowSwapchainView.Color.Swapchain,
-        };
-
-        const VkPresentInfoKHR present_info
-        {
-            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size()),
-            .pWaitSemaphores = wait_semaphores.data(),
-            .swapchainCount = static_cast<uint32_t>(swapchains.size()),
-            .pSwapchains = swapchains.data(),
-            .pImageIndices = &image_index,
-        };
-
-        if (auto res = vkQueuePresentKHR(m_PresentQueue, &present_info))
-            return toolkit::make_error("vkQueuePresentKHR =>{}", res);
-    }
-
-    return ok();
+toolkit::result<> titan::Application::OnInitialize()
+{
+    return {};
 }
 
 toolkit::result<> titan::Application::OnStart()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::PreFrame()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::OnFrame()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::PostFrame()
 {
-    return ok();
+    return {};
 }
 
 toolkit::result<> titan::Application::OnStop()
 {
-    return ok();
+    return {};
 }

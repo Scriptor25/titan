@@ -1,4 +1,4 @@
-#include <titan/obj.hxx>
+#include <pkg/mesh/obj.hxx>
 
 #include <fstream>
 
@@ -17,13 +17,17 @@ static std::vector<std::string> split(const std::string &line, const char delim)
     return result;
 }
 
-titan::MeshData titan::obj::Open(std::istream &stream)
+void pkg::mesh::obj::Open(std::istream &stream, Data &data)
 {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> textures;
 
-    MeshData mesh;
+    data.BoxMin = glm::vec3{ std::numeric_limits<float>::infinity() };
+    data.BoxMax = glm::vec3{ -std::numeric_limits<float>::infinity() };
+
+    data.Vertices.clear();
+    data.Indices.clear();
 
     for (std::string line; std::getline(stream, line);)
     {
@@ -71,10 +75,10 @@ titan::MeshData titan::obj::Open(std::istream &stream)
 
         if (segments.front() == "f")
         {
-            auto first = mesh.Vertices.size();
-            auto count = segments.size() - 1;
+            const auto first = data.Vertices.size();
+            const auto count = segments.size() - 1;
 
-            std::vector<VertexData> vertices(count);
+            std::vector<Vertex> vertices(count);
 
             for (uint32_t i = 1; i < segments.size(); ++i)
             {
@@ -110,33 +114,42 @@ titan::MeshData titan::obj::Open(std::istream &stream)
                         index = index - 1;
                     normal = normals[index];
                 }
+
+                data.BoxMin = {
+                    std::min(data.BoxMin.x, position.x),
+                    std::min(data.BoxMin.y, position.y),
+                    std::min(data.BoxMin.z, position.z),
+                };
+                data.BoxMax = {
+                    std::max(data.BoxMax.x, position.x),
+                    std::max(data.BoxMax.y, position.y),
+                    std::max(data.BoxMax.z, position.z),
+                };
             }
 
-            mesh.Vertices.insert(
-                mesh.Vertices.end(),
+            data.Vertices.insert(
+                data.Vertices.end(),
                 std::make_move_iterator(vertices.begin()),
                 std::make_move_iterator(vertices.end()));
 
             for (uint32_t i = 1; i < count - 1; ++i)
             {
-                mesh.Indices.push_back(first);
-                mesh.Indices.push_back(first + i);
-                mesh.Indices.push_back(first + i + 1);
+                data.Indices.push_back(first);
+                data.Indices.push_back(first + i);
+                data.Indices.push_back(first + i + 1);
             }
 
             continue;
         }
-
-        // TODO
     }
-
-    return mesh;
 }
 
-titan::MeshData titan::obj::Open(const std::filesystem::path &path)
+bool pkg::mesh::obj::Open(const std::filesystem::path &path, Data &data)
 {
     std::ifstream stream(path);
     if (!stream)
-        return {};
-    return Open(stream);
+        return false;
+
+    Open(stream, data);
+    return true;
 }

@@ -1,0 +1,7 @@
+{
+  "type": "mesh",
+  "path": "./teapot.obj",
+  "name": "/mesh/teapot",
+  "format": "obj",
+  "static": true
+}

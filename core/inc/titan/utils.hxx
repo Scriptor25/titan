@@ -108,6 +108,25 @@ namespace titan::xr
         const std::vector<std::pair<XrAction, std::string>> &bindings);
 
     toolkit::result<XrInteractionProfileState> GetCurrentInteractionProfile(XrSession session, XrPath path);
+
+    toolkit::result<ActionSpace> CreateActionSpace(
+        Heap *heap,
+        XrInstance instance,
+        XrSession session,
+        XrAction action,
+        const std::optional<std::string> &sub_path_string = std::nullopt);
+
+    toolkit::result<XrSpaceLocation> LocateSpace(XrSpace space, XrSpace base_space, XrTime time);
+
+    toolkit::result<> SyncActions(XrSession session, const XrActionsSyncInfo &info);
+
+    toolkit::result<XrActionStatePose> GetActionStatePose(XrSession session, const XrActionStateGetInfo &info);
+    toolkit::result<XrActionStateFloat> GetActionStateFloat(XrSession session, const XrActionStateGetInfo &info);
+
+    toolkit::result<> ApplyHapticFeedback(
+        XrSession session,
+        const XrHapticActionInfo &info,
+        const XrHapticBaseHeader &feedback);
 }
 
 namespace titan::vk
@@ -202,4 +221,6 @@ namespace titan::vk
     toolkit::result<VkSurfaceCapabilities2KHR> GetPhysicalDeviceSurfaceCapabilities2KHR(
         VkPhysicalDevice physical_device,
         const VkPhysicalDeviceSurfaceInfo2KHR &surface_info);
+
+    Queue GetDeviceQueue2(VkDevice device, const VkDeviceQueueInfo2 &info);
 }

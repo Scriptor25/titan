@@ -1,0 +1,7 @@
+{
+  "type": "shader",
+  "path": "./vert.glsl",
+  "name": "/shader/vert",
+  "format": "glsl",
+  "stage": "vert"
+}
