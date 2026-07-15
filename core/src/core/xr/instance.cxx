@@ -26,5 +26,5 @@ toolkit::result<> titan::Application::InitializeXrInstance()
         .enabledExtensionNames = XR_INSTANCE_EXTENSIONS.data(),
     };
 
-    return xr::Instance::create(instance_create_info) >> m_XrInstance;
+    return xr::Instance::create(&m_Heap, instance_create_info) >> m_XrInstance;
 }

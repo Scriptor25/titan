@@ -106,8 +106,9 @@ toolkit::result<uint32_t> titan::GraphicsSystem::FindMemoryType(
     return toolkit::make_error("failed to find any suitable memory type.");
 }
 
-titan::GraphicsSystem::GraphicsSystem(Application &application)
-    : m_Application(application)
+titan::GraphicsSystem::GraphicsSystem(Application &application, Heap &heap)
+    : m_Application(application),
+      m_Heap(heap)
 {
 }
 
@@ -451,7 +452,7 @@ toolkit::result<> titan::GraphicsSystem::CreateCommandPools()
                    .queueFamilyIndex = m_QueueFamilyIndices.Default,
                };
 
-               return vk::CommandPool::create(m_Device, create_info) >> m_DefaultPool;
+               return vk::CommandPool::create(&m_Heap, m_Device, create_info) >> m_DefaultPool;
            }
            & [&]
            {
@@ -462,7 +463,7 @@ toolkit::result<> titan::GraphicsSystem::CreateCommandPools()
                    .queueFamilyIndex = m_QueueFamilyIndices.Transfer,
                };
 
-               return vk::CommandPool::create(m_Device, create_info) >> m_TransferPool;
+               return vk::CommandPool::create(&m_Heap, m_Device, create_info) >> m_TransferPool;
            };
 }
 
@@ -479,7 +480,7 @@ toolkit::result<> titan::GraphicsSystem::CreatePipelineCache()
         .pInitialData = data.data(),
     };
 
-    return vk::PipelineCache::create(m_Device, create_info) >> m_PipelineCache;
+    return vk::PipelineCache::create(&m_Heap, m_Device, create_info) >> m_PipelineCache;
 }
 
 toolkit::result<> titan::GraphicsSystem::StorePipelineCache()
@@ -510,7 +511,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSession()
         .systemId = m_Application.GetXrSystemId(),
     };
 
-    return xr::Session::create(m_Application.GetXrInstance(), create_info) >> m_Session;
+    return xr::Session::create(&m_Heap, m_Application.GetXrInstance(), create_info) >> m_Session;
 }
 
 toolkit::result<> titan::GraphicsSystem::CreateSpaces()
@@ -537,7 +538,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSpaces()
                    },
                };
 
-               return xr::ReferenceSpace::create(m_Session, create_info) >> m_ViewSpace;
+               return xr::ReferenceSpace::create(&m_Heap, m_Session, create_info) >> m_ViewSpace;
            }
            & [&]
            {
@@ -560,7 +561,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSpaces()
                    },
                };
 
-               return xr::ReferenceSpace::create(m_Session, create_info) >> m_ReferenceSpace;
+               return xr::ReferenceSpace::create(&m_Heap, m_Session, create_info) >> m_ReferenceSpace;
            };
 }
 
@@ -583,7 +584,7 @@ toolkit::result<> titan::GraphicsSystem::CreatePipelineLayout()
         .pPushConstantRanges = push_constant_ranges.data(),
     };
 
-    return vk::PipelineLayout::create(m_Device, create_info) >> m_PipelineLayout;
+    return vk::PipelineLayout::create(&m_Heap, m_Device, create_info) >> m_PipelineLayout;
 }
 
 toolkit::result<> titan::GraphicsSystem::FillBuffers()
@@ -744,12 +745,12 @@ toolkit::result<> titan::GraphicsSystem::CreateRenderPass()
         .pDependencies = dependencies.data(),
     };
 
-    return vk::RenderPass::create(m_Device, create_info) >> m_RenderPass;
+    return vk::RenderPass::create(&m_Heap, m_Device, create_info) >> m_RenderPass;
 }
 
 toolkit::result<> titan::GraphicsSystem::CreateWindowSurface()
 {
-    return vk::SurfaceKHR::create(m_Instance, m_Application.GetWindow()) >> m_WindowSurface;
+    return vk::SurfaceKHR::create(&m_Heap, m_Instance, m_Application.GetWindow()) >> m_WindowSurface;
 }
 
 toolkit::result<> titan::GraphicsSystem::CreatePipeline()
@@ -781,9 +782,9 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
         .pCode = static_cast<const uint32_t *>(frag_shader.GetBinaryData()),
     };
 
-    if (auto res = vk::ShaderModule::create(m_Device, module_vertex_create_info) >> module_vertex; !res)
+    if (auto res = vk::ShaderModule::create(&m_Heap, m_Device, module_vertex_create_info) >> module_vertex; !res)
         return res;
-    if (auto res = vk::ShaderModule::create(m_Device, module_fragment_create_info) >> module_fragment; !res)
+    if (auto res = vk::ShaderModule::create(&m_Heap, m_Device, module_fragment_create_info) >> module_fragment; !res)
         return res;
 
     const std::array stage_create_info
@@ -966,7 +967,7 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
         .subpass = 0,
     };
 
-    return vk::GraphicsPipeline::create(m_Device, m_PipelineCache, create_info) >> m_Pipeline;
+    return vk::GraphicsPipeline::create(&m_Heap, m_Device, m_PipelineCache, create_info) >> m_Pipeline;
 }
 
 static const VkSurfaceFormatKHR &find_surface_format(
@@ -1123,7 +1124,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSynchronization()
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
 
-    if (auto res = vk::Fence::create(m_Device, fence_create_info) >> m_Fence; !res)
+    if (auto res = vk::Fence::create(&m_Heap, m_Device, fence_create_info) >> m_Fence; !res)
         return res;
 
     for (auto &[
@@ -1134,11 +1135,11 @@ toolkit::result<> titan::GraphicsSystem::CreateSynchronization()
              buffer
          ] : m_Frames)
     {
-        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> available; !res)
+        if (auto res = vk::Semaphore::create(&m_Heap, m_Device, semaphore_create_info) >> available; !res)
             return res;
-        if (auto res = vk::Semaphore::create(m_Device, semaphore_create_info) >> finished; !res)
+        if (auto res = vk::Semaphore::create(&m_Heap, m_Device, semaphore_create_info) >> finished; !res)
             return res;
-        if (auto res = vk::Fence::create(m_Device, fence_create_info) >> fence; !res)
+        if (auto res = vk::Fence::create(&m_Heap, m_Device, fence_create_info) >> fence; !res)
             return res;
     }
 
@@ -1169,7 +1170,7 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
-            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.VertexBuffer; !res)
+            if (auto res = vk::Buffer::create(&m_Heap, m_Device, create_info) >> reference.VertexBuffer; !res)
                 return res;
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
@@ -1199,7 +1200,7 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.VertexMemory; !res)
+            if (auto res = vk::DeviceMemory::create(&m_Heap, m_Device, allocate_info) >> reference.VertexMemory; !res)
                 return res;
 
             const VkBindBufferMemoryInfo bind_info
@@ -1223,7 +1224,7 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
-            if (auto res = vk::Buffer::create(m_Device, create_info) >> reference.IndexBuffer; !res)
+            if (auto res = vk::Buffer::create(&m_Heap, m_Device, create_info) >> reference.IndexBuffer; !res)
                 return res;
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
@@ -1253,7 +1254,7 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> reference.IndexMemory; !res)
+            if (auto res = vk::DeviceMemory::create(&m_Heap, m_Device, allocate_info) >> reference.IndexMemory; !res)
                 return res;
 
             const VkBindBufferMemoryInfo bind_info
@@ -1305,7 +1306,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
     };
 
     std::vector<vk::CommandBuffer> buffers;
-    if (auto res = vk::CommandBuffer::create_collection(m_Device, allocate_info) >> buffers; !res)
+    if (auto res = vk::CommandBuffer::create_collection(&m_Heap, m_Device, allocate_info) >> buffers; !res)
         return res;
 
     for (size_t view_index = 0; view_index < view_count; ++view_index)
@@ -1380,7 +1381,7 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
                 .layers = 1,
             };
 
-            if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer; !res)
+            if (auto res = vk::Framebuffer::create(&m_Heap, m_Device, create_info) >> framebuffer; !res)
                 return res;
         }
 
@@ -1411,7 +1412,7 @@ toolkit::result<> titan::GraphicsSystem::CreateFrames()
     };
 
     std::vector<vk::CommandBuffer> buffers;
-    if (auto res = vk::CommandBuffer::create_collection(m_Device, allocate_info) >> buffers; !res)
+    if (auto res = vk::CommandBuffer::create_collection(&m_Heap, m_Device, allocate_info) >> buffers; !res)
         return res;
 
     for (size_t frame_index = 0; frame_index < frame_count; ++frame_index)
@@ -1443,7 +1444,7 @@ toolkit::result<> titan::GraphicsSystem::CreateFrames()
             .layers = 1,
         };
 
-        if (auto res = vk::Framebuffer::create(m_Device, create_info) >> framebuffer; !res)
+        if (auto res = vk::Framebuffer::create(&m_Heap, m_Device, create_info) >> framebuffer; !res)
             return res;
     }
 
@@ -1522,7 +1523,7 @@ toolkit::result<> titan::GraphicsSystem::CreateMessenger()
         .pUserData = this,
     };
 
-    return vk::DebugUtilsMessengerEXT::create(m_Instance, create_info) >> m_Messenger;
+    return vk::DebugUtilsMessengerEXT::create(&m_Heap, m_Instance, create_info) >> m_Messenger;
 }
 
 toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::CreateSwapchainReference(
@@ -1563,7 +1564,7 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
             .clipped = true,
         };
 
-        if (auto res = vk::SwapchainKHR::create(m_Device, swapchain_create_info) >> reference.Swapchain; !res)
+        if (auto res = vk::SwapchainKHR::create(&m_Heap, m_Device, swapchain_create_info) >> reference.Swapchain; !res)
             return res;
 
         if (auto res = vk::GetSwapchainImagesKHR(m_Device, reference.Swapchain) & set_images; !res)
@@ -1600,7 +1601,7 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             };
 
-            if (auto res = vk::Image::create(m_Device, image_create_info) >> image; !res)
+            if (auto res = vk::Image::create(&m_Heap, m_Device, image_create_info) >> image; !res)
                 return res;
 
             const VkImageMemoryRequirementsInfo2 memory_requirements_info
@@ -1631,7 +1632,7 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory; !res)
+            if (auto res = vk::DeviceMemory::create(&m_Heap, m_Device, allocate_info) >> memory; !res)
                 return res;
 
             const VkBindImageMemoryInfo bind_info
@@ -1672,7 +1673,7 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
             },
         };
 
-        if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i]; !res)
+        if (auto res = vk::ImageView::create(&m_Heap, m_Device, view_create_info) >> reference.Views[i]; !res)
             return res;
     }
 
@@ -1702,7 +1703,7 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
             .mipCount = 1,
         };
 
-        if (auto res = xr::Swapchain::create(m_Session, swapchain_create_info)
+        if (auto res = xr::Swapchain::create(&m_Heap, m_Session, swapchain_create_info)
                        >> reference.Swapchain; !res)
             return res;
 
@@ -1751,7 +1752,7 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             };
 
-            if (auto res = vk::Image::create(m_Device, image_create_info) >> image; !res)
+            if (auto res = vk::Image::create(&m_Heap, m_Device, image_create_info) >> image; !res)
                 return res;
 
             const VkImageMemoryRequirementsInfo2 memory_requirements_info
@@ -1782,7 +1783,7 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
                 .memoryTypeIndex = memory_type_index,
             };
 
-            if (auto res = vk::DeviceMemory::create(m_Device, allocate_info) >> memory; !res)
+            if (auto res = vk::DeviceMemory::create(&m_Heap, m_Device, allocate_info) >> memory; !res)
                 return res;
 
             const VkBindImageMemoryInfo bind_info
@@ -1823,7 +1824,7 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
             },
         };
 
-        if (auto res = vk::ImageView::create(m_Device, view_create_info) >> reference.Views[i]; !res)
+        if (auto res = vk::ImageView::create(&m_Heap, m_Device, view_create_info) >> reference.Views[i]; !res)
             return res;
     }
 

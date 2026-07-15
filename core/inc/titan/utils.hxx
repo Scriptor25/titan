@@ -110,6 +110,7 @@ namespace titan::xr
     toolkit::result<XrInteractionProfileState> GetCurrentInteractionProfile(XrSession session, XrPath path);
 
     toolkit::result<ActionSpace> CreateActionSpace(
+        Heap *heap,
         XrInstance instance,
         XrSession session,
         XrAction action,

@@ -140,6 +140,8 @@ namespace titan
     private:
         ApplicationInfo m_Info;
 
+        Heap m_Heap;
+
         glfw::Instance m_GlfwInstance;
         glfw::Window m_Window;
 

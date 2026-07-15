@@ -17,5 +17,9 @@ toolkit::result<> titan::Application::InitializeXrMessenger()
         .userData = this,
     };
 
-    return xr::DebugUtilsMessengerEXT::create(m_XrInstance, debug_utils_messenger_create_info) >> m_XrMessenger;
+    return xr::DebugUtilsMessengerEXT::create(
+               &m_Heap,
+               m_XrInstance,
+               debug_utils_messenger_create_info
+           ) >> m_XrMessenger;
 }

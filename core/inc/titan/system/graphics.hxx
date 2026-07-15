@@ -214,7 +214,7 @@ namespace titan
             VkMemoryPropertyFlags type_flags);
 
     public:
-        GraphicsSystem(Application &application);
+        GraphicsSystem(Application &application, Heap &heap);
         ~GraphicsSystem();
 
         [[nodiscard]] toolkit::result<> Initialize();
@@ -269,6 +269,8 @@ namespace titan
 
     private:
         Application &m_Application;
+
+        Heap &m_Heap;
 
         VkFormat m_ColorFormat{}, m_DepthFormat{};
 

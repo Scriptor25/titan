@@ -5,8 +5,9 @@
 
 #include <cstring>
 
-titan::InputSystem::InputSystem(Application &application)
+titan::InputSystem::InputSystem(Application &application, Heap &heap)
     : m_Application(application),
+      m_Heap(heap),
       m_Instance(application.GetXrInstance()),
       m_Session(application.GetXrSession())
 {
@@ -57,6 +58,7 @@ toolkit::result<> titan::InputSystem::Initialize()
 
     if (auto res =
             xr::CreateActionSpace(
+                &m_Heap,
                 m_Instance,
                 m_Session,
                 m_ActionPalmPose,
@@ -66,6 +68,7 @@ toolkit::result<> titan::InputSystem::Initialize()
 
     if (auto res =
             xr::CreateActionSpace(
+                &m_Heap,
                 m_Instance,
                 m_Session,
                 m_ActionPalmPose,
@@ -238,7 +241,7 @@ toolkit::result<> titan::InputSystem::CreateActionSet()
         .priority = 0,
     };
 
-    return xr::ActionSet::create(m_Instance, create_info) >> m_ActionSet;
+    return xr::ActionSet::create(&m_Heap, m_Instance, create_info) >> m_ActionSet;
 }
 
 toolkit::result<> titan::InputSystem::CreateActions()
@@ -296,7 +299,7 @@ toolkit::result<titan::xr::Action> titan::InputSystem::CreateAction(
         localized_name.data(),
         std::min<size_t>(name.size(), XR_MAX_LOCALIZED_ACTION_NAME_SIZE));
 
-    return xr::Action::create(m_ActionSet, create_info);
+    return xr::Action::create(&m_Heap, m_ActionSet, create_info);
 }
 
 toolkit::result<> titan::InputSystem::SuggestBindings()

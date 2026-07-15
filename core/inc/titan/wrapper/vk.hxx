@@ -1,6 +1,7 @@
 #pragma once
 
 #include <titan/api.hxx>
+#include <titan/heap.hxx>
 #include <titan/format/vk.hxx>
 #include <titan/wrapper/base.hxx>
 
@@ -16,25 +17,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateBuffer";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkBufferCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkBufferCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateBuffer(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateBuffer(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyBuffer(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyBuffer(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -46,43 +66,86 @@ namespace titan
         static constexpr auto create_name = "vkAllocateCommandBuffers";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkCommandBufferAllocateInfo &allocate_info)
         {
-            return std::tuple{ device, allocate_info.commandPool };
+            return std::tuple{ heap, device, allocate_info.commandPool };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkCommandBufferAllocateInfo &allocate_info,
             value_type &value)
         {
-            return vkAllocateCommandBuffers(device, &allocate_info, &value);
+            if (const auto result = vkAllocateCommandBuffers(device, &allocate_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, pool = allocate_info.commandPool, value]
+                {
+                    destroy(heap, device, pool, value);
+                },
+                device,
+                allocate_info.commandPool);
+
+            return VK_SUCCESS;
         }
 
         static auto create_collection(
+            Heap *heap,
             VkDevice device,
             const VkCommandBufferAllocateInfo &allocate_info,
             std::vector<value_type> &values)
         {
             values.resize(allocate_info.commandBufferCount);
-            return vkAllocateCommandBuffers(device, &allocate_info, values.data());
+
+            if (const auto result = vkAllocateCommandBuffers(device, &allocate_info, values.data()))
+                return result;
+
+            for (const auto value : values)
+                heap->Insert(
+                    value,
+                    [heap, device, pool = allocate_info.commandPool, value]
+                    {
+                        destroy(heap, device, pool, value);
+                    },
+                    device,
+                    allocate_info.commandPool);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             VkCommandPool pool,
             value_type value)
         {
-            return vkFreeCommandBuffers(device, pool, 1, &value);
+            if (heap->Uses(value))
+                return;
+
+            vkFreeCommandBuffers(device, pool, 1, &value);
+
+            heap->Erase(value);
         }
 
-        static auto destroy_collection(
+        static void destroy_collection(
+            Heap *heap,
             VkDevice device,
             VkCommandPool pool,
             const std::vector<value_type> &values)
         {
-            return vkFreeCommandBuffers(device, pool, values.size(), values.data());
+            for (const auto value : values)
+                if (heap->Uses(value))
+                    return;
+
+            vkFreeCommandBuffers(device, pool, values.size(), values.data());
+
+            for (const auto value : values)
+                heap->Erase(value);
         }
     };
 
@@ -94,25 +157,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateCommandPool";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkCommandPoolCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkCommandPoolCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateCommandPool(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateCommandPool(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyCommandPool(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyCommandPool(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -124,25 +206,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateDebugUtilsMessengerEXT";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkInstance instance,
             const VkDebugUtilsMessengerCreateInfoEXT &)
         {
-            return std::tuple{ instance };
+            return std::tuple{ heap, instance };
         }
 
         static auto create(
+            Heap *heap,
             VkInstance instance,
             const VkDebugUtilsMessengerCreateInfoEXT &create_info,
             value_type &value)
         {
-            return vkCreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &value);
+            if (const auto result = vkCreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, instance, value]
+                {
+                    destroy(heap, instance, value);
+                },
+                instance);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkInstance instance,
             value_type value)
         {
-            return vkDestroyDebugUtilsMessengerEXT(instance, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyDebugUtilsMessengerEXT(instance, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -154,25 +255,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateDescriptorPool";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorPoolCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorPoolCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateDescriptorPool(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateDescriptorPool(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyDescriptorPool(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyDescriptorPool(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -184,43 +304,93 @@ namespace titan
         static constexpr auto create_name = "vkAllocateDescriptorSets";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorSetAllocateInfo &allocate_info)
         {
-            return std::tuple{ device, allocate_info.descriptorPool };
+            return std::tuple{ heap, device, allocate_info.descriptorPool };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorSetAllocateInfo &allocate_info,
             value_type &value)
         {
-            return vkAllocateDescriptorSets(device, &allocate_info, &value);
+            if (const auto result = vkAllocateDescriptorSets(device, &allocate_info, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, pool = allocate_info.descriptorPool, value]
+                {
+                    destroy(heap, device, pool, value);
+                },
+                device,
+                allocate_info.descriptorPool);
+
+            return VK_SUCCESS;
         }
 
         static auto create_collection(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorSetAllocateInfo &allocate_info,
             std::vector<value_type> &values)
         {
             values.resize(allocate_info.descriptorSetCount);
-            return vkAllocateDescriptorSets(device, &allocate_info, values.data());
+            if (const auto result = vkAllocateDescriptorSets(device, &allocate_info, values.data()))
+                return result;
+
+            for (const auto value : values)
+            {
+                heap->Insert(
+                    value,
+                    [heap, device, pool = allocate_info.descriptorPool, value]
+                    {
+                        destroy(heap, device, pool, value);
+                    },
+                    device,
+                    allocate_info.descriptorPool);
+            }
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static VkResult destroy(
+            Heap *heap,
             VkDevice device,
             VkDescriptorPool pool,
             value_type value)
         {
-            return vkFreeDescriptorSets(device, pool, 1, &value);
+            if (heap->Uses(value))
+                return VK_SUCCESS;
+
+            if (const auto result = vkFreeDescriptorSets(device, pool, 1, &value))
+                return result;
+
+            heap->Erase(value);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy_collection(
+        static VkResult destroy_collection(
+            Heap *heap,
             VkDevice device,
             VkDescriptorPool pool,
             const std::vector<value_type> &values)
         {
-            return vkFreeDescriptorSets(device, pool, values.size(), values.data());
+            for (const auto value : values)
+                if (heap->Uses(value))
+                    return VK_SUCCESS;
+
+            if (const auto result = vkFreeDescriptorSets(device, pool, values.size(), values.data()))
+                return result;
+
+            for (const auto value : values)
+                heap->Erase(value);
+
+            return VK_SUCCESS;
         }
     };
 
@@ -230,25 +400,44 @@ namespace titan
         using value_type = VkDescriptorSetLayout;
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorSetLayoutCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkDescriptorSetLayoutCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateDescriptorSetLayout(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateDescriptorSetLayout(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyDescriptorSetLayout(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyDescriptorSetLayout(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -258,23 +447,43 @@ namespace titan
         using value_type = VkDevice;
 
         static auto make_destroy_args(
-            VkPhysicalDevice,
+            Heap *heap,
+            VkPhysicalDevice physical_device,
             const VkDeviceCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
         static auto create(
+            Heap *heap,
             VkPhysicalDevice physical_device,
             const VkDeviceCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateDevice(physical_device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateDevice(physical_device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                },
+                physical_device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static void destroy(
+            Heap *heap,
+            value_type value)
         {
-            return vkDestroyDevice(value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyDevice(value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -286,25 +495,44 @@ namespace titan
         static constexpr auto create_name = "vkAllocateMemory";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkMemoryAllocateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkMemoryAllocateInfo &create_info,
             value_type &value)
         {
-            return vkAllocateMemory(device, &create_info, nullptr, &value);
+            if (const auto result = vkAllocateMemory(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkFreeMemory(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkFreeMemory(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -316,25 +544,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateFence";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkFenceCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkFenceCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateFence(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateFence(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyFence(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyFence(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -346,25 +593,47 @@ namespace titan
         static constexpr auto create_name = "vkCreateFramebuffer";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkFramebufferCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkFramebufferCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateFramebuffer(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateFramebuffer(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device,
+                create_info.renderPass);
+
+            heap->Use(value, std::span(create_info.pAttachments, create_info.attachmentCount));
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyFramebuffer(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyFramebuffer(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -376,27 +645,49 @@ namespace titan
         static constexpr auto create_name = "vkCreateGraphicsPipelines";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             VkPipelineCache,
             const VkGraphicsPipelineCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             VkPipelineCache cache,
             const VkGraphicsPipelineCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateGraphicsPipelines(device, cache, 1, &create_info, nullptr, &value);
+            if (const auto result = vkCreateGraphicsPipelines(device, cache, 1, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device,
+                cache,
+                create_info.renderPass,
+                create_info.layout);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyPipeline(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyPipeline(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -408,25 +699,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateImage";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkImageCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkImageCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateImage(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateImage(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyImage(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyImage(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -438,25 +748,45 @@ namespace titan
         static constexpr auto create_name = "vkCreateImageView";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkImageViewCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkImageViewCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateImageView(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateImageView(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device,
+                create_info.image);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyImageView(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyImageView(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -465,21 +795,41 @@ namespace titan
     {
         using value_type = VkInstance;
 
-        static auto make_destroy_args(const VkInstanceCreateInfo &)
+        static auto make_destroy_args(
+            Heap *heap,
+            const VkInstanceCreateInfo &)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
         static auto create(
+            Heap *heap,
             const VkInstanceCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateInstance(&create_info, nullptr, &value);
+            if (const auto result = vkCreateInstance(&create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, value]
+                {
+                    destroy(heap, value);
+                });
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(value_type value)
+        static void destroy(
+            Heap *heap,
+            value_type value)
         {
-            return vkDestroyInstance(value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyInstance(value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -488,13 +838,19 @@ namespace titan
     {
         using value_type = VkPhysicalDevice;
 
-        static auto make_destroy_args()
+        static auto make_destroy_args(Heap *heap)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto destroy(value_type)
+        static void destroy(
+            Heap *heap,
+            value_type value)
         {
+            if (heap->Uses(value))
+                return;
+
+            heap->Erase(value);
         }
     };
 
@@ -506,25 +862,44 @@ namespace titan
         static constexpr auto create_name = "vkCreatePipelineCache";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkPipelineCacheCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkPipelineCacheCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreatePipelineCache(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreatePipelineCache(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyPipelineCache(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyPipelineCache(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -536,25 +911,45 @@ namespace titan
         static constexpr auto create_name = "vkCreatePipelineLayout";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkPipelineLayoutCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkPipelineLayoutCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreatePipelineLayout(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreatePipelineLayout(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+            heap->Use(value, std::span(create_info.pSetLayouts, create_info.setLayoutCount));
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyPipelineLayout(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyPipelineLayout(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -563,13 +958,19 @@ namespace titan
     {
         using value_type = VkQueue;
 
-        static auto make_destroy_args()
+        static auto make_destroy_args(Heap *heap)
         {
-            return std::tuple{};
+            return std::tuple{ heap };
         }
 
-        static auto destroy(value_type)
+        static void destroy(
+            Heap *heap,
+            value_type value)
         {
+            if (heap->Uses(value))
+                return;
+
+            heap->Erase(value);
         }
     };
 
@@ -581,25 +982,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateRenderPass";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkRenderPassCreateInfo2 &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkRenderPassCreateInfo2 &create_info,
             value_type &value)
         {
-            return vkCreateRenderPass2(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateRenderPass2(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyRenderPass(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyRenderPass(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -611,25 +1031,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateSemaphore";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkSemaphoreCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkSemaphoreCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateSemaphore(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateSemaphore(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroySemaphore(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroySemaphore(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -641,25 +1080,44 @@ namespace titan
         static constexpr auto create_name = "vkCreateShaderModule";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkShaderModuleCreateInfo &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkShaderModuleCreateInfo &create_info,
             value_type &value)
         {
-            return vkCreateShaderModule(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateShaderModule(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroyShaderModule(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroyShaderModule(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -671,25 +1129,45 @@ namespace titan
         static constexpr auto create_name = "glfwCreateWindowSurfaceKHR";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkInstance instance,
             GLFWwindow *)
         {
-            return std::tuple{ instance };
+            return std::tuple{ heap, instance };
         }
 
         static auto create(
+            Heap *heap,
             VkInstance instance,
             GLFWwindow *window,
             value_type &value)
         {
-            return glfwCreateWindowSurface(instance, window, nullptr, &value);
+            if (const auto result = glfwCreateWindowSurface(instance, window, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, instance, value]
+                {
+                    destroy(heap, instance, value);
+                },
+                instance,
+                window);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkInstance instance,
             value_type value)
         {
-            return vkDestroySurfaceKHR(instance, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroySurfaceKHR(instance, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 
@@ -701,25 +1179,45 @@ namespace titan
         static constexpr auto create_name = "vkCreateSwapchainKHR";
 
         static auto make_destroy_args(
+            Heap *heap,
             VkDevice device,
             const VkSwapchainCreateInfoKHR &)
         {
-            return std::tuple{ device };
+            return std::tuple{ heap, device };
         }
 
         static auto create(
+            Heap *heap,
             VkDevice device,
             const VkSwapchainCreateInfoKHR &create_info,
             value_type &value)
         {
-            return vkCreateSwapchainKHR(device, &create_info, nullptr, &value);
+            if (const auto result = vkCreateSwapchainKHR(device, &create_info, nullptr, &value))
+                return result;
+
+            heap->Insert(
+                value,
+                [heap, device, value]
+                {
+                    destroy(heap, device, value);
+                },
+                device,
+                create_info.surface);
+
+            return VK_SUCCESS;
         }
 
-        static auto destroy(
+        static void destroy(
+            Heap *heap,
             VkDevice device,
             value_type value)
         {
-            return vkDestroySwapchainKHR(device, value, nullptr);
+            if (heap->Uses(value))
+                return;
+
+            vkDestroySwapchainKHR(device, value, nullptr);
+
+            heap->Erase(value);
         }
     };
 

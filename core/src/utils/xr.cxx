@@ -193,6 +193,7 @@ toolkit::result<XrInteractionProfileState> titan::xr::GetCurrentInteractionProfi
 }
 
 toolkit::result<titan::xr::ActionSpace> titan::xr::CreateActionSpace(
+    Heap *heap,
     XrInstance instance,
     XrSession session,
     XrAction action,
@@ -214,7 +215,7 @@ toolkit::result<titan::xr::ActionSpace> titan::xr::CreateActionSpace(
         },
     };
 
-    return ActionSpace::create(session, create_info);
+    return ActionSpace::create(heap, session, create_info);
 }
 
 toolkit::result<XrSpaceLocation> titan::xr::LocateSpace(XrSpace space, XrSpace base_space, XrTime time)

@@ -67,7 +67,7 @@ namespace titan
         friend class Application;
 
     public:
-        InputSystem(Application &application);
+        InputSystem(Application &application, Heap &heap);
 
         [[nodiscard]] toolkit::result<> Destroy();
 
@@ -94,6 +94,8 @@ namespace titan
 
     private:
         Application &m_Application;
+
+        Heap &m_Heap;
 
         xr::Instance &m_Instance;
         xr::Session &m_Session;

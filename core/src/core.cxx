@@ -10,8 +10,8 @@ titan::Application::Application(ApplicationInfo info)
     : m_Info(std::move(info)),
       m_Resources(*this),
       m_Entities(*this),
-      m_Graphics(*this),
-      m_Inputs(*this)
+      m_Graphics(*this, m_Heap),
+      m_Inputs(*this, m_Heap)
 {
 }
 
