@@ -47,13 +47,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroyAction(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -98,13 +99,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroyActionSet(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -150,13 +152,14 @@ namespace titan
             XrInstance instance,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroyDebugUtilsMessengerEXT(instance, value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -198,13 +201,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroyInstance(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -249,13 +253,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroySession(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -301,13 +306,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroySpace(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -352,13 +358,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroySpace(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };
@@ -403,13 +410,14 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return XR_SUCCESS;
 
             if (const auto result = xrDestroySwapchain(value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
             return XR_SUCCESS;
         }
     };

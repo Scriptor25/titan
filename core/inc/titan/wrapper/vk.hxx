@@ -49,12 +49,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyBuffer(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -124,12 +125,13 @@ namespace titan
             VkCommandPool pool,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkFreeCommandBuffers(device, pool, 1, &value);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
 
         static void destroy_collection(
@@ -139,13 +141,14 @@ namespace titan
             const std::vector<value_type> &values)
         {
             for (const auto value : values)
-                if (heap->Uses(value))
+                if (heap && heap->Uses(value))
                     return;
 
             vkFreeCommandBuffers(device, pool, values.size(), values.data());
 
             for (const auto value : values)
-                heap->Erase(value);
+                if (heap)
+                    heap->Erase(value);
         }
     };
 
@@ -189,12 +192,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyCommandPool(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -238,12 +242,13 @@ namespace titan
             VkInstance instance,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyDebugUtilsMessengerEXT(instance, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -287,12 +292,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyDescriptorPool(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -363,13 +369,14 @@ namespace titan
             VkDescriptorPool pool,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return VK_SUCCESS;
 
             if (const auto result = vkFreeDescriptorSets(device, pool, 1, &value))
                 return result;
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
 
             return VK_SUCCESS;
         }
@@ -381,14 +388,15 @@ namespace titan
             const std::vector<value_type> &values)
         {
             for (const auto value : values)
-                if (heap->Uses(value))
+                if (heap && heap->Uses(value))
                     return VK_SUCCESS;
 
             if (const auto result = vkFreeDescriptorSets(device, pool, values.size(), values.data()))
                 return result;
 
             for (const auto value : values)
-                heap->Erase(value);
+                if (heap)
+                    heap->Erase(value);
 
             return VK_SUCCESS;
         }
@@ -432,12 +440,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyDescriptorSetLayout(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -478,12 +487,13 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyDevice(value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -527,12 +537,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkFreeMemory(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -576,12 +587,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyFence(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -628,12 +640,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyFramebuffer(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -682,12 +695,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyPipeline(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -731,12 +745,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyImage(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -781,12 +796,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyImageView(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -824,12 +840,13 @@ namespace titan
             Heap *heap,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyInstance(value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -847,6 +864,9 @@ namespace titan
             Heap *heap,
             value_type value)
         {
+            if (!heap)
+                return;
+
             if (heap->Uses(value))
                 return;
 
@@ -894,12 +914,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyPipelineCache(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -944,12 +965,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyPipelineLayout(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -967,6 +989,9 @@ namespace titan
             Heap *heap,
             value_type value)
         {
+            if (!heap)
+                return;
+
             if (heap->Uses(value))
                 return;
 
@@ -1014,12 +1039,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyRenderPass(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -1063,12 +1089,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroySemaphore(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -1112,12 +1139,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroyShaderModule(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -1162,12 +1190,13 @@ namespace titan
             VkInstance instance,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroySurfaceKHR(instance, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 
@@ -1212,12 +1241,13 @@ namespace titan
             VkDevice device,
             value_type value)
         {
-            if (heap->Uses(value))
+            if (heap && heap->Uses(value))
                 return;
 
             vkDestroySwapchainKHR(device, value, nullptr);
 
-            heap->Erase(value);
+            if (heap)
+                heap->Erase(value);
         }
     };
 

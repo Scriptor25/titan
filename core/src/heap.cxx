@@ -1,60 +1,60 @@
 #include <titan/heap.hxx>
 
-void titan::Heap::Insert(const void *handle, Destructor destroy, std::unordered_set<const void *> handles)
+void titan::Heap::Insert(const void *user, Destructor destroy, std::unordered_set<const void *> handles)
 {
-    for (auto h : handles)
-    {
-        auto &entry = m_Handles[h];
-        ++entry.Count;
-    }
+    auto &user_entry = m_Handles[user];
 
-    m_Handles.insert(
-        {
-            handle,
-            Entry
-            {
-                .Count   = {},
-                .Destroy = std::move(destroy),
-                .Handles = std::move(handles),
-            },
-        });
+    user_entry.Destroy = std::move(destroy);
+    user_entry.Handles.insert(handles.begin(), handles.end());
+
+    for (const auto *handle : handles)
+    {
+        auto &handle_entry = m_Handles[handle];
+
+        ++handle_entry.Count;
+    }
 }
 
-void titan::Heap::Erase(const void *handle)
+void titan::Heap::Erase(const void *user)
 {
-    const auto &user_entry = m_Handles[handle];
+    const auto &user_entry = m_Handles[user];
 
-    for (auto h : user_entry.Handles)
+    for (const auto *handle : user_entry.Handles)
     {
-        auto &entry = m_Handles[h];
-        --entry.Count;
+        auto &handle_entry = m_Handles[handle];
 
-        if (!entry.Count && entry.Destroy)
-            entry.Destroy();
+        --handle_entry.Count;
+
+        if (!handle_entry.Count && handle_entry.Destroy)
+            handle_entry.Destroy();
     }
 
-    m_Handles.erase(handle);
+    m_Handles.erase(user);
 }
 
 void titan::Heap::Use(const void *user, const void *handle)
 {
     auto &user_entry = m_Handles[user];
+
     user_entry.Handles.insert(handle);
 
-    auto &entry = m_Handles[handle];
-    ++entry.Count;
+    auto &handle_entry = m_Handles[handle];
+
+    ++handle_entry.Count;
 }
 
 void titan::Heap::Drop(const void *user, const void *handle)
 {
     auto &user_entry = m_Handles[user];
+
     user_entry.Handles.erase(handle);
 
-    auto &entry = m_Handles[handle];
-    --entry.Count;
+    auto &handle_entry = m_Handles[handle];
 
-    if (!entry.Count && entry.Destroy)
-        entry.Destroy();
+    --handle_entry.Count;
+
+    if (!handle_entry.Count && handle_entry.Destroy)
+        handle_entry.Destroy();
 }
 
 bool titan::Heap::Uses(const void *handle) const
@@ -65,5 +65,5 @@ bool titan::Heap::Uses(const void *handle) const
         return entry.Count;
     }
 
-    return false;
+    return true;
 }

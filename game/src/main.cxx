@@ -83,8 +83,11 @@ static void controller_script(titan::Application &context, const titan::EntitySt
 
     auto [teapot_transform] = context.GetEntities().Get<titan::component::Transform>(state.Teapot);
 
-    auto teapot_min = glm::vec3(teapot_transform.Inverse * glm::vec4(teapot_mesh.GetBoxMin(), 1.0f));
-    auto teapot_max = glm::vec3(teapot_transform.Inverse * glm::vec4(teapot_mesh.GetBoxMax(), 1.0f));
+    auto teapot_min_t = teapot_transform.Matrix * glm::vec4(teapot_mesh.GetBoxMin(), 1.0f);
+    auto teapot_max_t = teapot_transform.Matrix * glm::vec4(teapot_mesh.GetBoxMax(), 1.0f);
+
+    auto teapot_min = glm::vec3(teapot_min_t) / teapot_min_t.w;
+    auto teapot_max = glm::vec3(teapot_max_t) / teapot_max_t.w;
     auto teapot_cen = teapot_min + 0.5f * (teapot_max - teapot_min);
     auto teapot_rad = glm::distance(teapot_min, teapot_max) * 0.5f;
 
@@ -97,14 +100,17 @@ static void controller_script(titan::Application &context, const titan::EntitySt
 
         if (auto hand = context.GetInputs().GetHand(cube_state.Index); hand.IsActive)
         {
-            auto hand_min = glm::vec3(cube_transform.Inverse * glm::vec4(cube_mesh.GetBoxMin(), 1.0f));
-            auto hand_max = glm::vec3(cube_transform.Inverse * glm::vec4(cube_mesh.GetBoxMax(), 1.0f));
+            auto hand_min_t = cube_transform.Matrix * glm::vec4(cube_mesh.GetBoxMin(), 1.0f);
+            auto hand_max_t = cube_transform.Matrix * glm::vec4(cube_mesh.GetBoxMax(), 1.0f);
+
+            auto hand_min = glm::vec3(hand_min_t) / hand_min_t.w;
+            auto hand_max = glm::vec3(hand_max_t) / hand_max_t.w;
             auto hand_cen = hand_min + 0.5f * (hand_max - hand_min);
             auto hand_rad = glm::distance(hand_min, hand_max) * 0.5f;
 
             const auto distance = glm::distance(teapot_cen, hand_cen);
             const auto radius = teapot_rad + hand_rad;
-            const auto radius2 = 2.0f * radius;
+            const auto radius2 = radius;
 
             if (distance < radius2)
                 hand.Haptic = std::clamp((radius2 - distance) / radius, 0.0f, 1.0f);

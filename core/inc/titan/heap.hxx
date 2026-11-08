@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <format>
 #include <functional>
+#include <iostream>
 #include <span>
 #include <unordered_map>
 #include <unordered_set>
@@ -13,15 +16,15 @@ namespace titan
 
         struct Entry
         {
-            size_t Count;
+            size_t Count{};
             Destructor Destroy;
 
             std::unordered_set<const void *> Handles;
         };
 
     public:
-        void Insert(const void *handle, Destructor destroy, std::unordered_set<const void *> handles);
-        void Erase(const void *handle);
+        void Insert(const void *user, Destructor destroy, std::unordered_set<const void *> handles);
+        void Erase(const void *user);
 
         template<typename... P>
         void Insert(const void *handle, const Destructor &destroy, const P *... handles)
@@ -36,12 +39,13 @@ namespace titan
         {
             auto &user_entry = m_Handles[user];
 
-            for (auto handle : handles)
+            for (const auto *handle : handles)
             {
                 user_entry.Handles.insert(handle);
 
-                auto &entry = m_Handles[handle];
-                ++entry.Count;
+                auto &handle_entry = m_Handles[handle];
+
+                ++handle_entry.Count;
             }
         }
 
