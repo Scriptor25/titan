@@ -76,45 +76,93 @@ struct ControllerState
 
 static void controller_script(titan::Application &context, const titan::EntityState entity)
 {
-    auto [state] = context.GetEntities().Get<ControllerState>(entity.ID);
+    const auto [state] = context.GetEntities().Get<ControllerState>(entity.ID);
 
-    auto teapot_mesh = context.GetResources().Get<pkg::mesh::Data>(state.TeapotMesh);
-    auto cube_mesh = context.GetResources().Get<pkg::mesh::Data>(state.CubeMesh);
+    const auto teapot_mesh = context.GetResources().Get<pkg::mesh::Data>(state.TeapotMesh);
+    const auto cube_mesh = context.GetResources().Get<pkg::mesh::Data>(state.CubeMesh);
 
-    auto [teapot_transform] = context.GetEntities().Get<titan::component::Transform>(state.Teapot);
+    struct collider_t
+    {
+        glm::vec3 cen;
+        float rad;
+    };
 
-    auto teapot_min_t = teapot_transform.Matrix * glm::vec4(teapot_mesh.GetBoxMin(), 1.0f);
-    auto teapot_max_t = teapot_transform.Matrix * glm::vec4(teapot_mesh.GetBoxMax(), 1.0f);
+    auto create_collider = [](
+        const glm::vec3 &box_min,
+        const glm::vec3 &box_max,
+        const titan::component::Transform &transform
+    ) -> collider_t
+    {
+        const auto min_t = transform.Matrix * glm::vec4(box_min, 1.0f);
+        const auto max_t = transform.Matrix * glm::vec4(box_max, 1.0f);
 
-    auto teapot_min = glm::vec3(teapot_min_t) / teapot_min_t.w;
-    auto teapot_max = glm::vec3(teapot_max_t) / teapot_max_t.w;
-    auto teapot_cen = teapot_min + 0.5f * (teapot_max - teapot_min);
-    auto teapot_rad = glm::distance(teapot_min, teapot_max) * 0.5f;
+        const auto min = glm::vec3(min_t) / min_t.w;
+        const auto max = glm::vec3(max_t) / max_t.w;
+        const auto cen = min + 0.5f * (max - min);
+        const auto rad = glm::distance(min, max) * 0.5f;
+
+        return {
+            .cen = cen,
+            .rad = rad,
+        };
+    };
+
+    std::vector<collider_t> colliders;
+    std::unordered_map<size_t, size_t> cube_colliders;
+
+    {
+        const auto [transform] = context.GetEntities().Get<titan::component::Transform>(state.Teapot);
+        colliders.push_back(create_collider(teapot_mesh.GetBoxMin(), teapot_mesh.GetBoxMax(), transform));
+    }
 
     for (size_t i = 0; i < state.Cubes.size(); ++i)
     {
-        auto [cube_transform, cube_state] = context.GetEntities().Get<
-            titan::component::Transform,
-            CubeState
-        >(state.Cubes[i]);
+        const auto [transform] = context.GetEntities().Get<titan::component::Transform>(state.Cubes[i]);
 
-        if (auto hand = context.GetInputs().GetHand(cube_state.Index); hand.IsActive)
+        cube_colliders[i] = colliders.size();
+        colliders.push_back(create_collider(cube_mesh.GetBoxMin(), cube_mesh.GetBoxMax(), transform));
+    }
+
+    for (size_t i = 0; i < state.Cubes.size(); ++i)
+    {
+        const auto [cube_state] = context.GetEntities().Get<CubeState>(state.Cubes[i]);
+
+        const auto hand = context.GetInputs().GetHand(cube_state.Index);
+        if (!hand.IsActive)
+            continue;
+
+        float max_haptic{};
+
+        const auto &[cube_cen, cube_rad] = colliders[cube_colliders[i]];
+        for (size_t j = 0; j < colliders.size(); ++j)
         {
-            auto hand_min_t = cube_transform.Matrix * glm::vec4(cube_mesh.GetBoxMin(), 1.0f);
-            auto hand_max_t = cube_transform.Matrix * glm::vec4(cube_mesh.GetBoxMax(), 1.0f);
+            if (j == cube_colliders[i])
+                continue;
 
-            auto hand_min = glm::vec3(hand_min_t) / hand_min_t.w;
-            auto hand_max = glm::vec3(hand_max_t) / hand_max_t.w;
-            auto hand_cen = hand_min + 0.5f * (hand_max - hand_min);
-            auto hand_rad = glm::distance(hand_min, hand_max) * 0.5f;
+            const auto &[cen, rad] = colliders[j];
 
-            const auto distance = glm::distance(teapot_cen, hand_cen);
-            const auto radius = teapot_rad + hand_rad;
-            const auto radius2 = radius;
+            const auto distance = glm::distance(cen, cube_cen);
+            const auto distance_min = rad + cube_rad;
+            const auto distance_max = 1.2f * distance_min;
 
-            if (distance < radius2)
-                hand.Haptic = std::clamp((radius2 - distance) / radius, 0.0f, 1.0f);
+            if (distance < distance_min)
+            {
+                max_haptic = 1.0f;
+                break;
+            }
+
+            if (distance > distance_max)
+                continue;
+
+            auto haptic = std::clamp(
+                (distance_max - distance) / (distance_max - distance_min),
+                0.0f,
+                1.0f);
+
+            max_haptic = std::max(max_haptic, haptic);
         }
+
+        hand.Haptic = max_haptic;
     }
 }
 

@@ -78,7 +78,10 @@ std::string_view pkg::View<pkg::pipeline::Stage>::GetModule() const
 
 std::string_view pkg::View<pkg::pipeline::Stage>::GetName() const
 {
-    return *View<std::string_view>(static_cast<const char *>(m_Data) + View<std::string_view>::size(m_Data));
+    return *View<std::string_view>(
+        static_cast<const char *>(m_Data)
+        + View<std::string_view>::size(m_Data)
+    );
 }
 
 pkg::View<pkg::pipeline::Data>::View(const void *data)
