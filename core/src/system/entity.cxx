@@ -351,12 +351,12 @@ titan::detail::Archetype::Entry titan::detail::Archetype::entry(const size_t ind
     for (auto &val : m_Storage | std::views::values)
         entries.push_back(
             {
-                .info = val.GetComponent(),
+                .info    = val.GetComponent(),
                 .pointer = val.Point(entity_index),
             });
 
     return {
-        .entity = entity,
+        .entity     = entity,
         .components = std::move(entries),
     };
 }
@@ -398,7 +398,7 @@ titan::EntityState titan::EntitySystem::Create(std::unordered_map<ComponentID, v
     auto &ref = m_Entities[entity];
     ref = {
         .Storage = &archetype,
-        .Active = false,
+        .Active  = false,
     };
 
     archetype.Allocate(entity);
@@ -406,7 +406,7 @@ titan::EntityState titan::EntitySystem::Create(std::unordered_map<ComponentID, v
         archetype.Set(entity, id, val);
 
     return {
-        .ID = entity,
+        .ID     = entity,
         .Active = ref.Active,
     };
 }

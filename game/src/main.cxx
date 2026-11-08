@@ -118,7 +118,7 @@ public:
     Game()
         : Application(
             {
-                .Name = "Titan Game",
+                .Name    = "Titan Game",
                 .Version = {
                     .Major = 0,
                     .Minor = 0,
@@ -179,9 +179,9 @@ protected:
                 ControllerState
                 {
                     .TeapotMesh = m_TeapotMesh,
-                    .CubeMesh = m_CubeMesh,
-                    .Teapot = m_Teapot,
-                    .Cubes = { m_CubeL, m_CubeR },
+                    .CubeMesh   = m_CubeMesh,
+                    .Teapot     = m_Teapot,
+                    .Cubes      = { m_CubeL, m_CubeR },
                 }
             );
 

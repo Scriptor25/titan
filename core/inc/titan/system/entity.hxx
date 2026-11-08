@@ -55,44 +55,40 @@ namespace titan
 
             if constexpr (!std::is_trivially_default_constructible_v<T>)
             {
-                component.create =
-                        [](void *dst)
-                        {
-                            new(dst) T();
-                        };
+                component.create = [](void *dst)
+                {
+                    new(dst) T();
+                };
             }
 
             if constexpr (!std::is_trivially_destructible_v<T>)
             {
-                component.destroy =
-                        [](void *ptr)
-                        {
-                            static_cast<T *>(ptr)->~T();
-                        };
+                component.destroy = [](void *ptr)
+                {
+                    static_cast<T *>(ptr)->~T();
+                };
             }
 
             if constexpr (std::is_move_constructible_v<T>)
             {
                 if constexpr (std::is_trivially_move_constructible_v<T>)
                 {
-                    component.move =
-                            [](void *dst, void *src)
-                            {
-                                memcpy(dst, src, sizeof(T));
-                            };
+                    component.move = [](void *dst, void *src)
+                    {
+                        memcpy(dst, src, sizeof(T));
+                    };
                 }
                 else
                 {
-                    component.move =
-                            [](void *dst, void *src)
-                            {
-                                new(dst) T(std::move(*static_cast<T *>(src)));
+                    component.move = [](void *dst, void *src)
+                    {
+                        new(dst) T(std::move(*static_cast<T *>(src)));
 
-                                if constexpr (!std::is_trivially_destructible_v<T>)
-                                {
-                                    static_cast<T *>(src)->~T();
-                                }
-                            };
+                        if constexpr (!std::is_trivially_destructible_v<T>)
+                        {
+                            static_cast<T *>(src)->~T();
+                        }
+                    };
                 }
             }
 
@@ -100,19 +96,17 @@ namespace titan
             {
                 if constexpr (std::is_trivially_copy_constructible_v<T>)
                 {
-                    component.copy =
-                            [](void *dst, const void *src)
-                            {
-                                memcpy(dst, src, sizeof(T));
-                            };
+                    component.copy = [](void *dst, const void *src)
+                    {
+                        memcpy(dst, src, sizeof(T));
+                    };
                 }
                 else
                 {
-                    component.copy =
-                            [](void *dst, const void *src)
-                            {
-                                new(dst) T(*static_cast<const T *>(src));
-                            };
+                    component.copy = [](void *dst, const void *src)
+                    {
+                        new(dst) T(*static_cast<const T *>(src));
+                    };
                 }
             }
 
@@ -120,22 +114,20 @@ namespace titan
             {
                 if constexpr (std::is_trivially_move_constructible_v<T> && std::is_trivially_destructible_v<T>)
                 {
-                    component.swap =
-                            [](void *a, void *b)
-                            {
-                                alignas(T) uint8_t t[sizeof(T)];
-                                memcpy(t, a, sizeof(T));
-                                memcpy(a, b, sizeof(T));
-                                memcpy(b, t, sizeof(T));
-                            };
+                    component.swap = [](void *a, void *b)
+                    {
+                        alignas(T) uint8_t t[sizeof(T)];
+                        memcpy(t, a, sizeof(T));
+                        memcpy(a, b, sizeof(T));
+                        memcpy(b, t, sizeof(T));
+                    };
                 }
                 else
                 {
-                    component.swap =
-                            [](void *a, void *b)
-                            {
-                                std::swap<T>(*static_cast<T *>(a), *static_cast<T *>(b));
-                            };
+                    component.swap = [](void *a, void *b)
+                    {
+                        std::swap<T>(*static_cast<T *>(a), *static_cast<T *>(b));
+                    };
                 }
             }
 
@@ -224,12 +216,12 @@ namespace titan
 
             Iterator begin() const
             {
-                return { m_Chunks, 0ull, 0ull };
+                return { .chunks = m_Chunks, .chunk_index = 0ull, .local_index = 0ull };
             }
 
             Iterator end() const
             {
-                return { m_Chunks, m_Chunks.size(), 0ull };
+                return { .chunks = m_Chunks, .chunk_index = m_Chunks.size(), .local_index = 0ull };
             }
 
             [[nodiscard]] size_t size() const
@@ -239,7 +231,7 @@ namespace titan
                 return (m_Chunks.size() - 1) * Chunk::capacity + m_Chunks.back().count;
             }
 
-            element_type &operator[](size_t index) const
+            element_type &operator[](const size_t index) const
             {
                 const auto chunk_index = index / Chunk::capacity;
                 const auto local_index = index % Chunk::capacity;
@@ -279,7 +271,7 @@ namespace titan
             void Set(size_t index, const void *data);
 
             template<typename T>
-            T &At(size_t index)
+            T &At(const size_t index)
             {
                 if (sizeof(T) != m_Component->size)
                     throw std::runtime_error("type size != component size");
@@ -290,7 +282,7 @@ namespace titan
             }
 
             template<typename T>
-            const T &At(size_t index) const
+            const T &At(const size_t index) const
             {
                 if (sizeof(T) != m_Component->size)
                     throw std::runtime_error("type size != component size");
@@ -423,13 +415,13 @@ namespace titan
             void Set(EntityID entity, ComponentID component, const void *data);
 
             template<typename C>
-            C &At(EntityID entity)
+            C &At(const EntityID entity)
             {
                 return m_Storage.at(C::id).template At<C>(m_Index.at(entity));
             }
 
             template<typename C>
-            const C &At(EntityID entity) const
+            const C &At(const EntityID entity) const
             {
                 return m_Storage.at(C::id).template At<C>(m_Index.at(entity));
             }
@@ -437,7 +429,7 @@ namespace titan
             void Allocate(EntityID entity);
 
             template<typename... C>
-            void Allocate(EntityID entity, C &&... components)
+            void Allocate(const EntityID entity, C &&... components)
             {
                 const auto index = m_Entities.size();
 
@@ -493,7 +485,7 @@ namespace titan
                     return {
                         EntityState
                         {
-                            .ID = reference.ID,
+                            .ID     = reference.ID,
                             .Active = *reference.Active,
                         },
                         *std::get<I + 1>(data)[offset]...
@@ -529,12 +521,12 @@ namespace titan
 
             Iterator begin() const
             {
-                return { m_Data, 0ull };
+                return { .data = m_Data, .offset = 0ull };
             }
 
             Iterator end() const
             {
-                return { m_Data, m_Count };
+                return { .data = m_Data, .offset = m_Count };
             }
 
         private:
@@ -596,7 +588,7 @@ namespace titan
                         auto entity = entities[i];
                         auto &[_1, active] = m_Entities[entity];
                         dst[base + i] = {
-                            .ID = entity,
+                            .ID     = entity,
                             .Active = &active,
                         };
                     }
@@ -631,13 +623,13 @@ namespace titan
             auto &ref = m_Entities[entity];
             ref = {
                 .Storage = &archetype,
-                .Active = false,
+                .Active  = false,
             };
 
             archetype.Allocate(entity, std::forward<C>(components)...);
 
             return {
-                .ID = entity,
+                .ID     = entity,
                 .Active = ref.Active,
             };
         }
@@ -723,7 +715,7 @@ namespace titan
         }
 
         template<typename... C>
-        std::tuple<C &...> Get(EntityID entity) const
+        std::tuple<C &...> Get(const EntityID entity) const
         {
             auto &[storage, _1] = m_Entities.at(entity);
 

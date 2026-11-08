@@ -171,10 +171,7 @@ namespace titan
                             return traits::destroy(std::forward<Args>(unpacked)..., value);
                         },
                         args.value()))
-                    {
                         std::cerr << std::format("{} => {}", traits::destroy_name, res) << std::endl;
-                        __builtin_debugtrap();
-                    }
                 }
             }
 

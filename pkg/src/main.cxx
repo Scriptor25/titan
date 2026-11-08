@@ -17,49 +17,52 @@
 #include <sys/wait.h>
 #endif
 
-struct mesh_t
+namespace
 {
-    std::string type;
-    std::string path;
-    std::string name;
-    std::string format;
-    bool is_static{};
-};
+    struct mesh_t
+    {
+        std::string type;
+        std::string path;
+        std::string name;
+        std::string format;
+        bool is_static{};
+    };
 
-struct shader_t
-{
-    std::string type;
-    std::string path;
-    std::string name;
-    std::string format;
-    std::string stage;
-};
+    struct shader_t
+    {
+        std::string type;
+        std::string path;
+        std::string name;
+        std::string format;
+        std::string stage;
+    };
 
-struct stage_t
-{
-    std::string module;
-    std::string name;
-};
+    struct stage_t
+    {
+        std::string module;
+        std::string name;
+    };
 
-struct vertex_attribute_t
-{
-    uint32_t location{};
-    uint32_t binding{};
-    std::string reference;
-};
+    struct vertex_attribute_t
+    {
+        uint32_t location{};
+        uint32_t binding{};
+        std::string reference;
+    };
 
-struct pipeline_t
-{
-    std::string type;
-    std::string name;
-    std::unordered_map<std::string, std::vector<stage_t>> stages;
-    std::vector<vertex_attribute_t> vertex;
-};
+    struct pipeline_t
+    {
+        std::string type;
+        std::string name;
+        std::unordered_map<std::string, std::vector<stage_t>> stages;
+        std::vector<vertex_attribute_t> vertex;
+    };
+}
 
 using resource_t = std::variant<mesh_t, shader_t, pipeline_t>;
 
 template<>
-struct data::serializer<mesh_t>
+struct data::serializer<json::node, mesh_t>
 {
     static bool from_data(const json::node &node, mesh_t &value)
     {
@@ -91,7 +94,7 @@ struct data::serializer<mesh_t>
 };
 
 template<>
-struct data::serializer<shader_t>
+struct data::serializer<json::node, shader_t>
 {
     static bool from_data(const json::node &node, shader_t &value)
     {
@@ -123,7 +126,7 @@ struct data::serializer<shader_t>
 };
 
 template<>
-struct data::serializer<stage_t>
+struct data::serializer<json::node, stage_t>
 {
     static bool from_data(const json::node &node, stage_t &value)
     {
@@ -149,7 +152,7 @@ struct data::serializer<stage_t>
 };
 
 template<>
-struct data::serializer<vertex_attribute_t>
+struct data::serializer<json::node, vertex_attribute_t>
 {
     static bool from_data(const json::node &node, vertex_attribute_t &value)
     {
@@ -177,7 +180,7 @@ struct data::serializer<vertex_attribute_t>
 };
 
 template<>
-struct data::serializer<pipeline_t>
+struct data::serializer<json::node, pipeline_t>
 {
     static bool from_data(const json::node &node, pipeline_t &value)
     {
@@ -407,7 +410,7 @@ int main(int argc, char **argv)
                     for (size_t i = 0; i < val.size(); ++i)
                         ref[i] = {
                             .Module = val[i].module,
-                            .Name = val[i].name,
+                            .Name   = val[i].name,
                         };
                 }
 
@@ -422,8 +425,8 @@ int main(int argc, char **argv)
                     };
 
                     data.Vertex[i] = {
-                        .Location = resource.vertex[i].location,
-                        .Binding = resource.vertex[i].binding,
+                        .Location  = resource.vertex[i].location,
+                        .Binding   = resource.vertex[i].binding,
                         .Reference = map.at(resource.vertex[i].reference),
                     };
                 }

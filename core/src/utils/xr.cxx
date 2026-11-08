@@ -166,17 +166,17 @@ toolkit::result<> titan::xr::SuggestInteractionProfileBindings(
             return res;
 
         suggested_bindings[i] = {
-            .action = bindings[i].first,
+            .action  = bindings[i].first,
             .binding = binding,
         };
     }
 
     const XrInteractionProfileSuggestedBinding profile_suggested_bindings
     {
-        .type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING,
-        .interactionProfile = profile_path,
+        .type                   = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING,
+        .interactionProfile     = profile_path,
         .countSuggestedBindings = static_cast<uint32_t>(suggested_bindings.size()),
-        .suggestedBindings = suggested_bindings.data(),
+        .suggestedBindings      = suggested_bindings.data(),
     };
 
     if (auto res = xrSuggestInteractionProfileBindings(instance, &profile_suggested_bindings))
@@ -206,12 +206,12 @@ toolkit::result<titan::xr::ActionSpace> titan::xr::CreateActionSpace(
 
     const XrActionSpaceCreateInfo create_info
     {
-        .type = XR_TYPE_ACTION_SPACE_CREATE_INFO,
-        .action = action,
-        .subactionPath = sub_path,
+        .type              = XR_TYPE_ACTION_SPACE_CREATE_INFO,
+        .action            = action,
+        .subactionPath     = sub_path,
         .poseInActionSpace = {
             .orientation = { 0.0f, 0.0f, 0.0f, 1.0f },
-            .position = { 0.0f, 0.0f, 0.0f },
+            .position    = { 0.0f, 0.0f, 0.0f },
         },
     };
 

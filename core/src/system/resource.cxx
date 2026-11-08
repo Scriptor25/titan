@@ -23,9 +23,9 @@ titan::ResourceSystem::ResourceSystem(Application &application)
         std::getline(stream, size, '\n');
 
         m_Location[key] = {
-            .Chunk = std::stoull(chunk, nullptr, 0x10),
+            .Chunk  = std::stoull(chunk, nullptr, 0x10),
             .Offset = std::stoull(offset, nullptr, 0x10),
-            .Size = std::stoull(size, nullptr, 0x10),
+            .Size   = std::stoull(size, nullptr, 0x10),
         };
     }
 }
@@ -84,7 +84,7 @@ toolkit::result<titan::ResourceID> titan::ResourceSystem::Load(const std::string
     auto id = m_Index.size();
     m_Index[name] = id;
     m_Data[id] = {
-        .Size = size,
+        .Size  = size,
         .Block = block,
     };
 

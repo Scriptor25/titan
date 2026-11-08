@@ -13,7 +13,7 @@ void titan::Heap::Insert(const void *handle, Destructor destroy, std::unordered_
             handle,
             Entry
             {
-                .Count = {},
+                .Count   = {},
                 .Destroy = std::move(destroy),
                 .Handles = std::move(handles),
             },

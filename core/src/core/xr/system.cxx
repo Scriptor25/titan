@@ -5,7 +5,7 @@ toolkit::result<> titan::Application::InitializeXrSystemId()
 {
     const XrSystemGetInfo get_info
     {
-        .type = XR_TYPE_SYSTEM_GET_INFO,
+        .type       = XR_TYPE_SYSTEM_GET_INFO,
         .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY,
     };
 

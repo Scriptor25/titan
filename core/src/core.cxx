@@ -161,127 +161,127 @@ toolkit::result<bool> titan::Application::PollEvents()
     {
         switch (event_data.type)
         {
-        case XR_TYPE_EVENT_DATA_EVENTS_LOST:
-        {
-            const auto events_lost = reinterpret_cast<XrEventDataEventsLost *>(&event_data);
-            info("XrEventDataEventsLost {{ lostEventCount={} }}", events_lost->lostEventCount);
-            break;
-        }
-
-        case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
-        {
-            const auto instance_loss_pending = reinterpret_cast<XrEventDataInstanceLossPending *>(&event_data);
-            info("XrEventDataInstanceLossPending {{ lossTime={} }}", instance_loss_pending->lossTime);
-
-            return false;
-        }
-
-        case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
-        {
-            const auto interaction_profile_changed = reinterpret_cast<XrEventDataInteractionProfileChanged *>(
-                &event_data);
-            info(
-                "XrEventDataInteractionProfileChanged {{ session={} }}",
-                static_cast<void *>(interaction_profile_changed->session));
-
-            if (interaction_profile_changed->session != m_Graphics.m_Session)
+            case XR_TYPE_EVENT_DATA_EVENTS_LOST:
             {
-                info("XrEventDataInteractionProfileChanged for foreign session!");
+                const auto events_lost = reinterpret_cast<XrEventDataEventsLost *>(&event_data);
+                info("XrEventDataEventsLost {{ lostEventCount={} }}", events_lost->lostEventCount);
                 break;
             }
 
-            if (auto res = m_Inputs.RecordBindings(); !res)
-                return res;
-
-            break;
-        }
-
-        case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
-        {
-            const auto reference_space_change_pending = reinterpret_cast<XrEventDataReferenceSpaceChangePending *>(
-                &event_data);
-            info(
-                "XrEventDataReferenceSpaceChangePending {{ session={}, referenceSpaceType={}, changeTime={}, poseValid={} }}",
-                static_cast<void *>(reference_space_change_pending->session),
-                reference_space_change_pending->referenceSpaceType,
-                reference_space_change_pending->changeTime,
-                reference_space_change_pending->poseValid);
-
-            if (reference_space_change_pending->session != m_Graphics.m_Session)
+            case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
             {
-                info("XrEventDataReferenceSpaceChangePending for foreign session!");
-                break;
+                const auto instance_loss_pending = reinterpret_cast<XrEventDataInstanceLossPending *>(&event_data);
+                info("XrEventDataInstanceLossPending {{ lossTime={} }}", instance_loss_pending->lossTime);
+
+                return false;
             }
 
-            break;
-        }
-
-        case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
-        {
-            const auto session_state_changed = reinterpret_cast<XrEventDataSessionStateChanged *>(&event_data);
-            info(
-                "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
-                static_cast<void *>(session_state_changed->session),
-                session_state_changed->state,
-                session_state_changed->time);
-
-            if (session_state_changed->session != m_Graphics.m_Session)
+            case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
             {
-                info("XrEventDataSessionStateChanged for foreign session!");
-                break;
-            }
+                const auto interaction_profile_changed = reinterpret_cast<XrEventDataInteractionProfileChanged *>(
+                    &event_data);
+                info(
+                    "XrEventDataInteractionProfileChanged {{ session={} }}",
+                    static_cast<void *>(interaction_profile_changed->session));
 
-            m_XrSessionState = session_state_changed->state;
-
-            switch (session_state_changed->state)
-            {
-            case XR_SESSION_STATE_READY:
-            {
-                const XrSessionBeginInfo session_begin_info
+                if (interaction_profile_changed->session != m_Graphics.m_Session)
                 {
-                    .type = XR_TYPE_SESSION_BEGIN_INFO,
-                    .primaryViewConfigurationType = m_XrViewConfigurationType,
-                };
+                    info("XrEventDataInteractionProfileChanged for foreign session!");
+                    break;
+                }
 
-                if (auto res = xrBeginSession(m_Graphics.m_Session, &session_begin_info))
-                    return toolkit::make_error("xrBeginSession => {}", res);
+                if (auto res = m_Inputs.RecordBindings(); !res)
+                    return res;
 
                 break;
             }
 
-            case XR_SESSION_STATE_STOPPING:
+            case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
             {
-                if (auto res = xrEndSession(m_Graphics.m_Session))
-                    return toolkit::make_error("xrEndSession => {}", res);
-
+                const auto reference_space_change_pending = reinterpret_cast<XrEventDataReferenceSpaceChangePending *>(
+                    &event_data);
                 info(
-                    "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
-                    static_cast<void *>(session_state_changed->session),
-                    session_state_changed->state,
-                    session_state_changed->time);
-                return false;
+                    "XrEventDataReferenceSpaceChangePending {{ session={}, referenceSpaceType={}, changeTime={}, poseValid={} }}",
+                    static_cast<void *>(reference_space_change_pending->session),
+                    reference_space_change_pending->referenceSpaceType,
+                    reference_space_change_pending->changeTime,
+                    reference_space_change_pending->poseValid);
+
+                if (reference_space_change_pending->session != m_Graphics.m_Session)
+                {
+                    info("XrEventDataReferenceSpaceChangePending for foreign session!");
+                    break;
+                }
+
+                break;
             }
 
-            case XR_SESSION_STATE_LOSS_PENDING:
-            case XR_SESSION_STATE_EXITING:
+            case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
             {
+                const auto session_state_changed = reinterpret_cast<XrEventDataSessionStateChanged *>(&event_data);
                 info(
                     "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
                     static_cast<void *>(session_state_changed->session),
                     session_state_changed->state,
                     session_state_changed->time);
-                return false;
+
+                if (session_state_changed->session != m_Graphics.m_Session)
+                {
+                    info("XrEventDataSessionStateChanged for foreign session!");
+                    break;
+                }
+
+                m_XrSessionState = session_state_changed->state;
+
+                switch (session_state_changed->state)
+                {
+                    case XR_SESSION_STATE_READY:
+                    {
+                        const XrSessionBeginInfo session_begin_info
+                        {
+                            .type                         = XR_TYPE_SESSION_BEGIN_INFO,
+                            .primaryViewConfigurationType = m_XrViewConfigurationType,
+                        };
+
+                        if (auto res = xrBeginSession(m_Graphics.m_Session, &session_begin_info))
+                            return toolkit::make_error("xrBeginSession => {}", res);
+
+                        break;
+                    }
+
+                    case XR_SESSION_STATE_STOPPING:
+                    {
+                        if (auto res = xrEndSession(m_Graphics.m_Session))
+                            return toolkit::make_error("xrEndSession => {}", res);
+
+                        info(
+                            "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
+                            static_cast<void *>(session_state_changed->session),
+                            session_state_changed->state,
+                            session_state_changed->time);
+                        return false;
+                    }
+
+                    case XR_SESSION_STATE_LOSS_PENDING:
+                    case XR_SESSION_STATE_EXITING:
+                    {
+                        info(
+                            "XrEventDataSessionStateChanged {{ session={}, state={}, time={} }}",
+                            static_cast<void *>(session_state_changed->session),
+                            session_state_changed->state,
+                            session_state_changed->time);
+                        return false;
+                    }
+
+                    default:
+                        break;
+                }
+
+                break;
             }
 
             default:
                 break;
-            }
-
-            break;
-        }
-
-        default:
-            break;
         }
 
         event_data.type = XR_TYPE_EVENT_DATA_BUFFER;
@@ -343,11 +343,11 @@ toolkit::result<> titan::Application::RenderFrame()
 
     const XrFrameEndInfo frame_end_info
     {
-        .type = XR_TYPE_FRAME_END_INFO,
-        .displayTime = frame_state.predictedDisplayTime,
+        .type                 = XR_TYPE_FRAME_END_INFO,
+        .displayTime          = frame_state.predictedDisplayTime,
         .environmentBlendMode = m_XrEnvironmentBlendMode,
-        .layerCount = static_cast<uint32_t>(reference.Layers.size()),
-        .layers = reference.Layers.data(),
+        .layerCount           = static_cast<uint32_t>(reference.Layers.size()),
+        .layers               = reference.Layers.data(),
     };
 
     if (auto res = xr::EndFrame(m_Graphics.m_Session, frame_end_info); !res)
@@ -438,10 +438,10 @@ toolkit::result<> titan::Application::UpdateInputs(XrTime time)
 {
     return m_Inputs.Update(
         {
-            .ViewSpace = m_Graphics.m_ViewSpace,
+            .ViewSpace      = m_Graphics.m_ViewSpace,
             .ReferenceSpace = m_Graphics.m_ReferenceSpace,
-            .SessionState = m_XrSessionState,
-            .Time = time,
+            .SessionState   = m_XrSessionState,
+            .Time           = time,
         });
 }
 

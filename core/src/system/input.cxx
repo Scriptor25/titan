@@ -22,7 +22,7 @@ titan::HeadState titan::InputSystem::GetHead()
 {
     return {
         .Orientation = m_Head.Pose.Orientation,
-        .Position = m_Head.Pose.Position,
+        .Position    = m_Head.Pose.Position,
     };
 }
 
@@ -31,10 +31,10 @@ titan::HandState titan::InputSystem::GetHand(const size_t index)
     auto &hand = m_Hands[index];
 
     return {
-        .IsActive = static_cast<bool>(hand.PoseState.isActive),
+        .IsActive    = static_cast<bool>(hand.PoseState.isActive),
         .Orientation = hand.Pose.Orientation,
-        .Position = hand.Pose.Position,
-        .Haptic = hand.Haptic,
+        .Position    = hand.Pose.Position,
+        .Haptic      = hand.Haptic,
     };
 }
 
@@ -57,23 +57,23 @@ toolkit::result<> titan::InputSystem::Initialize()
         return res;
 
     if (auto res =
-            xr::CreateActionSpace(
-                &m_Heap,
-                m_Instance,
-                m_Session,
-                m_ActionPalmPose,
-                "/user/hand/left"
-            ) >> m_Hands[0].Space; !res)
+        xr::CreateActionSpace(
+            &m_Heap,
+            m_Instance,
+            m_Session,
+            m_ActionPalmPose,
+            "/user/hand/left"
+        ) >> m_Hands[0].Space; !res)
         return res;
 
     if (auto res =
-            xr::CreateActionSpace(
-                &m_Heap,
-                m_Instance,
-                m_Session,
-                m_ActionPalmPose,
-                "/user/hand/right"
-            ) >> m_Hands[1].Space; !res)
+        xr::CreateActionSpace(
+            &m_Heap,
+            m_Instance,
+            m_Session,
+            m_ActionPalmPose,
+            "/user/hand/right"
+        ) >> m_Hands[1].Space; !res)
         return res;
 
     return {};
@@ -107,7 +107,7 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
 
         m_Head.Pose = {
             .Orientation = glm::slerp(m_Head.Pose.Orientation, orientation, 0.1f),
-            .Position = glm::mix(m_Head.Pose.Position, position, 0.1f),
+            .Position    = glm::mix(m_Head.Pose.Position, position, 0.1f),
         };
     }
 
@@ -124,9 +124,9 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
 
     const XrActionsSyncInfo sync_info
     {
-        .type = XR_TYPE_ACTIONS_SYNC_INFO,
+        .type                  = XR_TYPE_ACTIONS_SYNC_INFO,
         .countActiveActionSets = static_cast<uint32_t>(active_action_sets.size()),
-        .activeActionSets = active_action_sets.data(),
+        .activeActionSets      = active_action_sets.data(),
     };
 
     if (auto res = xr::SyncActions(m_Session, sync_info); !res)
@@ -136,8 +136,8 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
     {
         const XrActionStateGetInfo get_info
         {
-            .type = XR_TYPE_ACTION_STATE_GET_INFO,
-            .action = m_ActionPalmPose,
+            .type          = XR_TYPE_ACTION_STATE_GET_INFO,
+            .action        = m_ActionPalmPose,
             .subactionPath = hand.Path,
         };
 
@@ -184,7 +184,7 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
 
         hand.Pose = {
             .Orientation = orientation,
-            .Position = position,
+            .Position    = position,
         };
     }
 
@@ -192,8 +192,8 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
     {
         const XrActionStateGetInfo get_info
         {
-            .type = XR_TYPE_ACTION_STATE_GET_INFO,
-            .action = m_ActionGrab,
+            .type          = XR_TYPE_ACTION_STATE_GET_INFO,
+            .action        = m_ActionGrab,
             .subactionPath = hand.Path,
         };
 
@@ -209,15 +209,15 @@ toolkit::result<> titan::InputSystem::Update(const detail::InputUpdateInfo &upda
 
         const XrHapticActionInfo action_info
         {
-            .type = XR_TYPE_HAPTIC_ACTION_INFO,
-            .action = m_ActionHaptic,
+            .type          = XR_TYPE_HAPTIC_ACTION_INFO,
+            .action        = m_ActionHaptic,
             .subactionPath = hand.Path,
         };
 
         const XrHapticVibration haptic_vibration
         {
-            .type = XR_TYPE_HAPTIC_VIBRATION,
-            .duration = XR_MIN_HAPTIC_DURATION,
+            .type      = XR_TYPE_HAPTIC_VIBRATION,
+            .duration  = XR_MIN_HAPTIC_DURATION,
             .frequency = XR_FREQUENCY_UNSPECIFIED,
             .amplitude = hand.Haptic,
         };
@@ -235,10 +235,10 @@ toolkit::result<> titan::InputSystem::CreateActionSet()
 {
     const XrActionSetCreateInfo create_info
     {
-        .type = XR_TYPE_ACTION_SET_CREATE_INFO,
-        .actionSetName = "titan-core-action-set",
+        .type                   = XR_TYPE_ACTION_SET_CREATE_INFO,
+        .actionSetName          = "titan-core-action-set",
         .localizedActionSetName = "Titan Core Action Set",
-        .priority = 0,
+        .priority               = 0,
     };
 
     return xr::ActionSet::create(&m_Heap, m_Instance, create_info) >> m_ActionSet;
@@ -284,10 +284,10 @@ toolkit::result<titan::xr::Action> titan::InputSystem::CreateAction(
 
     XrActionCreateInfo create_info
     {
-        .type = XR_TYPE_ACTION_CREATE_INFO,
-        .actionType = type,
+        .type                = XR_TYPE_ACTION_CREATE_INFO,
+        .actionType          = type,
         .countSubactionPaths = static_cast<uint32_t>(sub_paths.size()),
-        .subactionPaths = sub_paths.data(),
+        .subactionPaths      = sub_paths.data(),
     };
 
     strncpy(
@@ -372,9 +372,9 @@ toolkit::result<> titan::InputSystem::AttachActionSet() const
 
     const XrSessionActionSetsAttachInfo attach_info
     {
-        .type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO,
+        .type            = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO,
         .countActionSets = static_cast<uint32_t>(action_sets.size()),
-        .actionSets = action_sets.data(),
+        .actionSets      = action_sets.data(),
     };
 
     if (auto res = xrAttachSessionActionSets(m_Session, &attach_info))

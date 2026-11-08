@@ -52,24 +52,24 @@ toolkit::result<> titan::GraphicsSystem::FindFormats(
 
             switch (reference.Tiling)
             {
-            case VK_IMAGE_TILING_LINEAR:
-                if (format_properties.linearTilingFeatures & reference.Features)
-                {
-                    reference.Format = format;
-                    count++;
-                }
-                break;
+                case VK_IMAGE_TILING_LINEAR:
+                    if (format_properties.linearTilingFeatures & reference.Features)
+                    {
+                        reference.Format = format;
+                        count++;
+                    }
+                    break;
 
-            case VK_IMAGE_TILING_OPTIMAL:
-                if (format_properties.optimalTilingFeatures & reference.Features)
-                {
-                    reference.Format = format;
-                    count++;
-                }
-                break;
+                case VK_IMAGE_TILING_OPTIMAL:
+                    if (format_properties.optimalTilingFeatures & reference.Features)
+                    {
+                        reference.Format = format;
+                        count++;
+                    }
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
             }
         }
     }
@@ -181,8 +181,8 @@ toolkit::result<> titan::GraphicsSystem::CreatePhysicalDevice()
            {
                const XrVulkanGraphicsDeviceGetInfoKHR get_info
                {
-                   .type = XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR,
-                   .systemId = m_Application.GetXrSystemId(),
+                   .type           = XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR,
+                   .systemId       = m_Application.GetXrSystemId(),
                    .vulkanInstance = m_Instance,
                };
 
@@ -215,15 +215,15 @@ toolkit::result<> titan::GraphicsSystem::CreateFormats()
         formats,
         {
             {
-                .Name = "color",
-                .Format = m_ColorFormat,
-                .Tiling = VK_IMAGE_TILING_OPTIMAL,
+                .Name     = "color",
+                .Format   = m_ColorFormat,
+                .Tiling   = VK_IMAGE_TILING_OPTIMAL,
                 .Features = VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT,
             },
             {
-                .Name = "depth",
-                .Format = m_DepthFormat,
-                .Tiling = VK_IMAGE_TILING_OPTIMAL,
+                .Name     = "depth",
+                .Format   = m_DepthFormat,
+                .Tiling   = VK_IMAGE_TILING_OPTIMAL,
                 .Features = VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT,
             }
         });
@@ -316,11 +316,11 @@ toolkit::result<> titan::GraphicsSystem::CreateQueueFamilyIndices()
     if (missing.empty())
     {
         m_QueueFamilyIndices = {
-            .Default = *index_default,
+            .Default  = *index_default,
             .Graphics = *index_graphics,
-            .Compute = *index_compute,
+            .Compute  = *index_compute,
             .Transfer = *index_transfer,
-            .Present = *index_present,
+            .Present  = *index_present,
         };
         return {};
     }
@@ -347,9 +347,9 @@ toolkit::result<> titan::GraphicsSystem::CreateDevice()
     for (auto &queue_family_index : queue_family_indices)
         queue_create_infos.push_back(
             {
-                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                 .queueFamilyIndex = queue_family_index,
-                .queueCount = 1,
+                .queueCount       = 1,
                 .pQueuePriorities = &queue_priority,
             });
 
@@ -357,46 +357,46 @@ toolkit::result<> titan::GraphicsSystem::CreateDevice()
 
     VkPhysicalDeviceSynchronization2Features synchronization2_features
     {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+        .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
         .synchronization2 = true,
     };
 
     VkPhysicalDeviceMultiviewFeatures multiview_features
     {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
-        .pNext = &synchronization2_features,
-        .multiview = true,
-        .multiviewGeometryShader = false,
+        .sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
+        .pNext                       = &synchronization2_features,
+        .multiview                   = true,
+        .multiviewGeometryShader     = false,
         .multiviewTessellationShader = false,
     };
 
     VkPhysicalDeviceBufferDeviceAddressFeatures buffer_device_address_features
     {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
-        .pNext = &multiview_features,
+        .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+        .pNext               = &multiview_features,
         .bufferDeviceAddress = true,
     };
 
     const VkDeviceCreateInfo device_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &buffer_device_address_features,
-        .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
-        .pQueueCreateInfos = queue_create_infos.data(),
-        .enabledLayerCount = VK_DEVICE_LAYERS.size(),
-        .ppEnabledLayerNames = VK_DEVICE_LAYERS.data(),
-        .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+        .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext                   = &buffer_device_address_features,
+        .queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size()),
+        .pQueueCreateInfos       = queue_create_infos.data(),
+        .enabledLayerCount       = VK_DEVICE_LAYERS.size(),
+        .ppEnabledLayerNames     = VK_DEVICE_LAYERS.data(),
+        .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
         .ppEnabledExtensionNames = extensions.data(),
-        .pEnabledFeatures = &physical_device_features.features,
+        .pEnabledFeatures        = &physical_device_features.features,
     };
 
     const XrVulkanDeviceCreateInfoKHR create_info
     {
-        .type = XR_TYPE_VULKAN_DEVICE_CREATE_INFO_KHR,
-        .systemId = m_Application.GetXrSystemId(),
+        .type                   = XR_TYPE_VULKAN_DEVICE_CREATE_INFO_KHR,
+        .systemId               = m_Application.GetXrSystemId(),
         .pfnGetInstanceProcAddr = vkGetInstanceProcAddr,
-        .vulkanPhysicalDevice = m_PhysicalDevice,
-        .vulkanCreateInfo = &device_create_info,
+        .vulkanPhysicalDevice   = m_PhysicalDevice,
+        .vulkanCreateInfo       = &device_create_info,
     };
 
     return xr::CreateVulkanDeviceKHR(m_Application.GetXrInstance(), create_info) >> m_Device;
@@ -407,9 +407,9 @@ toolkit::result<> titan::GraphicsSystem::CreateDeviceQueues()
     {
         const VkDeviceQueueInfo2 device_queue_info
         {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
             .queueFamilyIndex = m_QueueFamilyIndices.Default,
-            .queueIndex = 0,
+            .queueIndex       = 0,
         };
 
         m_DefaultQueue = vk::GetDeviceQueue2(m_Device, device_queue_info);
@@ -418,9 +418,9 @@ toolkit::result<> titan::GraphicsSystem::CreateDeviceQueues()
     {
         const VkDeviceQueueInfo2 device_queue_info
         {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
             .queueFamilyIndex = m_QueueFamilyIndices.Transfer,
-            .queueIndex = 0,
+            .queueIndex       = 0,
         };
 
         m_TransferQueue = vk::GetDeviceQueue2(m_Device, device_queue_info);
@@ -429,9 +429,9 @@ toolkit::result<> titan::GraphicsSystem::CreateDeviceQueues()
     {
         const VkDeviceQueueInfo2 device_queue_info
         {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+            .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
             .queueFamilyIndex = m_QueueFamilyIndices.Present,
-            .queueIndex = 0,
+            .queueIndex       = 0,
         };
 
         m_PresentQueue = vk::GetDeviceQueue2(m_Device, device_queue_info);
@@ -447,8 +447,8 @@ toolkit::result<> titan::GraphicsSystem::CreateCommandPools()
            {
                const VkCommandPoolCreateInfo create_info
                {
-                   .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                   .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                   .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                   .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                    .queueFamilyIndex = m_QueueFamilyIndices.Default,
                };
 
@@ -458,8 +458,8 @@ toolkit::result<> titan::GraphicsSystem::CreateCommandPools()
            {
                const VkCommandPoolCreateInfo create_info
                {
-                   .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                   .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                   .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                   .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                    .queueFamilyIndex = m_QueueFamilyIndices.Transfer,
                };
 
@@ -471,13 +471,24 @@ toolkit::result<> titan::GraphicsSystem::CreatePipelineCache()
 {
     std::vector<char> data;
     if (auto res = Application::LoadBinary("pipeline-cache") >> data; !res)
-        return res;
+    {
+        std::cerr << res.error() << std::endl;
+
+        const VkPipelineCacheCreateInfo create_info
+        {
+            .sType           = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+            .initialDataSize = 0,
+            .pInitialData    = nullptr,
+        };
+
+        return vk::PipelineCache::create(&m_Heap, m_Device, create_info) >> m_PipelineCache;
+    }
 
     const VkPipelineCacheCreateInfo create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
         .initialDataSize = data.size(),
-        .pInitialData = data.data(),
+        .pInitialData    = data.data(),
     };
 
     return vk::PipelineCache::create(&m_Heap, m_Device, create_info) >> m_PipelineCache;
@@ -496,18 +507,18 @@ toolkit::result<> titan::GraphicsSystem::CreateSession()
 {
     const XrGraphicsBindingVulkan2KHR graphics_binding_vulkan
     {
-        .type = XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR,
-        .instance = m_Instance,
-        .physicalDevice = m_PhysicalDevice,
-        .device = m_Device,
+        .type             = XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR,
+        .instance         = m_Instance,
+        .physicalDevice   = m_PhysicalDevice,
+        .device           = m_Device,
         .queueFamilyIndex = m_QueueFamilyIndices.Default,
-        .queueIndex = 0,
+        .queueIndex       = 0,
     };
 
     const XrSessionCreateInfo create_info
     {
-        .type = XR_TYPE_SESSION_CREATE_INFO,
-        .next = &graphics_binding_vulkan,
+        .type     = XR_TYPE_SESSION_CREATE_INFO,
+        .next     = &graphics_binding_vulkan,
         .systemId = m_Application.GetXrSystemId(),
     };
 
@@ -521,8 +532,8 @@ toolkit::result<> titan::GraphicsSystem::CreateSpaces()
            {
                const XrReferenceSpaceCreateInfo create_info
                {
-                   .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
-                   .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW,
+                   .type                 = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+                   .referenceSpaceType   = XR_REFERENCE_SPACE_TYPE_VIEW,
                    .poseInReferenceSpace = {
                        .orientation = {
                            .x = 0.0f,
@@ -544,8 +555,8 @@ toolkit::result<> titan::GraphicsSystem::CreateSpaces()
            {
                const XrReferenceSpaceCreateInfo create_info
                {
-                   .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
-                   .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE,
+                   .type                 = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+                   .referenceSpaceType   = XR_REFERENCE_SPACE_TYPE_STAGE,
                    .poseInReferenceSpace = {
                        .orientation = {
                            .x = 0.0f,
@@ -572,16 +583,16 @@ toolkit::result<> titan::GraphicsSystem::CreatePipelineLayout()
         VkPushConstantRange
         {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .offset = 0,
-            .size = sizeof(detail::ShaderData),
+            .offset     = 0,
+            .size       = sizeof(detail::ShaderData),
         },
     };
 
     const VkPipelineLayoutCreateInfo create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pushConstantRangeCount = push_constant_ranges.size(),
-        .pPushConstantRanges = push_constant_ranges.data(),
+        .pPushConstantRanges    = push_constant_ranges.data(),
     };
 
     return vk::PipelineLayout::create(&m_Heap, m_Device, create_info) >> m_PipelineLayout;
@@ -605,15 +616,15 @@ toolkit::result<> titan::GraphicsSystem::FillBuffers()
         {
             const VkMemoryMapInfo map_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
+                .sType  = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
                 .memory = info.VertexMemory,
                 .offset = info.VertexBufferOffset,
-                .size = info.VertexBufferSize,
+                .size   = info.VertexBufferSize,
             };
 
             const VkMemoryUnmapInfo unmap_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
+                .sType  = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
                 .memory = info.VertexMemory,
             };
 
@@ -630,15 +641,15 @@ toolkit::result<> titan::GraphicsSystem::FillBuffers()
         {
             const VkMemoryMapInfo map_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
+                .sType  = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
                 .memory = info.IndexMemory,
                 .offset = info.IndexBufferOffset,
-                .size = info.IndexBufferSize,
+                .size   = info.IndexBufferSize,
             };
 
             const VkMemoryUnmapInfo unmap_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
+                .sType  = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
                 .memory = info.IndexMemory,
             };
 
@@ -662,27 +673,27 @@ toolkit::result<> titan::GraphicsSystem::CreateRenderPass()
     {
         VkAttachmentDescription2
         {
-            .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-            .format = m_ColorFormat,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+            .format         = m_ColorFormat,
+            .samples        = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         },
         VkAttachmentDescription2
         {
-            .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-            .format = m_DepthFormat,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+            .format         = m_DepthFormat,
+            .samples        = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
             .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         }
     };
 
@@ -690,18 +701,18 @@ toolkit::result<> titan::GraphicsSystem::CreateRenderPass()
     {
         VkAttachmentReference2
         {
-            .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+            .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
             .attachment = 0,
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
         }
     };
 
     const VkAttachmentReference2 depth_attachment
     {
-        .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+        .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
         .attachment = 1,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
     };
 
@@ -709,11 +720,11 @@ toolkit::result<> titan::GraphicsSystem::CreateRenderPass()
     {
         VkSubpassDescription2
         {
-            .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
-            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-            .viewMask = 0,
-            .colorAttachmentCount = color_attachments.size(),
-            .pColorAttachments = color_attachments.data(),
+            .sType                   = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+            .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .viewMask                = 0,
+            .colorAttachmentCount    = color_attachments.size(),
+            .pColorAttachments       = color_attachments.data(),
             .pDepthStencilAttachment = &depth_attachment,
         }
     };
@@ -736,13 +747,13 @@ toolkit::result<> titan::GraphicsSystem::CreateRenderPass()
 
     const VkRenderPassCreateInfo2 create_info
     {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
         .attachmentCount = attachments.size(),
-        .pAttachments = attachments.data(),
-        .subpassCount = subpasses.size(),
-        .pSubpasses = subpasses.data(),
+        .pAttachments    = attachments.data(),
+        .subpassCount    = subpasses.size(),
+        .pSubpasses      = subpasses.data(),
         .dependencyCount = dependencies.size(),
-        .pDependencies = dependencies.data(),
+        .pDependencies   = dependencies.data(),
     };
 
     return vk::RenderPass::create(&m_Heap, m_Device, create_info) >> m_RenderPass;
@@ -770,16 +781,16 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
 
     const VkShaderModuleCreateInfo module_vertex_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = vert_shader.GetBinarySize(),
-        .pCode = static_cast<const uint32_t *>(vert_shader.GetBinaryData()),
+        .pCode    = static_cast<const uint32_t *>(vert_shader.GetBinaryData()),
     };
 
     const VkShaderModuleCreateInfo module_fragment_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = frag_shader.GetBinarySize(),
-        .pCode = static_cast<const uint32_t *>(frag_shader.GetBinaryData()),
+        .pCode    = static_cast<const uint32_t *>(frag_shader.GetBinaryData()),
     };
 
     if (auto res = vk::ShaderModule::create(&m_Heap, m_Device, module_vertex_create_info) >> module_vertex; !res)
@@ -791,17 +802,17 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
     {
         VkPipelineShaderStageCreateInfo
         {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_VERTEX_BIT,
             .module = module_vertex,
-            .pName = "main",
+            .pName  = "main",
         },
         VkPipelineShaderStageCreateInfo
         {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = module_fragment,
-            .pName = "main",
+            .pName  = "main",
         },
     };
 
@@ -809,8 +820,8 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
     {
         VkVertexInputBindingDescription
         {
-            .binding = 0,
-            .stride = sizeof(pkg::mesh::Vertex),
+            .binding   = 0,
+            .stride    = sizeof(pkg::mesh::Vertex),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         }
     };
@@ -820,45 +831,45 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
         VkVertexInputAttributeDescription
         {
             .location = 0,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(pkg::mesh::Vertex, Position),
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset   = offsetof(pkg::mesh::Vertex, Position),
         },
         VkVertexInputAttributeDescription
         {
             .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(pkg::mesh::Vertex, Normal),
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset   = offsetof(pkg::mesh::Vertex, Normal),
         },
         VkVertexInputAttributeDescription
         {
             .location = 2,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32_SFLOAT,
-            .offset = offsetof(pkg::mesh::Vertex, Texture),
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32_SFLOAT,
+            .offset   = offsetof(pkg::mesh::Vertex, Texture),
         },
     };
 
     const VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = vertex_binding_descriptions.size(),
-        .pVertexBindingDescriptions = vertex_binding_descriptions.data(),
+        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount   = vertex_binding_descriptions.size(),
+        .pVertexBindingDescriptions      = vertex_binding_descriptions.data(),
         .vertexAttributeDescriptionCount = vertex_attribute_descriptions.size(),
-        .pVertexAttributeDescriptions = vertex_attribute_descriptions.data(),
+        .pVertexAttributeDescriptions    = vertex_attribute_descriptions.data(),
     };
 
     const VkPipelineInputAssemblyStateCreateInfo input_assembly_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         .primitiveRestartEnable = false,
     };
 
     const VkPipelineTessellationStateCreateInfo tessellation_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+        .sType              = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
         .patchControlPoints = 0,
     };
 
@@ -869,65 +880,65 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
 
     const VkPipelineRasterizationStateCreateInfo rasterization_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .depthClampEnable = false,
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable        = false,
         .rasterizerDiscardEnable = false,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_NONE,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
-        .depthBiasEnable = false,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .cullMode                = VK_CULL_MODE_NONE,
+        .frontFace               = VK_FRONT_FACE_CLOCKWISE,
+        .depthBiasEnable         = false,
         .depthBiasConstantFactor = 0.0f,
-        .depthBiasClamp = 0.0f,
-        .depthBiasSlopeFactor = 0.0f,
-        .lineWidth = 1.0f,
+        .depthBiasClamp          = 0.0f,
+        .depthBiasSlopeFactor    = 0.0f,
+        .lineWidth               = 1.0f,
     };
 
     const VkPipelineMultisampleStateCreateInfo multisample_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
     };
 
     const VkPipelineDepthStencilStateCreateInfo depth_stencil_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = true,
-        .depthWriteEnable = true,
-        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable       = true,
+        .depthWriteEnable      = true,
+        .depthCompareOp        = VK_COMPARE_OP_LESS,
         .depthBoundsTestEnable = false,
-        .stencilTestEnable = false,
-        .front = {},
-        .back = {},
-        .minDepthBounds = 0.0f,
-        .maxDepthBounds = 1.0f,
+        .stencilTestEnable     = false,
+        .front                 = {},
+        .back                  = {},
+        .minDepthBounds        = 0.0f,
+        .maxDepthBounds        = 1.0f,
     };
 
     const std::array attachments
     {
         VkPipelineColorBlendAttachmentState
         {
-            .blendEnable = false,
+            .blendEnable         = false,
             .srcColorBlendFactor = {},
             .dstColorBlendFactor = {},
-            .colorBlendOp = {},
+            .colorBlendOp        = {},
             .srcAlphaBlendFactor = {},
             .dstAlphaBlendFactor = {},
-            .alphaBlendOp = {},
-            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT
-                              | VK_COLOR_COMPONENT_G_BIT
-                              | VK_COLOR_COMPONENT_B_BIT
-                              | VK_COLOR_COMPONENT_A_BIT,
+            .alphaBlendOp        = {},
+            .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT
+                                   | VK_COLOR_COMPONENT_G_BIT
+                                   | VK_COLOR_COMPONENT_B_BIT
+                                   | VK_COLOR_COMPONENT_A_BIT,
         },
     };
 
     const VkPipelineColorBlendStateCreateInfo color_blend_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .logicOpEnable = false,
-        .logicOp = VK_LOGIC_OP_CLEAR,
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable   = false,
+        .logicOp         = VK_LOGIC_OP_CLEAR,
         .attachmentCount = attachments.size(),
-        .pAttachments = attachments.data(),
-        .blendConstants = {
+        .pAttachments    = attachments.data(),
+        .blendConstants  = {
             0.0f,
             0.0f,
             0.0f,
@@ -943,28 +954,28 @@ toolkit::result<> titan::GraphicsSystem::CreatePipeline()
 
     const VkPipelineDynamicStateCreateInfo dynamic_state_create_info
     {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = dynamic_states.size(),
-        .pDynamicStates = dynamic_states.data(),
+        .pDynamicStates    = dynamic_states.data(),
     };
 
     const VkGraphicsPipelineCreateInfo create_info
     {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .stageCount = stage_create_info.size(),
-        .pStages = stage_create_info.data(),
-        .pVertexInputState = &vertex_input_state_create_info,
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount          = stage_create_info.size(),
+        .pStages             = stage_create_info.data(),
+        .pVertexInputState   = &vertex_input_state_create_info,
         .pInputAssemblyState = &input_assembly_state_create_info,
-        .pTessellationState = &tessellation_state_create_info,
-        .pViewportState = &viewport_state_create_info,
+        .pTessellationState  = &tessellation_state_create_info,
+        .pViewportState      = &viewport_state_create_info,
         .pRasterizationState = &rasterization_state_create_info,
-        .pMultisampleState = &multisample_state_create_info,
-        .pDepthStencilState = &depth_stencil_state_create_info,
-        .pColorBlendState = &color_blend_state_create_info,
-        .pDynamicState = &dynamic_state_create_info,
-        .layout = m_PipelineLayout,
-        .renderPass = m_RenderPass,
-        .subpass = 0,
+        .pMultisampleState   = &multisample_state_create_info,
+        .pDepthStencilState  = &depth_stencil_state_create_info,
+        .pColorBlendState    = &color_blend_state_create_info,
+        .pDynamicState       = &dynamic_state_create_info,
+        .layout              = m_PipelineLayout,
+        .renderPass          = m_RenderPass,
+        .subpass             = 0,
     };
 
     return vk::GraphicsPipeline::create(&m_Heap, m_Device, m_PipelineCache, create_info) >> m_Pipeline;
@@ -1020,7 +1031,7 @@ toolkit::result<> titan::GraphicsSystem::CreateWindowSwapchainView()
 {
     const VkPhysicalDeviceSurfaceInfo2KHR surface_info
     {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
+        .sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
         .surface = m_WindowSurface,
     };
 
@@ -1065,25 +1076,25 @@ toolkit::result<> titan::GraphicsSystem::CreateWindowSwapchainView()
         image_count = capabilities.maxImageCount;
 
     m_WindowSwapchainView = {
-        .Width = image_extent.width,
+        .Width  = image_extent.width,
         .Height = image_extent.height,
     };
 
     {
         const detail::VkSwapchainReferenceCreateInfo create_info
         {
-            .useSwapchain = true,
-            .imageCount = image_count,
-            .imageExtent = image_extent,
-            .imageFormat = color_format,
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            .imageColorSpace = color_space,
-            .imageSharingMode = image_sharing_mode,
-            .presentMode = presentMode,
-            .preTransform = capabilities.currentTransform,
+            .useSwapchain          = true,
+            .imageCount            = image_count,
+            .imageExtent           = image_extent,
+            .imageFormat           = color_format,
+            .aspectMask            = VK_IMAGE_ASPECT_COLOR_BIT,
+            .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .imageColorSpace       = color_space,
+            .imageSharingMode      = image_sharing_mode,
+            .presentMode           = presentMode,
+            .preTransform          = capabilities.currentTransform,
             .queueFamilyIndexCount = static_cast<uint32_t>(queue_family_indices.size()),
-            .pQueueFamilyIndices = queue_family_indices.data(),
+            .pQueueFamilyIndices   = queue_family_indices.data(),
         };
 
         if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Color; !res)
@@ -1093,15 +1104,15 @@ toolkit::result<> titan::GraphicsSystem::CreateWindowSwapchainView()
     {
         const detail::VkSwapchainReferenceCreateInfo create_info
         {
-            .useSwapchain = false,
-            .imageCount = image_count,
-            .imageExtent = image_extent,
-            .imageFormat = m_DepthFormat,
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .imageUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            .imageSharingMode = image_sharing_mode,
+            .useSwapchain          = false,
+            .imageCount            = image_count,
+            .imageExtent           = image_extent,
+            .imageFormat           = m_DepthFormat,
+            .aspectMask            = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .imageUsage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .imageSharingMode      = image_sharing_mode,
             .queueFamilyIndexCount = static_cast<uint32_t>(queue_family_indices.size()),
-            .pQueueFamilyIndices = queue_family_indices.data(),
+            .pQueueFamilyIndices   = queue_family_indices.data(),
         };
 
         if (auto res = CreateSwapchainReference(create_info) >> m_WindowSwapchainView.Depth; !res)
@@ -1164,9 +1175,9 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
         {
             const VkBufferCreateInfo create_info
             {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = data.GetVertexCount() * sizeof(pkg::mesh::Vertex),
-                .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .size        = data.GetVertexCount() * sizeof(pkg::mesh::Vertex),
+                .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
@@ -1175,14 +1186,14 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
             {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+                .sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
                 .buffer = reference.VertexBuffer,
             };
 
             const auto requirements = vk::GetBufferMemoryRequirements2(
-                        m_Device,
-                        requirements_info)
-                    .memoryRequirements;
+                    m_Device,
+                    requirements_info)
+                .memoryRequirements;
 
             uint32_t memory_type_index;
             if (auto res = FindMemoryType(
@@ -1195,8 +1206,8 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
 
             const VkMemoryAllocateInfo allocate_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .allocationSize = requirements.size,
+                .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .allocationSize  = requirements.size,
                 .memoryTypeIndex = memory_type_index,
             };
 
@@ -1205,9 +1216,9 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
 
             const VkBindBufferMemoryInfo bind_info
             {
-                .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-                .buffer = reference.VertexBuffer,
-                .memory = reference.VertexMemory,
+                .sType        = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+                .buffer       = reference.VertexBuffer,
+                .memory       = reference.VertexMemory,
                 .memoryOffset = 0,
             };
 
@@ -1218,9 +1229,9 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
         {
             const VkBufferCreateInfo create_info
             {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = data.GetIndexCount() * sizeof(uint32_t),
-                .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .size        = data.GetIndexCount() * sizeof(uint32_t),
+                .usage       = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             };
 
@@ -1229,14 +1240,14 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
 
             const VkBufferMemoryRequirementsInfo2 requirements_info
             {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+                .sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
                 .buffer = reference.IndexBuffer,
             };
 
             const auto requirements = vk::GetBufferMemoryRequirements2(
-                        m_Device,
-                        requirements_info)
-                    .memoryRequirements;
+                    m_Device,
+                    requirements_info)
+                .memoryRequirements;
 
             uint32_t memory_type_index;
             if (auto res = FindMemoryType(
@@ -1249,8 +1260,8 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
 
             const VkMemoryAllocateInfo allocate_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .allocationSize = requirements.size,
+                .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .allocationSize  = requirements.size,
                 .memoryTypeIndex = memory_type_index,
             };
 
@@ -1259,9 +1270,9 @@ toolkit::result<> titan::GraphicsSystem::CreateBuffers()
 
             const VkBindBufferMemoryInfo bind_info
             {
-                .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-                .buffer = reference.IndexBuffer,
-                .memory = reference.IndexMemory,
+                .sType        = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+                .buffer       = reference.IndexBuffer,
+                .memory       = reference.IndexMemory,
                 .memoryOffset = 0,
             };
 
@@ -1299,9 +1310,9 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
 
     const VkCommandBufferAllocateInfo allocate_info
     {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = m_DefaultPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool        = m_DefaultPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = static_cast<uint32_t>(view_count),
     };
 
@@ -1324,14 +1335,14 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
         const detail::XrSwapchainReferenceCreateInfo color_create_info
         {
             .useSwapchain = true,
-            .sampleCount = view_configuration_view.recommendedSwapchainSampleCount,
-            .usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
-            .imageExtent = {
-                .width = view_configuration_view.recommendedImageRectWidth,
+            .sampleCount  = view_configuration_view.recommendedSwapchainSampleCount,
+            .usageFlags   = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+            .imageExtent  = {
+                .width  = view_configuration_view.recommendedImageRectWidth,
                 .height = view_configuration_view.recommendedImageRectHeight,
             },
             .imageFormat = m_ColorFormat,
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .aspectMask  = VK_IMAGE_ASPECT_COLOR_BIT,
         };
 
         if (auto res = CreateSwapchainReference(color_create_info) >> color; !res)
@@ -1340,17 +1351,17 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
         const detail::XrSwapchainReferenceCreateInfo depth_create_info
         {
             .useSwapchain = false,
-            .imageCount = static_cast<uint32_t>(color.Images.size()),
-            .imageExtent = {
-                .width = view_configuration_view.recommendedImageRectWidth,
+            .imageCount   = static_cast<uint32_t>(color.Images.size()),
+            .imageExtent  = {
+                .width  = view_configuration_view.recommendedImageRectWidth,
                 .height = view_configuration_view.recommendedImageRectHeight,
             },
-            .imageFormat = m_DepthFormat,
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .imageUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            .imageSharingMode = image_sharing_mode,
+            .imageFormat           = m_DepthFormat,
+            .aspectMask            = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .imageUsage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .imageSharingMode      = image_sharing_mode,
             .queueFamilyIndexCount = static_cast<uint32_t>(queue_family_indices.size()),
-            .pQueueFamilyIndices = queue_family_indices.data(),
+            .pQueueFamilyIndices   = queue_family_indices.data(),
         };
 
         if (auto res = CreateSwapchainReference(depth_create_info) >> depth; !res)
@@ -1372,13 +1383,13 @@ toolkit::result<> titan::GraphicsSystem::CreateSwapchainViews()
 
             const VkFramebufferCreateInfo create_info
             {
-                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = m_RenderPass,
+                .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass      = m_RenderPass,
                 .attachmentCount = static_cast<uint32_t>(attachments.size()),
-                .pAttachments = attachments.data(),
-                .width = view_configuration_view.recommendedImageRectWidth,
-                .height = view_configuration_view.recommendedImageRectHeight,
-                .layers = 1,
+                .pAttachments    = attachments.data(),
+                .width           = view_configuration_view.recommendedImageRectWidth,
+                .height          = view_configuration_view.recommendedImageRectHeight,
+                .layers          = 1,
             };
 
             if (auto res = vk::Framebuffer::create(&m_Heap, m_Device, create_info) >> framebuffer; !res)
@@ -1405,9 +1416,9 @@ toolkit::result<> titan::GraphicsSystem::CreateFrames()
 
     const VkCommandBufferAllocateInfo allocate_info
     {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = m_TransferPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool        = m_TransferPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = static_cast<uint32_t>(frame_count),
     };
 
@@ -1435,13 +1446,13 @@ toolkit::result<> titan::GraphicsSystem::CreateFrames()
 
         const VkFramebufferCreateInfo create_info
         {
-            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .renderPass = m_RenderPass,
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass      = m_RenderPass,
             .attachmentCount = static_cast<uint32_t>(attachments.size()),
-            .pAttachments = attachments.data(),
-            .width = width,
-            .height = height,
-            .layers = 1,
+            .pAttachments    = attachments.data(),
+            .width           = width,
+            .height          = height,
+            .layers          = 1,
         };
 
         if (auto res = vk::Framebuffer::create(&m_Heap, m_Device, create_info) >> framebuffer; !res)
@@ -1469,13 +1480,13 @@ toolkit::result<> titan::GraphicsSystem::CreateInstance()
 
                const VkApplicationInfo application_info
                {
-                   .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-                   .pApplicationName = m_Application.GetName().c_str(),
+                   .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+                   .pApplicationName   = m_Application.GetName().c_str(),
                    .applicationVersion = VK_MAKE_VERSION(
                        m_Application.GetVersion().Major,
                        m_Application.GetVersion().Minor,
                        m_Application.GetVersion().Patch),
-                   .pEngineName = "Titan Core",
+                   .pEngineName   = "Titan Core",
                    .engineVersion = VK_MAKE_VERSION(
                        m_Application.GetEngineVersion().Major,
                        m_Application.GetEngineVersion().Minor,
@@ -1485,20 +1496,20 @@ toolkit::result<> titan::GraphicsSystem::CreateInstance()
 
                const VkInstanceCreateInfo instance_create_info
                {
-                   .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                   .pApplicationInfo = &application_info,
-                   .enabledLayerCount = VK_INSTANCE_LAYERS.size(),
-                   .ppEnabledLayerNames = VK_INSTANCE_LAYERS.data(),
-                   .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                   .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+                   .pApplicationInfo        = &application_info,
+                   .enabledLayerCount       = VK_INSTANCE_LAYERS.size(),
+                   .ppEnabledLayerNames     = VK_INSTANCE_LAYERS.data(),
+                   .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
                    .ppEnabledExtensionNames = extensions.data(),
                };
 
                const XrVulkanInstanceCreateInfoKHR vulkan_instance_create_info
                {
-                   .type = XR_TYPE_VULKAN_INSTANCE_CREATE_INFO_KHR,
-                   .systemId = m_Application.GetXrSystemId(),
+                   .type                   = XR_TYPE_VULKAN_INSTANCE_CREATE_INFO_KHR,
+                   .systemId               = m_Application.GetXrSystemId(),
                    .pfnGetInstanceProcAddr = vkGetInstanceProcAddr,
-                   .vulkanCreateInfo = &instance_create_info,
+                   .vulkanCreateInfo       = &instance_create_info,
                };
 
                return xr::CreateVulkanInstanceKHR(
@@ -1511,7 +1522,7 @@ toolkit::result<> titan::GraphicsSystem::CreateMessenger()
 {
     const VkDebugUtilsMessengerCreateInfoEXT create_info
     {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
         .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
                            | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
                            | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
@@ -1520,7 +1531,7 @@ toolkit::result<> titan::GraphicsSystem::CreateMessenger()
                        | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
                        | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
         .pfnUserCallback = Application::VkDebugCallback,
-        .pUserData = this,
+        .pUserData       = this,
     };
 
     return vk::DebugUtilsMessengerEXT::create(&m_Heap, m_Instance, create_info) >> m_Messenger;
@@ -1547,21 +1558,21 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
 
         const VkSwapchainCreateInfoKHR swapchain_create_info
         {
-            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-            .surface = m_WindowSurface,
-            .minImageCount = create_info.imageCount,
-            .imageFormat = create_info.imageFormat,
-            .imageColorSpace = create_info.imageColorSpace,
-            .imageExtent = create_info.imageExtent,
-            .imageArrayLayers = 1,
-            .imageUsage = create_info.imageUsage,
-            .imageSharingMode = create_info.imageSharingMode,
+            .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .surface               = m_WindowSurface,
+            .minImageCount         = create_info.imageCount,
+            .imageFormat           = create_info.imageFormat,
+            .imageColorSpace       = create_info.imageColorSpace,
+            .imageExtent           = create_info.imageExtent,
+            .imageArrayLayers      = 1,
+            .imageUsage            = create_info.imageUsage,
+            .imageSharingMode      = create_info.imageSharingMode,
             .queueFamilyIndexCount = create_info.queueFamilyIndexCount,
-            .pQueueFamilyIndices = create_info.pQueueFamilyIndices,
-            .preTransform = create_info.preTransform,
-            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode = create_info.presentMode,
-            .clipped = true,
+            .pQueueFamilyIndices   = create_info.pQueueFamilyIndices,
+            .preTransform          = create_info.preTransform,
+            .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .presentMode           = create_info.presentMode,
+            .clipped               = true,
         };
 
         if (auto res = vk::SwapchainKHR::create(&m_Heap, m_Device, swapchain_create_info) >> reference.Swapchain; !res)
@@ -1582,23 +1593,23 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
 
             const VkImageCreateInfo image_create_info
             {
-                .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                 .imageType = VK_IMAGE_TYPE_2D,
-                .format = create_info.imageFormat,
-                .extent = {
-                    .width = create_info.imageExtent.width,
+                .format    = create_info.imageFormat,
+                .extent    = {
+                    .width  = create_info.imageExtent.width,
                     .height = create_info.imageExtent.height,
-                    .depth = 1,
+                    .depth  = 1,
                 },
-                .mipLevels = 1,
-                .arrayLayers = 1,
-                .samples = VK_SAMPLE_COUNT_1_BIT,
-                .tiling = VK_IMAGE_TILING_OPTIMAL,
-                .usage = create_info.imageUsage,
-                .sharingMode = create_info.imageSharingMode,
+                .mipLevels             = 1,
+                .arrayLayers           = 1,
+                .samples               = VK_SAMPLE_COUNT_1_BIT,
+                .tiling                = VK_IMAGE_TILING_OPTIMAL,
+                .usage                 = create_info.imageUsage,
+                .sharingMode           = create_info.imageSharingMode,
                 .queueFamilyIndexCount = create_info.queueFamilyIndexCount,
-                .pQueueFamilyIndices = create_info.pQueueFamilyIndices,
-                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .pQueueFamilyIndices   = create_info.pQueueFamilyIndices,
+                .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
             };
 
             if (auto res = vk::Image::create(&m_Heap, m_Device, image_create_info) >> image; !res)
@@ -1627,8 +1638,8 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
 
             const VkMemoryAllocateInfo allocate_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .allocationSize = memory_requirements.size,
+                .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .allocationSize  = memory_requirements.size,
                 .memoryTypeIndex = memory_type_index,
             };
 
@@ -1637,9 +1648,9 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
 
             const VkBindImageMemoryInfo bind_info
             {
-                .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
-                .image = image,
-                .memory = memory,
+                .sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+                .image        = image,
+                .memory       = memory,
                 .memoryOffset = 0,
             };
 
@@ -1654,10 +1665,10 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
     {
         const VkImageViewCreateInfo view_create_info
         {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = reference.Images[i],
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = create_info.imageFormat,
+            .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image      = reference.Images[i],
+            .viewType   = VK_IMAGE_VIEW_TYPE_2D,
+            .format     = create_info.imageFormat,
             .components = {
                 .r = VK_COMPONENT_SWIZZLE_IDENTITY,
                 .g = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -1665,11 +1676,11 @@ toolkit::result<titan::detail::VkSwapchainReference> titan::GraphicsSystem::Crea
                 .a = VK_COMPONENT_SWIZZLE_IDENTITY,
             },
             .subresourceRange = {
-                .aspectMask = create_info.aspectMask,
-                .baseMipLevel = 0,
-                .levelCount = 1,
+                .aspectMask     = create_info.aspectMask,
+                .baseMipLevel   = 0,
+                .levelCount     = 1,
                 .baseArrayLayer = 0,
-                .layerCount = 1,
+                .layerCount     = 1,
             },
         };
 
@@ -1692,15 +1703,15 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
     {
         const XrSwapchainCreateInfo swapchain_create_info
         {
-            .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
-            .usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | create_info.usageFlags,
-            .format = create_info.imageFormat,
+            .type        = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+            .usageFlags  = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | create_info.usageFlags,
+            .format      = create_info.imageFormat,
             .sampleCount = create_info.sampleCount,
-            .width = create_info.imageExtent.width,
-            .height = create_info.imageExtent.height,
-            .faceCount = 1,
-            .arraySize = 1,
-            .mipCount = 1,
+            .width       = create_info.imageExtent.width,
+            .height      = create_info.imageExtent.height,
+            .faceCount   = 1,
+            .arraySize   = 1,
+            .mipCount    = 1,
         };
 
         if (auto res = xr::Swapchain::create(&m_Heap, m_Session, swapchain_create_info)
@@ -1733,23 +1744,23 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
 
             const VkImageCreateInfo image_create_info
             {
-                .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                 .imageType = VK_IMAGE_TYPE_2D,
-                .format = create_info.imageFormat,
-                .extent = {
-                    .width = create_info.imageExtent.width,
+                .format    = create_info.imageFormat,
+                .extent    = {
+                    .width  = create_info.imageExtent.width,
                     .height = create_info.imageExtent.height,
-                    .depth = 1,
+                    .depth  = 1,
                 },
-                .mipLevels = 1,
-                .arrayLayers = 1,
-                .samples = VK_SAMPLE_COUNT_1_BIT,
-                .tiling = VK_IMAGE_TILING_OPTIMAL,
-                .usage = create_info.imageUsage,
-                .sharingMode = create_info.imageSharingMode,
+                .mipLevels             = 1,
+                .arrayLayers           = 1,
+                .samples               = VK_SAMPLE_COUNT_1_BIT,
+                .tiling                = VK_IMAGE_TILING_OPTIMAL,
+                .usage                 = create_info.imageUsage,
+                .sharingMode           = create_info.imageSharingMode,
                 .queueFamilyIndexCount = create_info.queueFamilyIndexCount,
-                .pQueueFamilyIndices = create_info.pQueueFamilyIndices,
-                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .pQueueFamilyIndices   = create_info.pQueueFamilyIndices,
+                .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
             };
 
             if (auto res = vk::Image::create(&m_Heap, m_Device, image_create_info) >> image; !res)
@@ -1778,8 +1789,8 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
 
             const VkMemoryAllocateInfo allocate_info
             {
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .allocationSize = memory_requirements.size,
+                .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .allocationSize  = memory_requirements.size,
                 .memoryTypeIndex = memory_type_index,
             };
 
@@ -1788,9 +1799,9 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
 
             const VkBindImageMemoryInfo bind_info
             {
-                .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
-                .image = image,
-                .memory = memory,
+                .sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+                .image        = image,
+                .memory       = memory,
                 .memoryOffset = 0,
             };
 
@@ -1805,10 +1816,10 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
     {
         const VkImageViewCreateInfo view_create_info
         {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = reference.Images[i],
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = create_info.imageFormat,
+            .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image      = reference.Images[i],
+            .viewType   = VK_IMAGE_VIEW_TYPE_2D,
+            .format     = create_info.imageFormat,
             .components = {
                 .r = VK_COMPONENT_SWIZZLE_IDENTITY,
                 .g = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -1816,11 +1827,11 @@ toolkit::result<titan::detail::XrSwapchainReference> titan::GraphicsSystem::Crea
                 .a = VK_COMPONENT_SWIZZLE_IDENTITY,
             },
             .subresourceRange = {
-                .aspectMask = create_info.aspectMask,
-                .baseMipLevel = 0,
-                .levelCount = 1,
+                .aspectMask     = create_info.aspectMask,
+                .baseMipLevel   = 0,
+                .levelCount     = 1,
                 .baseArrayLayer = 0,
-                .layerCount = 1,
+                .layerCount     = 1,
             },
         };
 
@@ -1863,11 +1874,11 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
 
     const VkAcquireNextImageInfoKHR acquire_info
     {
-        .sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
-        .swapchain = m_WindowSwapchainView.Color.Swapchain,
-        .timeout = std::numeric_limits<uint64_t>::max(),
-        .semaphore = available,
-        .fence = nullptr,
+        .sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
+        .swapchain  = m_WindowSwapchainView.Color.Swapchain,
+        .timeout    = std::numeric_limits<uint64_t>::max(),
+        .semaphore  = available,
+        .fence      = nullptr,
         .deviceMask = 1,
     };
 
@@ -1902,11 +1913,11 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
 
     if (auto res = RecordCommandBuffer(
         {
-            .width = static_cast<uint32_t>(width),
-            .height = static_cast<uint32_t>(height),
+            .width         = static_cast<uint32_t>(width),
+            .height        = static_cast<uint32_t>(height),
             .screen_matrix = projection_matrix * view_matrix,
-            .buffer = buffer,
-            .framebuffer = framebuffer
+            .buffer        = buffer,
+            .framebuffer   = framebuffer
         }); !res)
         return res;
 
@@ -1915,7 +1926,7 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
         {
             VkSemaphoreSubmitInfo
             {
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .semaphore = available,
                 .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
             },
@@ -1925,7 +1936,7 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
         {
             VkCommandBufferSubmitInfo
             {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
                 .commandBuffer = buffer,
             }
         };
@@ -1934,7 +1945,7 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
         {
             VkSemaphoreSubmitInfo
             {
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                 .semaphore = finished,
                 .stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
             },
@@ -1944,13 +1955,13 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
         {
             VkSubmitInfo2
             {
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-                .waitSemaphoreInfoCount = wait_semaphores.size(),
-                .pWaitSemaphoreInfos = wait_semaphores.data(),
-                .commandBufferInfoCount = command_buffers.size(),
-                .pCommandBufferInfos = command_buffers.data(),
+                .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+                .waitSemaphoreInfoCount   = wait_semaphores.size(),
+                .pWaitSemaphoreInfos      = wait_semaphores.data(),
+                .commandBufferInfoCount   = command_buffers.size(),
+                .pCommandBufferInfos      = command_buffers.data(),
                 .signalSemaphoreInfoCount = signal_semaphores.size(),
-                .pSignalSemaphoreInfos = signal_semaphores.data(),
+                .pSignalSemaphoreInfos    = signal_semaphores.data(),
             },
         };
 
@@ -1971,12 +1982,12 @@ toolkit::result<> titan::GraphicsSystem::RenderWindowView()
 
         const VkPresentInfoKHR present_info
         {
-            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size()),
-            .pWaitSemaphores = wait_semaphores.data(),
-            .swapchainCount = static_cast<uint32_t>(swapchains.size()),
-            .pSwapchains = swapchains.data(),
-            .pImageIndices = &image_index,
+            .pWaitSemaphores    = wait_semaphores.data(),
+            .swapchainCount     = static_cast<uint32_t>(swapchains.size()),
+            .pSwapchains        = swapchains.data(),
+            .pImageIndices      = &image_index,
         };
 
         if (auto res = vkQueuePresentKHR(m_PresentQueue, &present_info))
@@ -1992,10 +2003,10 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
 
     const XrViewLocateInfo view_locate_info
     {
-        .type = XR_TYPE_VIEW_LOCATE_INFO,
+        .type                  = XR_TYPE_VIEW_LOCATE_INFO,
         .viewConfigurationType = m_Application.GetXrViewConfigurationType(),
-        .displayTime = reference.PredictedDisplayTime,
-        .space = m_ReferenceSpace,
+        .displayTime           = reference.PredictedDisplayTime,
+        .space                 = m_ReferenceSpace,
     };
 
     XrViewState view_state
@@ -2049,7 +2060,7 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
 
     const XrSwapchainImageWaitInfo wait_info
     {
-        .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
+        .type    = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
         .timeout = XR_INFINITE_DURATION,
     };
 
@@ -2076,9 +2087,9 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
         const auto height = view_configuration_view.recommendedImageRectHeight;
 
         projection_views[view_index] = {
-            .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-            .pose = view.pose,
-            .fov = view.fov,
+            .type     = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+            .pose     = view.pose,
+            .fov      = view.fov,
             .subImage = {
                 .swapchain = color.Swapchain,
                 .imageRect = {
@@ -2087,7 +2098,7 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
                         .y = 0,
                     },
                     .extent = {
-                        .width = static_cast<int32_t>(width),
+                        .width  = static_cast<int32_t>(width),
                         .height = static_cast<int32_t>(height),
                     },
                 },
@@ -2096,7 +2107,7 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
         };
 
         command_buffers[view_index] = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
             .commandBuffer = buffer,
         };
 
@@ -2135,11 +2146,11 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
 
         if (auto res = RecordCommandBuffer(
             {
-                .width = width,
-                .height = height,
+                .width         = width,
+                .height        = height,
                 .screen_matrix = projection_matrix * view_matrix,
-                .buffer = buffer,
-                .framebuffer = framebuffers[image_index],
+                .buffer        = buffer,
+                .framebuffer   = framebuffers[image_index],
             }); !res)
             return res;
     }
@@ -2148,9 +2159,9 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
     {
         VkSubmitInfo2
         {
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
             .commandBufferInfoCount = static_cast<uint32_t>(command_buffers.size()),
-            .pCommandBufferInfos = command_buffers.data(),
+            .pCommandBufferInfos    = command_buffers.data(),
         },
     };
 
@@ -2162,12 +2173,12 @@ toolkit::result<> titan::GraphicsSystem::RenderViews(detail::LayerReference &ref
             return toolkit::make_error("xrReleaseSwapchainImage => {}", res);
 
     reference.Projection = {
-        .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+        .type       = XR_TYPE_COMPOSITION_LAYER_PROJECTION,
         .layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
                       | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT,
-        .space = m_ReferenceSpace,
+        .space     = m_ReferenceSpace,
         .viewCount = static_cast<uint32_t>(projection_views.size()),
-        .views = projection_views.data(),
+        .views     = projection_views.data(),
     };
 
     return {};
@@ -2188,10 +2199,10 @@ toolkit::result<> titan::GraphicsSystem::RecordCommandBuffer(const detail::Recor
 
     const VkViewport viewport
     {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(info.width),
-        .height = static_cast<float>(info.height),
+        .x        = 0.0f,
+        .y        = 0.0f,
+        .width    = static_cast<float>(info.width),
+        .height   = static_cast<float>(info.height),
         .minDepth = 0.0f,
         .maxDepth = 1.0f,
     };
@@ -2203,7 +2214,7 @@ toolkit::result<> titan::GraphicsSystem::RecordCommandBuffer(const detail::Recor
             .y = 0,
         },
         .extent = {
-            .width = info.width,
+            .width  = info.width,
             .height = info.height,
         },
     };
@@ -2216,26 +2227,26 @@ toolkit::result<> titan::GraphicsSystem::RecordCommandBuffer(const detail::Recor
 
     const VkRenderPassBeginInfo render_pass_begin_info
     {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = m_RenderPass,
+        .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass  = m_RenderPass,
         .framebuffer = info.framebuffer,
-        .renderArea = {
+        .renderArea  = {
             .offset = {
                 .x = 0,
                 .y = 0,
             },
             .extent = {
-                .width = info.width,
+                .width  = info.width,
                 .height = info.height,
             },
         },
         .clearValueCount = clear_values.size(),
-        .pClearValues = clear_values.data(),
+        .pClearValues    = clear_values.data(),
     };
 
     const VkSubpassBeginInfo subpass_begin_info
     {
-        .sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+        .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
         .contents = VK_SUBPASS_CONTENTS_INLINE,
     };
 
@@ -2277,18 +2288,18 @@ toolkit::result<> titan::GraphicsSystem::RecordCommandBuffer(const detail::Recor
         const detail::ShaderData shader_data
         {
             .Screen = info.screen_matrix,
-            .Model = transform.Matrix,
+            .Model  = transform.Matrix,
             .Normal = glm::transpose(transform.Inverse),
         };
 
         const VkPushConstantsInfo push_constants_info
         {
-            .sType = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
-            .layout = m_PipelineLayout,
+            .sType      = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO,
+            .layout     = m_PipelineLayout,
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .offset = 0,
-            .size = sizeof(detail::ShaderData),
-            .pValues = &shader_data,
+            .offset     = 0,
+            .size       = sizeof(detail::ShaderData),
+            .pValues    = &shader_data,
         };
 
         vkCmdPushConstants2(info.buffer, &push_constants_info);
